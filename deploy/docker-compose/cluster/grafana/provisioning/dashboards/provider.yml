@@ -1,0 +1,13 @@
+# Loads the JSON dashboards mounted at /var/lib/grafana/dashboards into an
+# "Ironflow" folder. Sanitized copies of the Helm dashboards (ironflow-performance,
+# nats-monitoring) — the other two Helm dashboards (k8s-infrastructure,
+# postgres-cnpg) are Kubernetes/CNPG-specific and omitted from the Compose stack.
+apiVersion: 1
+providers:
+  - name: ironflow
+    type: file
+    folder: Ironflow
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

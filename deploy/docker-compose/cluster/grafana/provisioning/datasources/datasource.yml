@@ -1,0 +1,12 @@
+# Grafana datasource provisioning for the docker-compose monitoring profile.
+# uid "prometheus" matches the datasource uid baked into the dashboards under
+# ../../dashboards/ (sanitized from deploy/helm/ironflow/dashboards/).
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    type: prometheus
+    uid: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false

@@ -1,0 +1,24 @@
+# deploy/docker-compose/cluster/prometheus.yml
+# Shared by docker-compose.cluster.yml and docker-compose.multi-node.yml.
+# Scrapes /metrics from all three ironflow nodes (enabled via
+# IRONFLOW_METRICS_ENABLED). Started under the `monitoring` profile.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: "ironflow-cluster"
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - "ironflow-1:9123"
+          - "ironflow-2:9124"
+          - "ironflow-3:9125"
+
+  # NATS metrics via the prometheus-nats-exporter sidecar (NATS itself serves
+  # JSON on :8222, not Prometheus format). Feeds the NATS Monitoring dashboard.
+  - job_name: "nats"
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - "nats-exporter:7777"

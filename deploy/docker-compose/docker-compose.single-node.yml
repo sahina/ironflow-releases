@@ -1,0 +1,74 @@
+# docker-compose.single-node.yml
+# Single-node Ironflow: one server (embedded NATS + SQLite by default), optional
+# PostgreSQL (`--profile postgres`) and Prometheus (`--profile monitoring`).
+# Run with: docker compose -f docker-compose.single-node.yml up  (or `make docker-up`).
+# For multi-node clusters see deploy/docker-compose/cluster/.
+name: ironflow
+services:
+  ironflow:
+    build:
+      context: .
+      args:
+        VERSION: ${VERSION:-dev}
+    image: ghcr.io/sahina/ironflow-releases:${VERSION:-latest}
+    ports:
+      - "${IRONFLOW_PORT:-9123}:9123"
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - IRONFLOW_DATABASE_URL=${IRONFLOW_DATABASE_URL:-}
+      - NATS_STORE_DIR=${NATS_STORE_DIR:-/data/nats}
+      - IRONFLOW_MASTER_KEY=${IRONFLOW_MASTER_KEY:-}
+      - IRONFLOW_ENV=${IRONFLOW_ENV:-default}
+      - IRONFLOW_METRICS_ENABLED=${IRONFLOW_METRICS_ENABLED:-true}
+      - IRONFLOW_OTEL_ENDPOINT=${IRONFLOW_OTEL_ENDPOINT:-}
+      - IRONFLOW_OTEL_SAMPLE_RATE=${IRONFLOW_OTEL_SAMPLE_RATE:-1.0}
+      - IRONFLOW_OTEL_SERVICE_NAME=${IRONFLOW_OTEL_SERVICE_NAME:-ironflow}
+    volumes:
+      - ironflow-data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9123/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  postgres:
+    image: postgres:16-alpine
+    profiles:
+      - postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ironflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ironflow}
+      POSTGRES_DB: ${POSTGRES_DB:-ironflow}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $${POSTGRES_USER:-ironflow} -d $${POSTGRES_DB:-ironflow}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    profiles:
+      - monitoring
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      ironflow:
+        condition: service_healthy
+
+volumes:
+  ironflow-data:
+  postgres-data:

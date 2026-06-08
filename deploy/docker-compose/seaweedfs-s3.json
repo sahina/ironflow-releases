@@ -1,0 +1,14 @@
+{
+  "identities": [
+    {
+      "name": "ironflow-test",
+      "credentials": [
+        {
+          "accessKey": "ironflowtest",
+          "secretKey": "ironflowtestsecret"
+        }
+      ],
+      "actions": ["Admin", "Read", "Write", "List", "Tagging"]
+    }
+  ]
+}
