@@ -1,0 +1,45 @@
+# Ironflow YAML Configuration — Multi-Tenant Platform
+# Creates organizations, projects, and environments on first boot.
+#
+# Boot with:
+#   IRONFLOW_DATABASE_URL="postgres://..." \
+#   NATS_URL="nats://h1:4222" \
+#   IRONFLOW_NODE_ID="node-1" \
+#   IRONFLOW_MASTER_KEY="$(openssl rand -hex 32)" \
+#   ./build/ironflow serve -f examples/yaml-config/ironflow-platform.yaml
+apiVersion: ironflow/v1
+kind: Platform
+spec:
+  port: 9123
+
+  storage:
+    driver: postgres
+    url: ${IRONFLOW_DATABASE_URL}
+
+  nats:
+    url: ${NATS_URL}
+
+  cluster:
+    nodeId: ${IRONFLOW_NODE_ID}
+
+  auth:
+    masterKey: ${IRONFLOW_MASTER_KEY}
+
+  platform:
+    organizations:
+      - name: acme-corp
+        projects:
+          - name: payments
+            environments:
+              - name: development
+              - name: staging
+              - name: production
+          - name: orders
+            environments:
+              - name: development
+              - name: production
+      - name: globex
+        projects:
+          - name: logistics
+            environments:
+              - name: production

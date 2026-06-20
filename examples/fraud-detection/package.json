@@ -1,0 +1,19 @@
+{
+  "name": "ironflow-fraud-detection",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "pnpm tsx worker.ts",
+    "dev": "pnpm tsx watch worker.ts",
+    "seed": "pnpm tsx seed.ts"
+  },
+  "dependencies": {
+    "@ironflow/core": "workspace:*",
+    "@ironflow/node": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}

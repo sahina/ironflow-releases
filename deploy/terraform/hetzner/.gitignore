@@ -1,0 +1,22 @@
+# Terraform state (never commit)
+*.tfstate
+*.tfstate.backup
+*.tfstate.*.backup
+.terraform.tfstate.lock.info
+.terraform/
+
+# Sensitive files
+terraform.tfvars
+kubeconfig
+kubeconfig.bak
+talosconfig
+talosconfig.bak
+talosconfig.yaml
+
+# Backup and temp files
+*.bak
+*.orig
+*.swp
+
+# OS files
+.DS_Store

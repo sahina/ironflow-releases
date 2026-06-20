@@ -1,0 +1,24 @@
+# Ironflow YAML Configuration — Production Single-Node
+# Boot with: IRONFLOW_DATABASE_URL="postgres://..." IRONFLOW_MASTER_KEY="$(openssl rand -hex 32)" \
+#   ./build/ironflow serve -f examples/yaml-config/ironflow-prod.yaml
+apiVersion: ironflow/v1
+kind: Server
+spec:
+  port: 9123
+
+  storage:
+    driver: postgres
+    url: ${IRONFLOW_DATABASE_URL}
+    pool:
+      maxConns: 25
+      minConns: 5
+
+  nats:
+    storeDir: /tmp/ironflow-nats
+
+  auth:
+    masterKey: ${IRONFLOW_MASTER_KEY}
+
+  observability:
+    metrics:
+      enabled: true

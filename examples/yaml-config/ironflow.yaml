@@ -1,0 +1,10 @@
+# Ironflow YAML Configuration — Local Development
+# Boot with: ./build/ironflow serve -f examples/yaml-config/ironflow.yaml
+apiVersion: ironflow/v1
+kind: Server
+spec:
+  port: 9123
+  auth:
+    devMode: true
+  nats:
+    storeDir: ${NATS_STORE_DIR:-}

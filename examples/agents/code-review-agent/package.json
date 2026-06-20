@@ -1,0 +1,22 @@
+{
+  "name": "ironflow-code-review-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Durable PR review agent. tool() fetches diff, llm() reviews, approve() gates posting. Survives crashes mid-review.",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/worker.ts",
+    "start": "tsx src/worker.ts",
+    "trigger": "tsx scripts/trigger.ts",
+    "approve": "tsx scripts/approve.ts"
+  },
+  "dependencies": {
+    "@ironflow/node": "workspace:*",
+    "zod": "^4.3.5"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "@types/node": "^22.0.0"
+  }
+}

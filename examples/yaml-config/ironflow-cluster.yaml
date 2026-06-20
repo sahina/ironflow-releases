@@ -1,0 +1,34 @@
+# Ironflow YAML Configuration — Multi-Node Cluster
+# Deploy this same file on every node. Only IRONFLOW_NODE_ID differs per node.
+#
+# Boot with:
+#   IRONFLOW_DATABASE_URL="postgres://..." \
+#   NATS_URL="nats://h1:4222,h2:4222" \
+#   IRONFLOW_NODE_ID="node-1" \
+#   IRONFLOW_MASTER_KEY="$(openssl rand -hex 32)" \
+#   ./build/ironflow serve -f examples/yaml-config/ironflow-cluster.yaml
+apiVersion: ironflow/v1
+kind: Cluster
+spec:
+  port: 9123
+
+  storage:
+    driver: postgres
+    url: ${IRONFLOW_DATABASE_URL}
+    pool:
+      maxConns: 25
+      minConns: 5
+
+  nats:
+    url: ${NATS_URL}
+
+  cluster:
+    nodeId: ${IRONFLOW_NODE_ID}
+    staleClaimThreshold: 2m
+
+  auth:
+    masterKey: ${IRONFLOW_MASTER_KEY}
+
+  observability:
+    metrics:
+      enabled: true

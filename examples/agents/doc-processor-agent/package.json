@@ -1,0 +1,23 @@
+{
+  "name": "ironflow-doc-processor-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Durable OCR → classify → publish agent. Demonstrates checkpoint/resume across kill -9.",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/worker.ts",
+    "start": "tsx src/worker.ts",
+    "trigger": "tsx scripts/trigger.ts",
+    "verify": "tsx scripts/verify.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ironflow/node": "workspace:*",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "@types/node": "^22.0.0"
+  }
+}

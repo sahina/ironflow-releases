@@ -1,0 +1,8 @@
+packages:
+  - '../../sdk/js/core'
+  - '../../sdk/js/browser'
+  - '../../sdk/js/node'
+
+ignoredBuiltDependencies:
+  - sharp
+  - unrs-resolver
