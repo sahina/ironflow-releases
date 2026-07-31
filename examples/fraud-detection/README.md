@@ -24,7 +24,7 @@ inspect, replay, and audit everything that happened.
      fraud-eval:{txnId}   fraud-alerts       fraud-decision-stats
      (entity stream)      (pub/sub topic)    (projection)
      Full reasoning       Real-time alerts   Live metrics
-     chain captured       for downstream     by model version
+     chain captured       for downstream     across all evaluations
 ```
 
 ---

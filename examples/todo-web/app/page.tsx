@@ -82,8 +82,11 @@ export default function Home() {
     }
   };
 
-  const toggleTodo = async (id: string) => {
-    await ironflow.emit(EVENTS.TodoToggled, { id });
+  const toggleTodo = async (id: string, completed: boolean) => {
+    // Carry the target state, not a flip. The projection reducer SETS completed
+    // to this value, so a re-delivered event is idempotent (event-sourcing best
+    // practice — see projection-types.ts: handlers MUST be idempotent).
+    await ironflow.emit(EVENTS.TodoToggled, { id, completed });
   };
 
   const deleteTodo = async (id: string) => {
@@ -130,7 +133,7 @@ export default function Home() {
               <input
                 type="checkbox"
                 checked={todo.completed}
-                onChange={() => toggleTodo(todo.id)}
+                onChange={() => toggleTodo(todo.id, !todo.completed)}
                 className="h-4 w-4 rounded border-gray-300"
               />
               <span

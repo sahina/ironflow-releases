@@ -4,6 +4,15 @@ import { EVENTS } from "./events";
 export async function register() {
   // Only run in Node.js runtime — skip Edge to avoid process.version warnings
   if (process.env.NEXT_RUNTIME === "nodejs") {
+    // HMR-safe worker: Next.js re-runs register() on every hot reload, and each
+    // createWorker().start() opens a new gRPC pull stream. Without cleanup the
+    // old streams leak and re-apply events → duplicate projection rows. Keep the
+    // worker on globalThis (which survives module replacement) and stop the
+    // previous one before starting a new one — this prevents leaks *and* lets
+    // code changes to functions/projections hot-reload during dev.
+    const g = globalThis as unknown as { __ironflowWorker?: { stop: () => void } };
+    g.__ironflowWorker?.stop();
+
     const { createFunction, createProjection, createWorker } = await import(
       "@ironflow/node"
     );
@@ -77,6 +86,8 @@ export async function register() {
       handler: (state: TodoList, event: { name: string; data: unknown }) => {
         if (event.name === EVENTS.TodoAdded) {
           const data = event.data as { id: string; title: string };
+          // Idempotent: ignore a re-delivered TodoAdded for an id we already have.
+          if (state.todos.some((t) => t.id === data.id)) return state;
           const newTodo: Todo = {
             id: data.id,
             title: data.title,
@@ -86,10 +97,18 @@ export async function register() {
         }
 
         if (event.name === EVENTS.TodoToggled) {
-          const data = event.data as { id: string };
+          // Idempotent: SET completed to the value carried by the event, never
+          // flip. Flipping (`!t.completed`) is non-idempotent — a re-delivered
+          // event would flip back. The client sends the target state.
+          const data = event.data as { id: string; completed: boolean };
+          // No-op when the todo is gone or already in the target state — return
+          // the same state reference instead of allocating a new array, so
+          // subscribers don't see a spurious update.
+          const todo = state.todos.find((t) => t.id === data.id);
+          if (!todo || todo.completed === data.completed) return state;
           return {
             todos: state.todos.map((t) =>
-              t.id === data.id ? { ...t, completed: !t.completed } : t,
+              t.id === data.id ? { ...t, completed: data.completed } : t,
             ),
           };
         }
@@ -111,6 +130,7 @@ export async function register() {
       functions: [processTodo],
       projections: [todoList as IronflowProjection],
     });
+    g.__ironflowWorker = worker;
 
     worker.start()
       .then(() => {
