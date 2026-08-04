@@ -1,5 +1,7 @@
 # Ironflow — Public Releases
 
+[![Latest version](https://img.shields.io/github/v/release/sahina/ironflow-releases?label=ironflow&color=blue)](https://github.com/sahina/ironflow-releases/releases/latest)
+
 Continuous History for backend systems. One binary for events, workflows, projections, and time-travel.
 
 - Website: <https://ironflow.run>
