@@ -117,12 +117,18 @@ sha256sum -c ironflow_${VERSION}_checksums.txt --ignore-missing
 | --- | --- |
 | [ironflow-desktop-releases](https://github.com/sahina/ironflow-desktop-releases) | Ironflow Desktop downloads |
 | [ironflow-js](https://github.com/sahina/ironflow-js) | Public source mirror for the `@ironflow/*` npm packages |
+| [ironflow-go](https://github.com/sahina/ironflow-go) | Public source mirror for the Go SDK |
 | [homebrew-tap](https://github.com/sahina/homebrew-tap) | Homebrew formula (`brew tap sahina/tap`) |
+| [ironflow-issues](https://github.com/sahina/ironflow-issues) | Public issue tracker — bugs and feature requests |
 
 ## Bugs & support
 
-File issues at <https://github.com/sahina/ironflow-releases/issues>. Security disclosures and
-commercial-licensing enquiries: see [SECURITY.md](SECURITY.md) and <https://ironflow.run>.
+File issues at <https://github.com/sahina/ironflow-issues/issues/new/choose>. Issues are disabled
+on this repo so everything lands in one place.
+
+Security disclosures go to
+[private advisories](https://github.com/sahina/ironflow-issues/security/advisories/new), never a
+public issue. Commercial-licensing enquiries: <https://ironflow.run>.
 
 ## License
 
