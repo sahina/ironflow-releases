@@ -19,19 +19,23 @@ An order goes through a full lifecycle: Created → Confirmed → Packed → Shi
    ./build/ironflow serve --dev   # Start server at localhost:9123
    ```
 
-2. Install dependencies and run the demo setup (in another terminal):
+2. Install dependencies and start the worker (in another terminal). The worker must be
+   running **before** any events are appended — the engine only creates runs for
+   functions that are registered at dispatch time, so seeding first yields zero
+   execution proof in step 5:
 
    ```bash
    cd examples/compliance-audit
    pnpm -C ../../sdk/js build   # Build the JS SDK (examples link to local packages)
    pnpm install
-   pnpm tsx setup.ts
+   pnpm tsx worker.ts
    ```
 
-3. Start the worker (processes events and creates execution proof):
+3. Seed the entity stream (in a third terminal):
 
    ```bash
-   pnpm tsx worker.ts
+   cd examples/compliance-audit
+   pnpm tsx setup.ts
    ```
 
 4. Open the dashboard at `http://localhost:9123/compliance-audit`

@@ -169,7 +169,7 @@ const processOrder = ironflow.createFunction(
   },
   async ({ event, step }) => {
     const result = await step.run("validate", async () => {
-      return { orderId: event.data.orderId, status: "validated" };
+      return { orderId: (event.data as { orderId: string }).orderId, status: "validated" };
     });
     return result;
   }

@@ -6,7 +6,7 @@ This is the runnable companion to the [Survive a Crash](../../../docs/tutorials/
 
 ## Pipeline
 
-```
+```text
                  doc.received                    doc.processed
                        │                                ▲
                        ▼                                │

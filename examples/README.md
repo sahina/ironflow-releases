@@ -25,6 +25,12 @@ Every Ironflow application follows four pillars:
 | [go-quickstart/](./go-quickstart/)               | Go SDK validation         | Go developers         | Same CH flow in Go                          |
 | [todo-web/](./todo-web/)                         | Bare-bones Next.js todo   | Getting started       | Embedded worker, events, projections        |
 | [reference-app/](./reference-app/)               | Full API validation       | SDK contributors, QA  | Exhaustive feature coverage (30+ pages)     |
+| [fraud-detection/](./fraud-detection/)           | Real-time risk pipeline   | Building real systems | `step.parallel()`, KV counters, pub/sub alerts |
+| [compliance-audit/](./compliance-audit/)         | Audit trail + execution proof | Regulated workloads | Entity-stream lineage in the Compliance dashboard |
+| [ai-agent/](./ai-agent/)                         | Durable AI research agent | AI engineers          | `agent()`, `tool()`, `llm()`, event-sourced memory |
+| [agents/doc-processor-agent/](./agents/doc-processor-agent/) | Crash-resume proof | AI engineers      | `kill -9` mid-pipeline and resume; browser demo in [`web/`](./agents/doc-processor-agent/web/) |
+| [agents/code-review-agent/](./agents/code-review-agent/) | Human-in-the-loop gate | AI engineers    | `approve()` pausing a run for up to 24h     |
+| [yaml-config/](./yaml-config/)                   | Config file examples      | Operators             | Server, cluster, and platform `ironflow.yaml` |
 
 ## Prerequisites
 
@@ -62,4 +68,23 @@ cd examples/go-quickstart && go run main.go
 
 # Run the reference app
 cd examples/reference-app && pnpm install && pnpm dev
+
+# Run the fraud detection pipeline
+cd examples/fraud-detection && pnpm install && pnpm start
+# In another terminal: pnpm seed
+
+# Run the compliance audit demo (worker first — seeding first yields no execution proof)
+cd examples/compliance-audit && pnpm install && pnpm tsx worker.ts
+# In another terminal: pnpm tsx setup.ts
+
+# Run the AI research agent
+cd examples/ai-agent && pnpm install && pnpm dev
+# In another terminal: ironflow emit agent.research --data '{"topic":"event sourcing"}'
+
+# Run the agent examples (doc-processor-agent, code-review-agent)
+cd examples/agents/doc-processor-agent && pnpm install && pnpm dev
+# In another terminal: pnpm trigger -- doc-1 https://example.com/invoice.png
+
+# Validate the YAML configuration examples (no install needed)
+./build/ironflow validate -f examples/yaml-config/ironflow.yaml
 ```

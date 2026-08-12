@@ -52,16 +52,22 @@ Each `ironflow.Run()` call is memoized: on retry, completed steps return their c
 The `OrderStats` projection is a pure reducer that builds a read model from the event stream. No manual queries — the projection stays consistent automatically.
 
 ```go
-// main.go — lines 69-88
+// main.go — lines 69-90
 var OrderStats = ironflow.CreateProjection(ironflow.ProjectionConfig{
     Name:   "order-stats",
     Events: []string{"order.placed"},
+    Mode:   ironflow.ProjectionModeManaged,
     InitialState: func() map[string]any {
-        return map[string]any{"totalOrders": 0, "totalRevenue": 0.0}
+        return map[string]any{"totalOrders": 0.0, "totalRevenue": 0.0}
     },
     Handler: func(state map[string]any, event ironflow.ProjectionEvent, ctx ironflow.ProjectionContext) (map[string]any, error) {
-        total, _ := event.Data["total"].(float64)
-        totalOrders, _ := state["totalOrders"].(int)
+        total, ok := event.Data["total"].(float64)
+        if !ok {
+            return state, fmt.Errorf("event data missing 'total' field")
+        }
+        // State is deep-copied via JSON before each invocation, so every
+        // number arrives as float64 — never assert .(int) here.
+        totalOrders, _ := state["totalOrders"].(float64)
         totalRevenue, _ := state["totalRevenue"].(float64)
         return map[string]any{
             "totalOrders":  totalOrders + 1,

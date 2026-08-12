@@ -36,7 +36,7 @@ Every step in the tutorial maps to a file here so you can read the doc with the 
 
 The walkthrough shows the HTTP route calling `placeOrderHandler(cmd)` directly. The Ironflow server currently requires a worker to register at least one function, so this example hosts the handler as a `place-order` function triggered by `create.order`. The route emits the command; the function executes the same `placeOrderHandler` body. Both paths produce identical CQRS shape — you get durable retries and step memoization for free.
 
-Only `createClient`, `createProjection`, `createWorker`, `streams.*`, `kv`, and the
+Only `createClient`, `createFunction`, `createProjection`, `createWorker`, `emit`, `streams.*`, `commandDedup()`, and the
 browser `ironflow.{configure,getProjection,subscribeToProjection,streams.read}` are
 Ironflow SDK calls. Everything else (`customerRepo`, `productCatalog`, `commandDedup`,
 `authenticate`, `foldOrder`, `placeOrder`, `placeOrderHandler`) is illustrative user
@@ -100,7 +100,7 @@ Open <http://localhost:3000>.
 4. Place the same order twice by copying the request in devtools and resending
    with the same `commandId` and `orderId` in the body. Verify dedup two ways:
    the worker log shows the second invocation short-circuiting (no new
-   `streams.append` call), and `curl $IRONFLOW_URL/api/v1/streams/{orderId}`
+   `streams.append` call), and `curl $IRONFLOW_SERVER_URL/api/v1/streams/{orderId}/events`
    returns one event, not two.
 5. Rebuild a projection:
 

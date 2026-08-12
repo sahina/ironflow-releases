@@ -71,14 +71,16 @@ var OrderStats = ironflow.CreateProjection(ironflow.ProjectionConfig{
 	Events: []string{"order.placed"},
 	Mode:   ironflow.ProjectionModeManaged,
 	InitialState: func() map[string]any {
-		return map[string]any{"totalOrders": 0, "totalRevenue": 0.0}
+		return map[string]any{"totalOrders": 0.0, "totalRevenue": 0.0}
 	},
 	Handler: func(state map[string]any, event ironflow.ProjectionEvent, ctx ironflow.ProjectionContext) (map[string]any, error) {
 		total, ok := event.Data["total"].(float64)
 		if !ok {
 			return state, fmt.Errorf("event data missing 'total' field")
 		}
-		totalOrders, _ := state["totalOrders"].(int)
+		// State is deep-copied via JSON before each invocation, so every
+		// number arrives as float64 — never assert .(int) here.
+		totalOrders, _ := state["totalOrders"].(float64)
 		totalRevenue, _ := state["totalRevenue"].(float64)
 		return map[string]any{
 			"totalOrders":  totalOrders + 1,

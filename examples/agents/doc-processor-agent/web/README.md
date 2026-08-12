@@ -21,7 +21,7 @@ Click **Run agent**. The page calls `ironflow.agents.invoke("doc-processor", {..
 
 ## What it shows
 
-```
+```text
   [User]                  [Browser SDK]                  [Ironflow]
   click ─▶ Run agent ─▶ agents.invoke ─▶ POST /Trigger
                        ─▶ subscribe(system.run.{runId}.>, replay:N)
