@@ -1,0 +1,1055 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Travel Booking — what Ironflow is actually doing</title>
+<style>
+  :root{
+    --ivory:#FAF9F5; --paper:#FFFFFF; --slate:#141413;
+    --clay:#D97757; --clay-d:#B85C3E;
+    --oat:#E3DACC; --olive:#788C5D;
+    --g100:#F0EEE6; --g200:#E6E3DA; --g300:#D1CFC5; --g500:#87867F; --g700:#3D3D3A;
+
+    /* Ironflow product palette — used ONLY inside the UI frames, so the little
+       screens read as the app while the page around them reads as a document. */
+    --if-bg:#0a0a0f; --if-surface:#111118; --if-border:#1e293b; --if-border-2:#334155;
+    --if-brand:#4f46e5; --if-brand-t:#a5b4fc;
+    --if-ok:#22c55e; --if-warn:#f59e0b; --if-err:#ef4444;
+    --if-text:#e2e8f0; --if-dim:#64748b;
+
+    --serif: ui-serif, Georgia, "Times New Roman", serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--ivory); color:var(--slate);
+    font-family:var(--sans); line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ── beat rail ─────────────────────────────────────────── */
+  .rail{
+    position:fixed; left:0; top:0; bottom:0; width:172px; z-index:60;
+    border-right:1.5px solid var(--g300); background:var(--g100);
+    padding:26px 0; display:flex; flex-direction:column; gap:2px;
+  }
+  .rail-title{
+    font-family:var(--mono); font-size:10px; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--g500); padding:0 18px 14px;
+  }
+  .rail a{
+    display:block; padding:9px 18px; text-decoration:none; color:var(--g700);
+    font-size:13px; border-left:2.5px solid transparent;
+    transition:background 160ms, border-color 160ms;
+  }
+  .rail a:hover{background:var(--g200)}
+  .rail a.on{border-left-color:var(--clay); background:var(--paper); color:var(--slate); font-weight:600}
+  .rail a b{font-family:var(--mono); font-size:10px; color:var(--g500); display:block; letter-spacing:.08em}
+  .rail-hint{
+    margin-top:auto; padding:0 18px; font-family:var(--mono);
+    font-size:10px; color:var(--g500); line-height:1.7;
+  }
+
+  /* ── slides ────────────────────────────────────────────── */
+  .deck{margin-left:172px}
+  section.slide{
+    min-height:100vh; padding:52px 44px 68px;
+    max-width:1240px; margin:0 auto; border-bottom:1.5px solid var(--g300);
+    display:flex; flex-direction:column; justify-content:center;
+  }
+
+  .eyebrow{
+    font-family:var(--mono); font-size:11px; letter-spacing:.11em; text-transform:uppercase;
+    color:var(--g500); display:flex; align-items:center; gap:11px; margin-bottom:15px;
+  }
+  .eyebrow::before{content:""; width:24px; height:2.5px; background:var(--clay); flex:none}
+
+  h1{
+    font-family:var(--serif); font-weight:400; letter-spacing:-.018em;
+    font-size:clamp(38px,5.4vw,62px); line-height:1.06; margin:0 0 20px;
+  }
+  h1 em{font-style:italic; color:var(--clay-d)}
+  h2{
+    font-family:var(--serif); font-weight:400; letter-spacing:-.015em;
+    font-size:clamp(28px,3.4vw,40px); line-height:1.12; margin:0 0 10px;
+  }
+  h2 em{font-style:italic; color:var(--clay-d)}
+  .sub{font-size:16.5px; color:var(--g700); max-width:66ch; margin:0 0 26px}
+
+  h3{
+    font-family:var(--mono); font-size:10.5px; letter-spacing:.11em; text-transform:uppercase;
+    color:var(--g500); margin:0 0 12px; font-weight:600;
+  }
+
+  .grid{display:grid; grid-template-columns:1fr 1fr; gap:28px; align-items:start}
+  .grid-3{display:grid; grid-template-columns:repeat(3,1fr); gap:18px}
+  .card{background:var(--paper); border:1.5px solid var(--g300); padding:20px 22px}
+  .card.tint{background:var(--g100)}
+
+  /* ── the storyboard: one row per moment ────────────────── */
+  .moment{
+    display:grid; grid-template-columns:452px 1fr; gap:30px;
+    padding:24px 0; border-top:1px solid var(--g200); align-items:start;
+  }
+  .moment:first-of-type{border-top:1.5px solid var(--g300)}
+
+  .frame{background:var(--if-bg); border:1.5px solid var(--g300)}
+  .frame svg{display:block; width:100%; height:auto}
+
+  .beat-what{
+    font-family:var(--serif); font-size:21px; line-height:1.3;
+    margin:0 0 6px; letter-spacing:-.008em;
+  }
+  .beat-what .n{
+    font-family:var(--mono); font-size:12px; color:var(--clay-d);
+    letter-spacing:.06em; margin-right:9px; vertical-align:2px;
+  }
+  .says{font-size:15px; color:var(--g700); margin:0 0 13px; max-width:60ch}
+  .says strong{color:var(--slate)}
+  .says .ui{
+    font-family:var(--mono); font-size:12px; background:var(--slate);
+    color:var(--ivory); padding:1px 7px; white-space:nowrap;
+  }
+
+  pre{
+    margin:0; background:#1a1a18; color:#e8e6df; padding:14px 16px;
+    font-family:var(--mono); font-size:11.5px; line-height:1.62; overflow-x:auto;
+  }
+  pre .c{color:#8a8778}
+  pre .k{color:#d8a0d0}
+  pre .s{color:#b5cf9a}
+  pre .f{color:#e8c07a}
+  pre .hl{background:rgba(217,119,87,.22); display:inline-block; width:100%}
+  .srcref{font-family:var(--mono); font-size:10.5px; color:var(--g500); margin-top:6px; display:block}
+
+  /* Closing pull-quote: mono kicker over serif body, one rule above. */
+  .point{
+    border-top:1.5px solid var(--g300);
+    padding-top:19px; margin-top:30px; max-width:84ch;
+    font-family:var(--serif); font-size:19px; line-height:1.46;
+  }
+  .point b{
+    display:block; margin-bottom:7px;
+    font-family:var(--mono); font-size:10.5px; letter-spacing:.11em;
+    text-transform:uppercase; font-weight:600; color:var(--olive);
+  }
+  .point.warn b{color:var(--clay-d)}
+
+  .tag{
+    display:inline-block; font-family:var(--mono); font-size:10px; letter-spacing:.07em;
+    text-transform:uppercase; padding:3px 9px; border:1.5px solid var(--g300);
+    background:var(--paper); color:var(--g700); margin:0 5px 5px 0;
+  }
+  .tag.hot{border-color:var(--clay); color:var(--clay-d); background:#fdf4f0}
+
+  table{border-collapse:collapse; width:100%; font-size:14.5px}
+  th,td{text-align:left; padding:9px 12px; border-bottom:1px solid var(--g200); vertical-align:top}
+  th{font-family:var(--mono); font-size:10px; letter-spacing:.09em; text-transform:uppercase; color:var(--g500)}
+  td code, .says code, p code{font-family:var(--mono); font-size:12.5px; background:var(--g100); padding:1px 5px}
+
+  svg{display:block; max-width:100%; height:auto}
+  .note{font-size:13.5px; color:var(--g500); margin-top:12px}
+  .note code{font-family:var(--mono); font-size:12px; background:var(--g100); padding:1px 5px}
+
+  @media (max-width:1080px){
+    .moment{grid-template-columns:1fr; gap:18px}
+  }
+  @media (max-width:980px){
+    .rail{position:static; width:auto; flex-direction:row; overflow-x:auto; padding:10px; gap:6px}
+    .rail-title,.rail-hint{display:none}
+    .rail a{white-space:nowrap; border-left:none; border-bottom:2.5px solid transparent; padding:7px 12px}
+    .rail a.on{border-left:none; border-bottom-color:var(--clay)}
+    .deck{margin-left:0}
+    section.slide{padding:36px 20px 48px; min-height:auto}
+    .grid,.grid-3{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<nav class="rail">
+  <div class="rail-title">Contents</div>
+  <a href="#cover" class="on"><b>Start</b>What this is</a>
+  <a href="#screen"><b>The app</b>One screen</a>
+  <a href="#model"><b>Model</b>How it works</a>
+  <a href="#beat1"><b>Beat 1</b>It just works</a>
+  <a href="#beat2"><b>Beat 2</b>Undo, in reverse</a>
+  <a href="#beat3"><b>Beat 3</b>Kill the worker</a>
+  <a href="#beat4"><b>Beat 4</b>The last seat</a>
+  <a href="#beat5"><b>Beat 5</b>Rewind it</a>
+  <a href="#map"><b>Recap</b>Feature map</a>
+  <div class="rail-hint">← → to move<br>between sections</div>
+</nav>
+
+<div class="deck">
+
+<!-- ══════════════════════════════════ COVER ══════════════════════════════════ -->
+<section class="slide" id="cover">
+  <div class="eyebrow">examples/travel-booking</div>
+  <h1>Book a trip. Then <em>break</em> it.</h1>
+  <p class="sub">
+    A booking app where a flight and a hotel are reserved as one unit of work — and
+    five ways it can go wrong, each one showing a different thing Ironflow does about it.
+    Every screen and every line of code is on this page. You do not need to run anything.
+  </p>
+
+  <div class="grid">
+    <div class="card">
+      <h3>How to read a beat</h3>
+      <p style="margin:0 0 14px; font-size:15px">
+        Each beat is a sequence of moments. On the <strong>left</strong> is the screen at that
+        moment. On the <strong>right</strong> is what just happened inside the engine, and the code
+        that did it.
+      </p>
+      <p style="margin:0; font-size:15px">
+        Point at the screen, then read across. That is the whole format.
+      </p>
+      <p class="note">
+        Want to run it for real? <code>README.md</code>, next to this file. But the page stands alone.
+      </p>
+    </div>
+    <div class="card tint">
+      <h3>The five beats</h3>
+      <table>
+        <tr><td><b>1</b></td><td>A trip books cleanly</td></tr>
+        <tr><td><b>2</b></td><td>The card declines, and the trip un-books itself</td></tr>
+        <tr><td><b>3</b></td><td>The server is killed mid-booking, and recovers</td></tr>
+        <tr><td><b>4</b></td><td>Two people want the same last seat</td></tr>
+        <tr><td><b>5</b></td><td>Rewind any booking through its whole history</td></tr>
+      </table>
+      <div style="margin-top:16px">
+        <span class="tag hot">Entity streams</span><span class="tag hot">Optimistic concurrency</span>
+        <span class="tag hot">Durable steps</span><span class="tag hot">step.compensate()</span>
+        <span class="tag hot">Projections</span><span class="tag hot">Time travel</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ THE SCREEN ══════════════════════════════════ -->
+<section class="slide" id="screen">
+  <div class="eyebrow">The app · one screen, four zones</div>
+  <h2>Everything happens <em>in view</em></h2>
+  <p class="sub">
+    Deliberately one page. You need to see the button that breaks things and the thing it
+    breaks at the same time — otherwise the demo is two windows and a story about what
+    happened in the other one.
+  </p>
+
+  <div class="frame" style="border-width:1.5px">
+  <svg viewBox="0 0 1120 452" role="img" aria-label="The travel booking app: a trip picker on the left with three flights and three hotels, a journey timeline in the centre, a chaos panel on the right, and a time-travel scrubber along the bottom.">
+    <rect width="1120" height="452" fill="#0a0a0f"/>
+
+    <!-- header -->
+    <text x="26" y="38" font-family="system-ui" font-size="17" font-weight="600" fill="#e2e8f0">Ironflow Travel</text>
+    <text x="176" y="38" font-family="system-ui" font-size="13" fill="#64748b">One trip, three steps, every way it can go wrong.</text>
+    <text x="962" y="34" font-family="ui-monospace,monospace" font-size="9.5" fill="#64748b" letter-spacing="1.3">YOU</text>
+    <rect x="996" y="22" width="98" height="21" fill="none" stroke="#1e293b"/>
+    <text x="1006" y="37" font-family="ui-monospace,monospace" font-size="11.5" fill="#a5b4fc">Alice</text>
+
+    <!-- ZONE 1 · picker -->
+    <rect x="26" y="58" width="300" height="330" fill="#111118" stroke="#1e293b"/>
+    <text x="42" y="80" font-family="ui-monospace,monospace" font-size="9.5" fill="#64748b" letter-spacing="1.3">FLIGHTS</text>
+    <rect x="42" y="90" width="268" height="42" fill="none" stroke="#1e293b"/>
+    <text x="54" y="107" font-family="ui-monospace,monospace" font-size="12" fill="#e2e8f0">UA 100</text>
+    <text x="272" y="107" font-family="system-ui" font-size="12" fill="#e2e8f0">$890</text>
+    <text x="54" y="124" font-family="system-ui" font-size="10.5" fill="#64748b">SFO → NRT · 09:45</text>
+    <text x="204" y="124" font-family="ui-monospace,monospace" font-size="10" fill="#f59e0b">⚠ 1 seat left</text>
+
+    <rect x="42" y="138" width="268" height="42" fill="none" stroke="#1e293b"/>
+    <text x="54" y="155" font-family="ui-monospace,monospace" font-size="12" fill="#e2e8f0">AA 220</text>
+    <text x="272" y="155" font-family="system-ui" font-size="12" fill="#e2e8f0">$640</text>
+    <text x="54" y="172" font-family="system-ui" font-size="10.5" fill="#64748b">SFO → LHR · 13:10</text>
+    <text x="222" y="172" font-family="ui-monospace,monospace" font-size="10" fill="#94a3b8">6 seats left</text>
+
+    <rect x="42" y="186" width="268" height="42" fill="none" stroke="#1e293b"/>
+    <text x="54" y="203" font-family="ui-monospace,monospace" font-size="12" fill="#e2e8f0">DL 318</text>
+    <text x="272" y="203" font-family="system-ui" font-size="12" fill="#e2e8f0">$720</text>
+    <text x="54" y="220" font-family="system-ui" font-size="10.5" fill="#64748b">SFO → CDG · 18:30</text>
+    <text x="222" y="220" font-family="ui-monospace,monospace" font-size="10" fill="#94a3b8">4 seats left</text>
+
+    <text x="42" y="252" font-family="ui-monospace,monospace" font-size="9.5" fill="#64748b" letter-spacing="1.3">HOTELS</text>
+    <rect x="42" y="262" width="268" height="34" fill="none" stroke="#1e293b"/>
+    <text x="54" y="283" font-family="system-ui" font-size="12" fill="#e2e8f0">Park Hyatt · Tokyo</text>
+    <text x="238" y="283" font-family="ui-monospace,monospace" font-size="10" fill="#94a3b8">3 rooms</text>
+    <rect x="42" y="302" width="268" height="34" fill="none" stroke="#1e293b"/>
+    <text x="54" y="323" font-family="system-ui" font-size="12" fill="#e2e8f0">The Savoy · London</text>
+    <text x="238" y="323" font-family="ui-monospace,monospace" font-size="10" fill="#94a3b8">5 rooms</text>
+
+    <rect x="42" y="348" width="268" height="28" fill="#4f46e5"/>
+    <text x="146" y="367" font-family="ui-monospace,monospace" font-size="12" fill="#ffffff">Book trip</text>
+
+    <!-- ZONE 2 · journey -->
+    <rect x="340" y="58" width="470" height="330" fill="#111118" stroke="#1e293b"/>
+    <text x="356" y="80" font-family="ui-monospace,monospace" font-size="9.5" fill="#64748b" letter-spacing="1.3">JOURNEY</text>
+    <circle cx="362" cy="118" r="4.5" fill="#334155"/>
+    <text x="380" y="123" font-family="system-ui" font-size="14" fill="#64748b">1. Reserve flight</text>
+    <circle cx="362" cy="156" r="4.5" fill="#334155"/>
+    <text x="380" y="161" font-family="system-ui" font-size="14" fill="#64748b">2. Reserve hotel</text>
+    <circle cx="362" cy="194" r="4.5" fill="#334155"/>
+    <text x="380" y="199" font-family="system-ui" font-size="14" fill="#64748b">3. Charge card</text>
+    <text x="380" y="252" font-family="system-ui" font-size="13" fill="#334155">Pick a flight and a hotel, then book.</text>
+
+    <!-- ZONE 3 · chaos -->
+    <rect x="824" y="58" width="270" height="330" fill="#111118" stroke="#1e293b"/>
+    <text x="840" y="80" font-family="ui-monospace,monospace" font-size="9.5" fill="#64748b" letter-spacing="1.3">CHAOS</text>
+    <g font-family="ui-monospace,monospace" font-size="11.5" fill="#e2e8f0">
+      <rect x="840" y="92" width="238" height="26" fill="none" stroke="#334155"/><text x="852" y="109">Crash worker</text>
+      <rect x="840" y="124" width="238" height="26" fill="none" stroke="#334155"/><text x="852" y="141">Fail payment</text>
+      <rect x="840" y="156" width="238" height="26" fill="none" stroke="#334155"/><text x="852" y="173">Slow payment</text>
+      <rect x="840" y="188" width="238" height="26" fill="none" stroke="#334155"/><text x="852" y="205">Go offline</text>
+      <rect x="840" y="220" width="238" height="26" fill="none" stroke="#334155"/><text x="852" y="237">Simulate traveller</text>
+      <rect x="840" y="252" width="238" height="26" fill="none" stroke="#334155"/><text x="852" y="269">Reset inventory</text>
+    </g>
+    <circle cx="845" cy="344" r="3" fill="#22c55e"/>
+    <text x="858" y="348" font-family="ui-monospace,monospace" font-size="10.5" fill="#64748b">worker up</text>
+    <circle cx="845" cy="366" r="3" fill="#22c55e"/>
+    <text x="858" y="370" font-family="ui-monospace,monospace" font-size="10.5" fill="#64748b">connected</text>
+
+    <!-- ZONE 4 · time travel -->
+    <rect x="26" y="398" width="1068" height="34" fill="#111118" stroke="#1e293b"/>
+    <text x="42" y="419" font-family="ui-monospace,monospace" font-size="9.5" fill="#64748b" letter-spacing="1.3">TIME TRAVEL</text>
+    <text x="160" y="420" font-family="system-ui" font-size="12.5" fill="#334155">Book a trip, then rewind it.</text>
+  </svg>
+  </div>
+
+  <div class="grid-3" style="margin-top:22px">
+    <div class="card">
+      <h3>Left · pick a trip</h3>
+      <p style="margin:0; font-size:14.5px">
+        Three flights, three hotels. Seat and room counts are <strong>live</strong> — they move when
+        anyone books, with no refresh. <b style="font-weight:600">UA 100 has one seat</b>; that is beat 4's whole plot.
+      </p>
+    </div>
+    <div class="card">
+      <h3>Centre · the journey</h3>
+      <p style="margin:0; font-size:14.5px">
+        The three steps of a booking, lighting up as they happen — and striking through
+        when they get undone.
+      </p>
+    </div>
+    <div class="card">
+      <h3>Right · chaos, and the bottom bar</h3>
+      <p style="margin:0; font-size:14.5px">
+        Buttons that break things on purpose, plus two status lights. Along the bottom,
+        a scrubber over any booking's recorded history.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ MODEL ══════════════════════════════════ -->
+<section class="slide" id="model">
+  <div class="eyebrow">How it works · show this once</div>
+  <h2>Four moving parts, and <em>nothing</em> hidden</h2>
+  <p class="sub">
+    Every beat that follows is a variation on this one picture, so it is worth thirty
+    seconds up front.
+  </p>
+
+  <div class="card" style="padding:24px">
+  <svg viewBox="0 84 1000 278" role="img" aria-label="Browser emits booking.requested; the book-trip function runs three steps; each step appends to entity streams; projections derive read models; the browser subscribes to those projections.">
+    <defs>
+      <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M0 0 L10 5 L0 10 z" fill="#87867F"/>
+      </marker>
+      <marker id="arc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M0 0 L10 5 L0 10 z" fill="#D97757"/>
+      </marker>
+      <marker id="arg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M0 0 L10 5 L0 10 z" fill="#788C5D"/>
+      </marker>
+      <marker id="are" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M0 0 L10 5 L0 10 z" fill="#ef4444"/>
+      </marker>
+    </defs>
+
+    <rect x="8" y="150" width="150" height="96" fill="#FFF" stroke="#141413" stroke-width="1.5"/>
+    <text x="24" y="176" font-family="ui-monospace,monospace" font-size="11" fill="#87867F">BROWSER</text>
+    <text x="24" y="200" font-family="system-ui" font-size="14" fill="#141413">Book trip</text>
+    <text x="24" y="222" font-family="ui-monospace,monospace" font-size="11" fill="#D97757">ironflow.emit()</text>
+
+    <line x1="162" y1="198" x2="280" y2="198" stroke="#87867F" stroke-width="1.5" marker-end="url(#ar)"/>
+    <text x="166" y="190" font-family="ui-monospace,monospace" font-size="9.5" fill="#87867F">booking.requested</text>
+
+    <rect x="286" y="96" width="250" height="204" fill="#F0EEE6" stroke="#141413" stroke-width="1.5"/>
+    <text x="300" y="121" font-family="ui-monospace,monospace" font-size="11" fill="#87867F">FUNCTION · book-trip</text>
+    <rect x="300" y="136" width="222" height="40" fill="#FFF" stroke="#D1CFC5" stroke-width="1.2"/>
+    <text x="312" y="161" font-family="system-ui" font-size="13.5" fill="#141413">1 · reserve flight</text>
+    <rect x="300" y="182" width="222" height="40" fill="#FFF" stroke="#D1CFC5" stroke-width="1.2"/>
+    <text x="312" y="207" font-family="system-ui" font-size="13.5" fill="#141413">2 · reserve hotel</text>
+    <rect x="300" y="228" width="222" height="40" fill="#FFF" stroke="#D1CFC5" stroke-width="1.2"/>
+    <text x="312" y="253" font-family="system-ui" font-size="13.5" fill="#141413">3 · charge card</text>
+    <text x="300" y="289" font-family="ui-monospace,monospace" font-size="9.5" fill="#D97757">each step memoized + compensatable</text>
+
+    <line x1="540" y1="198" x2="598" y2="198" stroke="#87867F" stroke-width="1.5" marker-end="url(#ar)"/>
+    <text x="544" y="190" font-family="ui-monospace,monospace" font-size="9.5" fill="#87867F">append</text>
+
+    <rect x="602" y="120" width="172" height="72" fill="#FFF" stroke="#141413" stroke-width="1.5"/>
+    <text x="616" y="143" font-family="ui-monospace,monospace" font-size="10" fill="#87867F">ENTITY STREAM</text>
+    <text x="616" y="164" font-family="ui-monospace,monospace" font-size="12.5" fill="#141413">flight-UA100</text>
+    <text x="616" y="182" font-family="ui-monospace,monospace" font-size="11" fill="#D97757">version 41</text>
+
+    <rect x="602" y="206" width="172" height="72" fill="#FFF" stroke="#141413" stroke-width="1.5"/>
+    <text x="616" y="229" font-family="ui-monospace,monospace" font-size="10" fill="#87867F">ENTITY STREAM</text>
+    <text x="616" y="250" font-family="ui-monospace,monospace" font-size="12.5" fill="#141413">booking-{id}</text>
+    <text x="616" y="268" font-family="ui-monospace,monospace" font-size="11" fill="#87867F">the journey</text>
+
+    <line x1="778" y1="156" x2="826" y2="156" stroke="#87867F" stroke-width="1.5" marker-end="url(#ar)"/>
+    <line x1="778" y1="242" x2="826" y2="242" stroke="#87867F" stroke-width="1.5" marker-end="url(#ar)"/>
+
+    <rect x="830" y="126" width="152" height="60" fill="#FFF" stroke="#141413" stroke-width="1.5"/>
+    <text x="844" y="148" font-family="ui-monospace,monospace" font-size="10" fill="#87867F">PROJECTION</text>
+    <text x="844" y="169" font-family="ui-monospace,monospace" font-size="12.5" fill="#141413">availability</text>
+
+    <rect x="830" y="212" width="152" height="60" fill="#FFF" stroke="#141413" stroke-width="1.5"/>
+    <text x="844" y="234" font-family="ui-monospace,monospace" font-size="10" fill="#87867F">PROJECTION</text>
+    <text x="844" y="255" font-family="ui-monospace,monospace" font-size="12.5" fill="#141413">bookings</text>
+
+    <path d="M906 278 L906 340 L83 340 L83 250" fill="none" stroke="#D97757" stroke-width="1.5"
+          stroke-dasharray="5 4" marker-end="url(#arc)"/>
+    <text x="330" y="334" font-family="ui-monospace,monospace" font-size="10.5" fill="#D97757">
+      subscribeToProjection() — server pushes new state, no polling
+    </text>
+  </svg>
+  </div>
+
+  <div class="grid-3" style="margin-top:22px">
+    <div class="card">
+      <h3>Write side</h3>
+      <p style="margin:0; font-size:14.5px">
+        Nothing is updated in place. Every change is an <strong>event appended</strong> to a stream.
+        That is what makes beats 2, 3 and 5 possible at all.
+      </p>
+    </div>
+    <div class="card">
+      <h3>Read side</h3>
+      <p style="margin:0; font-size:14.5px">
+        Projections fold those events into state the UI can render. The browser subscribes;
+        the server pushes. Seat counts move on their own.
+      </p>
+    </div>
+    <div class="card">
+      <h3>Why it matters</h3>
+      <p style="margin:0; font-size:14.5px">
+        Split write from read and rollback, crash-resume and time travel arrive as
+        <em>consequences</em> — not as features someone had to build.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ BEAT 1 ══════════════════════════════════ -->
+<section class="slide" id="beat1">
+  <div class="eyebrow">Beat 1</div>
+  <h2>A trip books <em>cleanly</em></h2>
+  <p class="sub">The boring one, and it goes first on purpose. Everything after this is these same three steps refusing to go to plan.</p>
+
+  <div class="moment">
+    <div class="frame">
+      <svg viewBox="0 0 452 176" role="img" aria-label="Journey panel empty, three grey steps, AA 220 showing six seats left.">
+        <rect width="452" height="176" fill="#111118"/>
+        <text x="20" y="28" font-family="ui-monospace,monospace" font-size="9.5" fill="#64748b" letter-spacing="1.3">JOURNEY</text>
+        <circle cx="26" cy="58" r="4.5" fill="#334155"/><text x="44" y="63" font-family="system-ui" font-size="13.5" fill="#64748b">1. Reserve flight</text>
+        <circle cx="26" cy="90" r="4.5" fill="#334155"/><text x="44" y="95" font-family="system-ui" font-size="13.5" fill="#64748b">2. Reserve hotel</text>
+        <circle cx="26" cy="122" r="4.5" fill="#334155"/><text x="44" y="127" font-family="system-ui" font-size="13.5" fill="#64748b">3. Charge card</text>
+        <line x1="20" y1="144" x2="432" y2="144" stroke="#1e293b"/>
+        <text x="20" y="164" font-family="ui-monospace,monospace" font-size="10.5" fill="#94a3b8">AA 220 · 6 seats left</text>
+      </svg>
+    </div>
+    <div>
+      <p class="beat-what"><span class="n">01</span>Before anyone clicks</p>
+      <p class="says">
+        Those seat counts were not hard-coded into the page. On load, the browser asks for the
+        <code>availability</code> projection and then <strong>subscribes</strong> to it — so any change
+        anyone makes arrives as a push.
+      </p>
+      <pre><span class="k">await</span> ironflow.<span class="f">subscribeToProjection</span>(<span class="s">"availability"</span>, {
+  onUpdate: (state) => <span class="f">setAvailability</span>(state),
+});</pre>
+      <span class="srcref">app/page.tsx:58</span>
+    </div>
+  </div>
+
+  <div class="moment">
+    <div class="frame">
+      <svg viewBox="0 0 452 176" role="img" aria-label="Step one green, step two in progress, step three still grey.">
+        <rect width="452" height="176" fill="#111118"/>
+        <text x="20" y="28" font-family="ui-monospace,monospace" font-size="9.5" fill="#64748b" letter-spacing="1.3">JOURNEY</text>
+        <circle cx="26" cy="58" r="4.5" fill="#22c55e"/><text x="44" y="63" font-family="system-ui" font-size="13.5" fill="#e2e8f0">1. Reserve flight</text>
+        <circle cx="26" cy="90" r="4.5" fill="#a5b4fc"/><text x="44" y="95" font-family="system-ui" font-size="13.5" fill="#e2e8f0">2. Reserve hotel</text>
+        <text x="196" y="95" font-family="ui-monospace,monospace" font-size="10" fill="#a5b4fc">running…</text>
+        <circle cx="26" cy="122" r="4.5" fill="#334155"/><text x="44" y="127" font-family="system-ui" font-size="13.5" fill="#64748b">3. Charge card</text>
+        <line x1="20" y1="144" x2="432" y2="144" stroke="#1e293b"/>
+        <text x="20" y="164" font-family="ui-monospace,monospace" font-size="10.5" fill="#94a3b8">AA 220 · 5 seats left</text>
+      </svg>
+    </div>
+    <div>
+      <p class="beat-what"><span class="n">02</span><span class="says ui" style="font-size:12px">Book trip</span> — the steps run in order</p>
+      <p class="says">
+        The click emits one event. A function picks it up and works through three steps. Each
+        <code>step.run()</code> is <strong>durable</strong>: the moment it succeeds, its result is
+        written down. Notice the seat count already dropped to 5 — step 1 committed, and the
+        projection pushed.
+      </p>
+      <pre><span class="k">await</span> step.<span class="f">run</span>(<span class="s">"reserve-flight"</span>, <span class="k">async</span> () => {
+  <span class="k">await</span> <span class="f">holdInventory</span>({ ... });
+  <span class="k">return</span> <span class="f">appendBooking</span>(stream, FlightReserved, {...});
+});</pre>
+      <span class="srcref">worker.ts:79 — then :108 for the hotel, :137 for the card</span>
+    </div>
+  </div>
+
+  <div class="moment">
+    <div class="frame">
+      <svg viewBox="0 0 452 176" role="img" aria-label="All three steps green and trip confirmed.">
+        <rect width="452" height="176" fill="#111118"/>
+        <text x="20" y="28" font-family="ui-monospace,monospace" font-size="9.5" fill="#64748b" letter-spacing="1.3">JOURNEY</text>
+        <circle cx="26" cy="58" r="4.5" fill="#22c55e"/><text x="44" y="63" font-family="system-ui" font-size="13.5" fill="#e2e8f0">1. Reserve flight</text>
+        <circle cx="26" cy="90" r="4.5" fill="#22c55e"/><text x="44" y="95" font-family="system-ui" font-size="13.5" fill="#e2e8f0">2. Reserve hotel</text>
+        <circle cx="26" cy="122" r="4.5" fill="#22c55e"/><text x="44" y="127" font-family="system-ui" font-size="13.5" fill="#e2e8f0">3. Charge card</text>
+        <text x="20" y="164" font-family="ui-monospace,monospace" font-size="12.5" fill="#22c55e">Trip confirmed.</text>
+      </svg>
+    </div>
+    <div>
+      <p class="beat-what"><span class="n">03</span>Confirmed</p>
+      <p class="says">
+        A final step appends <code>booking.confirmed</code>. Nothing here was a database
+        <em>update</em> — the booking's whole life so far is a list of appended facts, which is
+        exactly why beat 5 can replay it.
+      </p>
+      <pre><span class="k">await</span> step.<span class="f">run</span>(<span class="s">"confirm-booking"</span>, <span class="k">async</span> () =>
+  <span class="f">appendBooking</span>(stream, BOOKING_EVENTS.Confirmed, { bookingId }));</pre>
+      <span class="srcref">worker.ts:160</span>
+    </div>
+  </div>
+
+  <div class="point">
+    <b>The point</b>
+    Three steps, each one written down as it succeeds, and a read model that updates itself.
+    That single property — durable, memoized steps — is what every beat from here on exploits.
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ BEAT 2 ══════════════════════════════════ -->
+<section class="slide" id="beat2">
+  <div class="eyebrow">Beat 2</div>
+  <h2>The card declines, and the trip <em>un-books itself</em></h2>
+  <p class="sub">A flight is held. A room is held. Then payment fails — and now you owe the customer an apology and two cancellations.</p>
+
+  <div class="moment">
+    <div class="frame">
+      <svg viewBox="0 0 452 176" role="img" aria-label="Chaos panel with Fail payment toggled on.">
+        <rect width="452" height="176" fill="#111118"/>
+        <text x="20" y="28" font-family="ui-monospace,monospace" font-size="9.5" fill="#64748b" letter-spacing="1.3">CHAOS</text>
+        <g font-family="ui-monospace,monospace" font-size="11.5">
+          <rect x="20" y="42" width="240" height="26" fill="none" stroke="#334155"/><text x="32" y="59" fill="#e2e8f0">Crash worker</text>
+          <rect x="20" y="74" width="240" height="26" fill="none" stroke="#f59e0b"/><text x="32" y="91" fill="#f59e0b">✓ Fail payment</text>
+          <rect x="20" y="106" width="240" height="26" fill="none" stroke="#334155"/><text x="32" y="123" fill="#e2e8f0">Slow payment</text>
+        </g>
+        <text x="20" y="160" font-family="ui-monospace,monospace" font-size="10" fill="#64748b">the next card will be declined</text>
+      </svg>
+    </div>
+    <div>
+      <p class="beat-what"><span class="n">01</span>Arm the failure</p>
+      <p class="says">
+        The chaos panel flips a flag in the worker process. Nothing is faked further down —
+        the payment step will genuinely throw, and the engine will genuinely fail the run.
+      </p>
+      <pre><span class="k">if</span> (paymentMode === <span class="s">"fail"</span>) {
+  <span class="c">// NonRetryableError, not a bare throw: skips the retry</span>
+  <span class="c">// schedule so the rollback happens now, not after backoff.</span>
+  <span class="k">throw new</span> <span class="f">NonRetryableError</span>(<span class="s">"Card declined."</span>);
+}</pre>
+      <span class="srcref">worker.ts:141–145</span>
+    </div>
+  </div>
+
+  <div class="moment">
+    <div class="frame">
+      <svg viewBox="0 0 452 176" role="img" aria-label="Steps one and two green, step three red.">
+        <rect width="452" height="176" fill="#111118"/>
+        <text x="20" y="28" font-family="ui-monospace,monospace" font-size="9.5" fill="#64748b" letter-spacing="1.3">JOURNEY</text>
+        <circle cx="26" cy="58" r="4.5" fill="#22c55e"/><text x="44" y="63" font-family="system-ui" font-size="13.5" fill="#e2e8f0">1. Reserve flight</text>
+        <circle cx="26" cy="90" r="4.5" fill="#22c55e"/><text x="44" y="95" font-family="system-ui" font-size="13.5" fill="#e2e8f0">2. Reserve hotel</text>
+        <rect x="21" y="117" width="9" height="9" fill="#ef4444"/><text x="44" y="127" font-family="system-ui" font-size="13.5" fill="#e2e8f0">3. Charge card</text>
+        <text x="196" y="127" font-family="ui-monospace,monospace" font-size="10" fill="#ef4444">failed</text>
+        <line x1="20" y1="144" x2="432" y2="144" stroke="#1e293b"/>
+        <text x="20" y="164" font-family="ui-monospace,monospace" font-size="10.5" fill="#f59e0b">seat + room are held, and paid for by nobody</text>
+      </svg>
+    </div>
+    <div>
+      <p class="beat-what"><span class="n">02</span>The dangerous moment</p>
+      <p class="says">
+        This is the state every booking system fears: two real reservations held, and no money.
+        Left alone, that seat is dead inventory nobody can sell. <strong>This is the problem
+        Ironflow is about to solve on its own.</strong>
+      </p>
+      <div class="card tint" style="padding:14px 16px">
+        <p style="margin:0; font-size:14px">
+          Worth pausing here when presenting. The audience needs to feel the problem before
+          they can appreciate the next frame.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="moment">
+    <div class="frame">
+      <svg viewBox="0 0 452 210" role="img" aria-label="Steps one and two struck through and marked rolled back, card declined, inventory restored.">
+        <rect width="452" height="210" fill="#111118"/>
+        <text x="20" y="28" font-family="ui-monospace,monospace" font-size="9.5" fill="#64748b" letter-spacing="1.3">JOURNEY</text>
+        <rect x="21" y="53" width="9" height="9" fill="#f59e0b"/>
+        <text x="44" y="63" font-family="system-ui" font-size="13.5" fill="#64748b" text-decoration="line-through">1. Reserve flight</text>
+        <text x="196" y="63" font-family="ui-monospace,monospace" font-size="10.5" fill="#f59e0b">↩ rolled back</text>
+        <rect x="21" y="85" width="9" height="9" fill="#f59e0b"/>
+        <text x="44" y="95" font-family="system-ui" font-size="13.5" fill="#64748b" text-decoration="line-through">2. Reserve hotel</text>
+        <text x="196" y="95" font-family="ui-monospace,monospace" font-size="10.5" fill="#f59e0b">↩ rolled back</text>
+        <rect x="21" y="117" width="9" height="9" fill="#ef4444"/>
+        <text x="44" y="127" font-family="system-ui" font-size="13.5" fill="#e2e8f0">3. Charge card</text>
+        <text x="34" y="160" font-family="system-ui" font-size="13" fill="#94a3b8">Card declined.</text>
+        <line x1="20" y1="176" x2="432" y2="176" stroke="#1e293b"/>
+        <text x="20" y="196" font-family="ui-monospace,monospace" font-size="10.5" fill="#22c55e">AA 220 back to 6 seats · Savoy back to 5 rooms</text>
+      </svg>
+    </div>
+    <div>
+      <p class="beat-what"><span class="n">03</span>It undoes itself, backwards</p>
+      <p class="says">
+        Step 2 strikes through <em>before</em> step 1 — compensations run in reverse, the way undo
+        has to. Nobody wrote a rollback routine: each step registered how to undo itself when it
+        ran, and the engine called those in order.
+      </p>
+      <pre><span class="k">await</span> step.<span class="f">run</span>(<span class="s">"reserve-flight"</span>, <span class="c">/* … */</span>);
+<span class="hl">step.<span class="f">compensate</span>(<span class="s">"reserve-flight"</span>, <span class="k">async</span> () => {
+  <span class="k">await</span> <span class="f">releaseInventory</span>({ ... });
+});</span></pre>
+      <span class="srcref">worker.ts:94 — and :123 for the room, :153 for the refund</span>
+    </div>
+  </div>
+
+  <div class="point">
+    <b>The point</b>
+    This is the saga pattern, and it is a first-class primitive rather than a try/catch you
+    maintain by hand. <code>step.compensate()</code> is the entire mechanism.
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ BEAT 3 ══════════════════════════════════ -->
+<section class="slide" id="beat3">
+  <div class="eyebrow">Beat 3</div>
+  <h2>Kill the server <em>mid-booking</em></h2>
+  <p class="sub">Not a graceful shutdown. <code>kill −9</code>, while step 3 is in flight, with two reservations already held.</p>
+
+  <div class="moment">
+    <div class="frame">
+      <svg viewBox="0 0 452 176" role="img" aria-label="Steps one and two green, step three running, worker light green.">
+        <rect width="452" height="176" fill="#111118"/>
+        <text x="20" y="28" font-family="ui-monospace,monospace" font-size="9.5" fill="#64748b" letter-spacing="1.3">JOURNEY</text>
+        <circle cx="26" cy="58" r="4.5" fill="#22c55e"/><text x="44" y="63" font-family="system-ui" font-size="13.5" fill="#e2e8f0">1. Reserve flight</text>
+        <circle cx="26" cy="90" r="4.5" fill="#22c55e"/><text x="44" y="95" font-family="system-ui" font-size="13.5" fill="#e2e8f0">2. Reserve hotel</text>
+        <circle cx="26" cy="122" r="4.5" fill="#a5b4fc"/><text x="44" y="127" font-family="system-ui" font-size="13.5" fill="#e2e8f0">3. Charge card</text>
+        <text x="196" y="127" font-family="ui-monospace,monospace" font-size="10" fill="#a5b4fc">running…</text>
+        <circle cx="26" cy="158" r="3" fill="#22c55e"/><text x="40" y="162" font-family="ui-monospace,monospace" font-size="10.5" fill="#64748b">worker up</text>
+      </svg>
+    </div>
+    <div>
+      <p class="beat-what"><span class="n">01</span>Catch it in the act</p>
+      <p class="says">
+        <span class="ui">Slow payment</span> holds step 3 open for eight seconds — just a
+        <code>setTimeout</code>, there to give you a window to kill the process in.
+      </p>
+      <pre><span class="k">if</span> (paymentMode === <span class="s">"slow"</span>) {
+  <span class="k">await new</span> <span class="f">Promise</span>((r) => <span class="f">setTimeout</span>(r, SLOW_PAYMENT_MS));
+}</pre>
+      <span class="srcref">worker.ts:138–140</span>
+    </div>
+  </div>
+
+  <div class="moment">
+    <div class="frame">
+      <svg viewBox="0 0 452 176" role="img" aria-label="Worker light red, worker down, timeline frozen mid-run.">
+        <rect width="452" height="176" fill="#111118"/>
+        <text x="20" y="28" font-family="ui-monospace,monospace" font-size="9.5" fill="#64748b" letter-spacing="1.3">JOURNEY</text>
+        <circle cx="26" cy="58" r="4.5" fill="#22c55e"/><text x="44" y="63" font-family="system-ui" font-size="13.5" fill="#64748b">1. Reserve flight</text>
+        <circle cx="26" cy="90" r="4.5" fill="#22c55e"/><text x="44" y="95" font-family="system-ui" font-size="13.5" fill="#64748b">2. Reserve hotel</text>
+        <circle cx="26" cy="122" r="4.5" fill="#334155"/><text x="44" y="127" font-family="system-ui" font-size="13.5" fill="#64748b">3. Charge card</text>
+        <text x="196" y="127" font-family="ui-monospace,monospace" font-size="10" fill="#ef4444">frozen</text>
+        <circle cx="26" cy="158" r="3" fill="#ef4444"/><text x="40" y="162" font-family="ui-monospace,monospace" font-size="10.5" fill="#ef4444">worker down</text>
+      </svg>
+    </div>
+    <div>
+      <p class="beat-what"><span class="n">02</span><span class="says ui" style="font-size:12px">Crash worker</span> — the process is gone</p>
+      <p class="says">
+        A real <code>process.exit(1)</code>, not a simulation. The status light goes red and the
+        journey stops moving. Two reservations are held by a run that no longer has anything
+        executing it.
+      </p>
+      <pre><span class="k">case</span> <span class="s">"/crash"</span>:
+  res.<span class="f">end</span>(JSON.<span class="f">stringify</span>({ ok: <span class="k">true</span> }));
+  <span class="f">setTimeout</span>(() => process.<span class="f">exit</span>(<span class="s">1</span>), <span class="s">50</span>);</pre>
+      <span class="srcref">worker.ts — chaos control server</span>
+    </div>
+  </div>
+
+  <div class="moment">
+    <div class="frame">
+      <svg viewBox="0 0 452 176" role="img" aria-label="Timeline of the recovery: crash at zero seconds, new worker at three seconds, lease expiry at ninety-five, resume at one hundred and twenty-five.">
+        <rect width="452" height="176" fill="#111118"/>
+        <text x="20" y="28" font-family="ui-monospace,monospace" font-size="9.5" fill="#64748b" letter-spacing="1.3">RECOVERY · MEASURED</text>
+        <line x1="30" y1="46" x2="30" y2="150" stroke="#1e293b" stroke-width="1.5"/>
+
+        <rect x="24" y="46" width="12" height="12" fill="#ef4444"/>
+        <text x="52" y="56" font-family="system-ui" font-size="12.5" fill="#e2e8f0">crash</text>
+        <text x="392" y="56" font-family="ui-monospace,monospace" font-size="10.5" fill="#64748b">0s</text>
+
+        <circle cx="30" cy="82" r="4" fill="#f59e0b"/>
+        <text x="52" y="86" font-family="system-ui" font-size="12.5" fill="#e2e8f0">new worker registered</text>
+        <text x="386" y="86" font-family="ui-monospace,monospace" font-size="10.5" fill="#64748b">~3s</text>
+
+        <circle cx="30" cy="114" r="4" fill="#f59e0b"/>
+        <text x="52" y="118" font-family="system-ui" font-size="12.5" fill="#e2e8f0">capacity lease expires</text>
+        <text x="380" y="118" font-family="ui-monospace,monospace" font-size="10.5" fill="#f59e0b">~95s</text>
+
+        <circle cx="30" cy="146" r="4" fill="#22c55e"/>
+        <text x="52" y="150" font-family="system-ui" font-size="12.5" fill="#e2e8f0">run resumes and completes</text>
+        <text x="374" y="150" font-family="ui-monospace,monospace" font-size="10.5" fill="#64748b">~125s</text>
+      </svg>
+    </div>
+    <div>
+      <p class="beat-what"><span class="n">03</span>The wait — say the real number</p>
+      <p class="says">
+        A supervisor restarts the worker in about a second. The <strong>run</strong> takes about two
+        minutes, because the engine will not hand it to a different worker until the previous
+        one's capacity lease lapses — and that is 90 seconds, with no external knob.
+      </p>
+      <pre>LeaseExpiry: <span class="s">90</span> * time.Second</pre>
+      <span class="srcref">internal/capacity/config.go:37 — measured on this example, not estimated</span>
+    </div>
+  </div>
+
+  <div class="moment">
+    <div class="frame">
+      <svg viewBox="0 0 452 176" role="img" aria-label="All three steps green after recovery, with a note that steps one and two did not re-run.">
+        <rect width="452" height="176" fill="#111118"/>
+        <text x="20" y="28" font-family="ui-monospace,monospace" font-size="9.5" fill="#64748b" letter-spacing="1.3">JOURNEY</text>
+        <circle cx="26" cy="58" r="4.5" fill="#22c55e"/><text x="44" y="63" font-family="system-ui" font-size="13.5" fill="#e2e8f0">1. Reserve flight</text>
+        <text x="196" y="63" font-family="ui-monospace,monospace" font-size="10" fill="#64748b">replayed, not re-run</text>
+        <circle cx="26" cy="90" r="4.5" fill="#22c55e"/><text x="44" y="95" font-family="system-ui" font-size="13.5" fill="#e2e8f0">2. Reserve hotel</text>
+        <text x="196" y="95" font-family="ui-monospace,monospace" font-size="10" fill="#64748b">replayed, not re-run</text>
+        <circle cx="26" cy="122" r="4.5" fill="#22c55e"/><text x="44" y="127" font-family="system-ui" font-size="13.5" fill="#e2e8f0">3. Charge card</text>
+        <text x="196" y="127" font-family="ui-monospace,monospace" font-size="10" fill="#22c55e">ran once, on the new worker</text>
+        <text x="20" y="164" font-family="ui-monospace,monospace" font-size="12" fill="#22c55e">Trip confirmed.</text>
+      </svg>
+    </div>
+    <div>
+      <p class="beat-what"><span class="n">04</span>It picks up where it left off</p>
+      <p class="says">
+        A fresh process finishes a booking it never started. Steps 1 and 2 are replayed from
+        their recorded results rather than executed again — <strong>no second seat, no double
+        charge</strong>. That is memoization, and it is why <code>recording: true</code> matters.
+      </p>
+      <pre><span class="f">createFunction</span>({
+  id: <span class="s">"book-trip"</span>,
+<span class="hl">  recording: <span class="k">true</span>,   <span class="c">// keep the history</span></span>
+}, <span class="k">async</span> ({ step }) => { <span class="c">/* … */</span> });</pre>
+      <span class="srcref">worker.ts:53, :60</span>
+    </div>
+  </div>
+
+  <div class="point warn">
+    <b>Present this as a talking beat, not a waiting beat</b>
+    Two minutes is a long silence. Start it, walk through beats 4 and 5 while it recovers, then
+    come back to the confirmed trip. The guarantee is worth the wait; the silence is not.
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ BEAT 4 ══════════════════════════════════ -->
+<section class="slide" id="beat4">
+  <div class="eyebrow">Beat 4</div>
+  <h2>Two travellers, <em>one</em> seat</h2>
+  <p class="sub">The oldest bug in booking software: sell the same seat twice because two requests checked availability at the same moment.</p>
+
+  <div class="moment">
+    <div class="frame">
+      <svg viewBox="0 0 452 132" role="img" aria-label="UA 100 flight card showing one seat left, highlighted in amber.">
+        <rect width="452" height="132" fill="#111118"/>
+        <text x="20" y="28" font-family="ui-monospace,monospace" font-size="9.5" fill="#64748b" letter-spacing="1.3">FLIGHTS</text>
+        <rect x="20" y="40" width="412" height="46" fill="none" stroke="#4f46e5"/>
+        <text x="34" y="60" font-family="ui-monospace,monospace" font-size="12.5" fill="#e2e8f0">UA 100</text>
+        <text x="392" y="60" font-family="system-ui" font-size="12.5" fill="#e2e8f0">$890</text>
+        <text x="34" y="78" font-family="system-ui" font-size="11" fill="#64748b">SFO → NRT · 09:45</text>
+        <text x="316" y="78" font-family="ui-monospace,monospace" font-size="10.5" fill="#f59e0b">⚠ 1 seat left</text>
+        <text x="20" y="116" font-family="ui-monospace,monospace" font-size="10" fill="#64748b">seeded with capacity 1 — the contested seat</text>
+      </svg>
+    </div>
+    <div>
+      <p class="beat-what"><span class="n">01</span>One seat, two people who want it</p>
+      <p class="says">
+        The count comes from folding the flight's event stream — <code>capacity</code> minus every
+        hold, plus every release. The same fold runs in the projection <em>and</em> in the booking
+        function, deliberately, so the two can never disagree about what is left.
+      </p>
+      <pre><span class="k">export function</span> <span class="f">seatsLeft</span>(state, flightId) {
+  <span class="k">const</span> f = state?.flights?.[flightId];
+  <span class="k">return</span> f ? f.capacity - f.held : <span class="s">0</span>;
+}</pre>
+      <span class="srcref">domain.ts — shared by worker.ts and the UI</span>
+    </div>
+  </div>
+
+  <div class="moment">
+    <div class="frame">
+      <svg viewBox="0 0 452 236" role="img" aria-label="Both tabs read version 41 and both append expecting 41; the store accepts one and rejects the other.">
+        <rect width="452" height="236" fill="#111118"/>
+        <rect x="14" y="18" width="150" height="46" fill="none" stroke="#334155"/>
+        <text x="26" y="38" font-family="ui-monospace,monospace" font-size="10" fill="#64748b">ALICE</text>
+        <text x="26" y="56" font-family="ui-monospace,monospace" font-size="11" fill="#e2e8f0">reads v41</text>
+
+        <rect x="288" y="18" width="150" height="46" fill="none" stroke="#334155"/>
+        <text x="300" y="38" font-family="ui-monospace,monospace" font-size="10" fill="#64748b">BOB</text>
+        <text x="300" y="56" font-family="ui-monospace,monospace" font-size="11" fill="#e2e8f0">reads v41</text>
+
+        <line x1="92" y1="68" x2="160" y2="106" stroke="#334155" stroke-width="1.4"/>
+        <line x1="360" y1="68" x2="292" y2="106" stroke="#334155" stroke-width="1.4"/>
+        <text x="96" y="96" font-family="ui-monospace,monospace" font-size="9.5" fill="#64748b">append @41</text>
+        <text x="286" y="96" font-family="ui-monospace,monospace" font-size="9.5" fill="#64748b">append @41</text>
+
+        <rect x="146" y="110" width="160" height="52" fill="#0a0a0f" stroke="#4f46e5"/>
+        <text x="160" y="130" font-family="ui-monospace,monospace" font-size="10" fill="#64748b">flight-UA100</text>
+        <text x="160" y="150" font-family="ui-monospace,monospace" font-size="11.5" fill="#a5b4fc">version check</text>
+
+        <line x1="192" y1="164" x2="140" y2="196" stroke="#22c55e" stroke-width="1.6"/>
+        <line x1="260" y1="164" x2="312" y2="196" stroke="#ef4444" stroke-width="1.6"/>
+
+        <text x="20" y="212" font-family="ui-monospace,monospace" font-size="11" fill="#22c55e">✓ v42 · seat held</text>
+        <text x="270" y="212" font-family="ui-monospace,monospace" font-size="11" fill="#ef4444">✗ conflict</text>
+        <text x="270" y="228" font-family="ui-monospace,monospace" font-size="9.5" fill="#64748b">expected 41, found 42</text>
+      </svg>
+    </div>
+    <div>
+      <p class="beat-what"><span class="n">02</span>Both check, both are told yes</p>
+      <p class="says">
+        Both read the stream at version 41. Both see a free seat. Both try to append. The append
+        <strong>carries the version it expects</strong>, so the store accepts the first and rejects
+        the second — no lock, no queue, no mutex in application code.
+      </p>
+      <pre><span class="k">try</span> {
+<span class="hl">  <span class="k">await</span> ironflow.streams.<span class="f">append</span>(streamId, event, {
+    expectedVersion: info.version,      <span class="c">// ← the race</span>
+  });</span>
+} <span class="k">catch</span> (err) {
+  <span class="k">if</span> (<span class="f">isVersionConflict</span>(err))
+    <span class="k">throw new</span> <span class="f">NonRetryableError</span>(soldOutMessage);
+  <span class="k">throw</span> err;
+}</pre>
+      <span class="srcref">worker.ts:200–224</span>
+    </div>
+  </div>
+
+  <div class="moment">
+    <div class="frame">
+      <svg viewBox="0 0 452 152" role="img" aria-label="The losing tab shows: that seat just went, you weren't charged. The flight now reads sold out.">
+        <rect width="452" height="152" fill="#111118"/>
+        <text x="20" y="28" font-family="ui-monospace,monospace" font-size="9.5" fill="#64748b" letter-spacing="1.3">JOURNEY · BOB</text>
+        <rect x="21" y="47" width="9" height="9" fill="#f59e0b"/>
+        <text x="44" y="57" font-family="system-ui" font-size="13" fill="#64748b" text-decoration="line-through">1. Reserve flight</text>
+        <text x="34" y="92" font-family="system-ui" font-size="13" fill="#94a3b8">That seat just went. You weren't charged.</text>
+        <line x1="20" y1="110" x2="432" y2="110" stroke="#1e293b"/>
+        <text x="20" y="132" font-family="ui-monospace,monospace" font-size="10.5" fill="#64748b">UA 100 · sold out</text>
+      </svg>
+    </div>
+    <div>
+      <p class="beat-what"><span class="n">03</span>One booking, one apology, no double-sell</p>
+      <p class="says">
+        The loser's saga fails and compensates — exactly the machinery from beat 2, arriving here
+        for a completely different reason. Bob gets a clear message and <strong>no charge</strong>.
+        The seat was never sold twice, because the database would not allow it.
+      </p>
+      <div class="card tint" style="padding:14px 16px">
+        <p style="margin:0; font-size:14px">
+          Beats 2 and 4 are the same mechanism seen from two angles. Worth saying out loud —
+          it is the moment the design clicks for most people.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="point">
+    <b>The point</b>
+    Correctness under contention lives in the store, not in careful application code. You do not
+    have to remember to be careful; the append refuses to be wrong.
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ BEAT 5 ══════════════════════════════════ -->
+<section class="slide" id="beat5">
+  <div class="eyebrow">Beat 5</div>
+  <h2>Rewind <em>any</em> booking</h2>
+  <p class="sub">The question every one of these beats has been building toward: when this goes wrong at 3am in production, what can you actually see?</p>
+
+  <div class="moment">
+    <div class="frame">
+      <svg viewBox="0 0 452 96" role="img" aria-label="Time travel bar with a Load history button.">
+        <rect width="452" height="96" fill="#111118"/>
+        <text x="20" y="30" font-family="ui-monospace,monospace" font-size="9.5" fill="#64748b" letter-spacing="1.3">TIME TRAVEL</text>
+        <rect x="20" y="44" width="118" height="28" fill="none" stroke="#334155"/>
+        <text x="34" y="63" font-family="ui-monospace,monospace" font-size="11.5" fill="#e2e8f0">Load history</text>
+      </svg>
+    </div>
+    <div>
+      <p class="beat-what"><span class="n">01</span>Ask for the run's history</p>
+      <p class="says">
+        One call, by run id. This works for <em>any</em> booking on the page — the confirmed one,
+        the rolled-back one, the one that lost the race.
+      </p>
+      <pre><span class="k">const</span> events = <span class="k">await</span> ironflow.<span class="f">getRunTimeline</span>(runId);</pre>
+      <span class="srcref">app/page.tsx:175</span>
+    </div>
+  </div>
+
+  <div class="moment">
+    <div class="frame">
+      <svg viewBox="0 0 452 96" role="img" aria-label="Time travel scrubber at position six of six, showing run status changed to failed.">
+        <rect width="452" height="96" fill="#111118"/>
+        <text x="20" y="26" font-family="ui-monospace,monospace" font-size="9.5" fill="#64748b" letter-spacing="1.3">TIME TRAVEL</text>
+        <line x1="20" y1="50" x2="350" y2="50" stroke="#334155" stroke-width="3"/>
+        <line x1="20" y1="50" x2="292" y2="50" stroke="#4f46e5" stroke-width="3"/>
+        <circle cx="292" cy="50" r="7.5" fill="#a5b4fc"/>
+        <text x="372" y="55" font-family="ui-monospace,monospace" font-size="11.5" fill="#94a3b8">6 / 6</text>
+        <text x="20" y="82" font-family="ui-monospace,monospace" font-size="11" fill="#e2e8f0">run.status_changed</text>
+        <text x="164" y="82" font-family="system-ui" font-size="12" fill="#64748b">— Run status changed to 'failed'</text>
+      </svg>
+    </div>
+    <div>
+      <p class="beat-what"><span class="n">02</span>Drag it, and collect the earlier beats</p>
+      <p class="says">
+        Every beat left a trace here. This is where you prove the claims you made rather than
+        asking the audience to take your word.
+      </p>
+      <table>
+        <tr><th>Scrub to</th><th>and you can show</th></tr>
+        <tr><td><code>step.completed</code> ×3</td><td>the happy path — beat 1</td></tr>
+        <tr><td><code>saga.compensation.*</code></td><td>the rollback, recorded not inferred — beat 2</td></tr>
+        <tr><td>each step exactly once</td><td>nothing re-ran after the crash — beat 3</td></tr>
+        <tr><td><code>run.status_changed</code></td><td>the losing racer, and why — beat 4</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="point">
+    <b>The point</b>
+    Because every step was an appended fact rather than an in-place update, the run's whole
+    history is still there. Time travel isn't a feature bolted on top — it is what you get for
+    free once nothing overwrites anything.
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ MAP ══════════════════════════════════ -->
+<section class="slide" id="map">
+  <div class="eyebrow">Recap</div>
+  <h2>What each beat <em>proved</em></h2>
+  <p class="sub">Worth leaving on screen during questions.</p>
+
+  <div class="card">
+    <table>
+      <tr>
+        <th style="width:64px">Beat</th><th style="width:220px">Ironflow feature</th>
+        <th>What it means for someone building on it</th><th style="width:160px">Code</th>
+      </tr>
+      <tr>
+        <td><b>1</b></td><td>Durable steps · projections</td>
+        <td>Steps are written down as they succeed; read models update themselves and push to the UI.</td>
+        <td><code>worker.ts:79</code></td>
+      </tr>
+      <tr>
+        <td><b>2</b></td><td><code>step.compensate()</code></td>
+        <td>Distributed rollback without writing rollback logic. Runs in reverse, automatically.</td>
+        <td><code>worker.ts:94</code></td>
+      </tr>
+      <tr>
+        <td><b>3</b></td><td>Memoization · crash-resume</td>
+        <td>A process dying is not a data problem. Completed work is never redone.</td>
+        <td><code>worker.ts:60</code></td>
+      </tr>
+      <tr>
+        <td><b>4</b></td><td>Entity streams · optimistic concurrency</td>
+        <td>Correctness under contention lives in the store, not in careful application code.</td>
+        <td><code>worker.ts:215</code></td>
+      </tr>
+      <tr>
+        <td><b>5</b></td><td>Time travel</td>
+        <td>Production debugging is replay, not log archaeology.</td>
+        <td><code>app/page.tsx:175</code></td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="grid" style="margin-top:24px">
+    <div class="card tint">
+      <h3>If someone asks what's fake</h3>
+      <p style="margin:0; font-size:14.5px">
+        The payment provider, and the offline queue — that one is about twenty lines of
+        <code>localStorage</code> in the demo, <strong>not</strong> an Ironflow feature, and the UI
+        says so. Everything else is the real engine: real entity streams, a real version conflict,
+        a real <code>kill −9</code>.
+      </p>
+    </div>
+    <div class="card tint">
+      <h3>If someone asks about scale</h3>
+      <p style="margin:0; font-size:14.5px">
+        Seat holds take the version of the whole flight stream, so two bookings on one flight
+        serialise even when there is room. Fine for a demo; a real system would use per-seat
+        reservation records. It is flagged in the code, not hidden.
+      </p>
+    </div>
+  </div>
+
+  <p class="note" style="margin-top:22px">
+    Everything here is reproducible: <code>examples/travel-booking/README.md</code> has the five
+    setup commands, and <code>scripts/demo-saga-rollback.sh</code> asserts beat 2 end to end.
+  </p>
+</section>
+
+</div>
+
+<script>
+  // Rail highlighting + arrow-key navigation between sections.
+  const slides = [...document.querySelectorAll('section.slide')];
+  const links  = [...document.querySelectorAll('.rail a')];
+
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (!e.isIntersecting) return;
+      const i = slides.indexOf(e.target);
+      links.forEach((l, j) => l.classList.toggle('on', i === j));
+    });
+  }, { threshold: 0.4 });
+  slides.forEach((s) => io.observe(s));
+
+  function current() {
+    // Nearest slide to the top of the viewport — steadier than trusting the
+    // observer, which lags on fast scrolls.
+    let best = 0, dist = Infinity;
+    slides.forEach((s, i) => {
+      const d = Math.abs(s.getBoundingClientRect().top);
+      if (d < dist) { dist = d; best = i; }
+    });
+    return best;
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const step = e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ' ? 1
+               : e.key === 'ArrowLeft'  || e.key === 'ArrowUp' ? -1 : 0;
+    if (!step) return;
+    e.preventDefault();
+    const next = Math.min(slides.length - 1, Math.max(0, current() + step));
+    slides[next].scrollIntoView({ behavior: 'smooth' });
+  });
+</script>
+</body>
+</html>

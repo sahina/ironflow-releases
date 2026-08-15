@@ -1,0 +1,29 @@
+{
+  "name": "travel-booking",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "worker": "tsx worker.ts",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc -b"
+  },
+  "dependencies": {
+    "@ironflow/browser": "workspace:*",
+    "@ironflow/core": "workspace:*",
+    "@ironflow/node": "workspace:*",
+    "next": "16.1.6",
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.1",
+    "@types/node": "^22.19.15",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "tailwindcss": "^4.2.1",
+    "tsx": "^4.20.3",
+    "typescript": "^5.9.3"
+  }
+}

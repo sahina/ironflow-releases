@@ -24,6 +24,7 @@ Every Ironflow application follows four pillars:
 | [cqrs-order/](./cqrs-order/)                     | CQRS walkthrough, runnable | Tutorial companion     | Implements `docs/tutorials/cqrs-walkthrough.mdx` step-by-step |
 | [go-quickstart/](./go-quickstart/)               | Go SDK validation         | Go developers         | Same CH flow in Go                          |
 | [todo-web/](./todo-web/)                         | Bare-bones Next.js todo   | Getting started       | Embedded worker, events, projections        |
+| [travel-booking/](./travel-booking/)             | The 90-second showcase demo | Anyone new to Ironflow | Saga rollback, crash-resume, a race for the last seat, time travel |
 | [reference-app/](./reference-app/)               | Full API validation       | SDK contributors, QA  | Exhaustive feature coverage (30+ pages)     |
 | [fraud-detection/](./fraud-detection/)           | Real-time risk pipeline   | Building real systems | `step.parallel()`, KV counters, pub/sub alerts |
 | [compliance-audit/](./compliance-audit/)         | Audit trail + execution proof | Regulated workloads | Entity-stream lineage in the Compliance dashboard |
