@@ -50,16 +50,26 @@ cleanup() {
   set +e
   for pid in "${WORKER_PID:-}" "${WORKER2_PID:-}" "${SERVER_PID:-}"; do
     [[ -z "$pid" ]] && continue
-    kill -0 "$pid" 2>/dev/null || continue
-    kill -TERM "$pid" 2>/dev/null || true
-    # Give NATS + the HTTP server time to release ports so back-to-back
-    # local re-runs don't hit TIME_WAIT collisions on 4222.
-    for _ in $(seq 1 20); do
-      kill -0 "$pid" 2>/dev/null || break
-      sleep 0.1
-    done
-    kill -KILL "$pid" 2>/dev/null || true
-    wait "$pid" 2>/dev/null || true
+    is_worker=""
+    [[ "$pid" == "${WORKER_PID:-}" || "$pid" == "${WORKER2_PID:-}" ]] && is_worker=1
+    if kill -0 "$pid" 2>/dev/null; then
+      kill -TERM "$pid" 2>/dev/null || true
+      # Give NATS + the HTTP server time to release ports so back-to-back
+      # local re-runs don't hit TIME_WAIT collisions on 4222.
+      for _ in $(seq 1 20); do
+        kill -0 "$pid" 2>/dev/null || break
+        sleep 0.1
+      done
+      kill -KILL "$pid" 2>/dev/null || true
+      wait "$pid" 2>/dev/null || true
+    fi
+    # Group sweep, workers only, and deliberately OUTSIDE the liveness guard:
+    # the wrapper exiting while its `tsx` grandchild keeps polling is exactly
+    # the orphan case, and `kill -0 $wrapper` is false there. Restricted to the
+    # PIDs `set -m` made group leaders — `-$SERVER_PID` names a group the server
+    # does not own and would SIGKILL an unrelated group on a PGID collision.
+    [[ -n "$is_worker" ]] && kill -KILL -- "-$pid" 2>/dev/null
+    true
   done
   echo
   echo "logs preserved at ${LOG_DIR}"
@@ -72,7 +82,7 @@ err() { printf '\033[1;31m[demo]\033[0m %s\n' "$*" >&2; }
 # ── 0. preconditions ────────────────────────────────────────────
 if [[ ! -x "${IRONFLOW_BIN}" ]]; then
   err "ironflow binary not found at ${IRONFLOW_BIN}"
-  err "build it first: (cd ${REPO_ROOT} && make build)"
+  err "build it first: (cd ${REPO_ROOT} && make embed build)"
   exit 2
 fi
 
@@ -106,8 +116,14 @@ fi
 
 # ── 3. start first worker ───────────────────────────────────────
 log "starting worker #1 (logs: ${WORKER_LOG})"
+# `set -m` puts this job in its OWN process group so the kill below can take out
+# the whole tree. Without it, $WORKER_PID is the `pnpm start` wrapper and the
+# `tsx src/worker.ts` grandchild SURVIVES kill -9 — it keeps polling, finishes
+# the run normally, and the demo passes without ever testing crash recovery.
+set -m
 (cd "${EXAMPLE_DIR}" && pnpm start) >"${WORKER_LOG}" 2>&1 &
 WORKER_PID=$!
+set +m
 
 # wait for "worker ready" line
 for _ in $(seq 1 120); do
@@ -130,15 +146,17 @@ log "emitting doc.received docId=${DOC_ID}"
 log "sleeping ${KILL_AFTER_MS}ms then kill -9 worker #1 (mid-OCR)"
 SLEEP_S=$(awk -v ms="${KILL_AFTER_MS}" 'BEGIN { printf "%f", ms / 1000 }')
 sleep "${SLEEP_S}"
-kill -9 "${WORKER_PID}" 2>/dev/null || true
+kill -9 -- "-${WORKER_PID}" 2>/dev/null || kill -9 "${WORKER_PID}" 2>/dev/null || true
 wait "${WORKER_PID}" 2>/dev/null || true
 unset WORKER_PID
 log "worker #1 killed"
 
 # ── 6. restart worker ───────────────────────────────────────────
 log "starting worker #2 (logs: ${WORKER2_LOG})"
+set -m
 (cd "${EXAMPLE_DIR}" && pnpm start) >"${WORKER2_LOG}" 2>&1 &
 WORKER2_PID=$!
+set +m
 
 for _ in $(seq 1 120); do
   if grep -q "Connected to server" "${WORKER2_LOG}" 2>/dev/null; then

@@ -101,25 +101,30 @@ export const parallelDemo = ironflow.createFunction(
 
     const results = await step.parallel(
       "parallel-branches",
+      // Each branch uses the scoped `s` it is handed, NOT the outer `step`.
+      // The outer form recorded real steps, but at the function's top level
+      // rather than under this parallel — a flat timeline, and IDs that are
+      // only unique because these four branch names happen to differ. The
+      // scoped client namespaces them per branch instead (#1671).
       [
-        () =>
-          step.run("branch-a", async () => {
+        (s) =>
+          s.run("branch-a", async () => {
             await new Promise((r) => setTimeout(r, 1000))
             return { branch: "A", duration: "1s" }
           }),
-        () =>
-          step.run("branch-b", async () => {
+        (s) =>
+          s.run("branch-b", async () => {
             await new Promise((r) => setTimeout(r, 1500))
             if (data.injectError) throw new Error("Branch B failed")
             return { branch: "B", duration: "1.5s" }
           }),
-        () =>
-          step.run("branch-c", async () => {
+        (s) =>
+          s.run("branch-c", async () => {
             await new Promise((r) => setTimeout(r, 800))
             return { branch: "C", duration: "0.8s" }
           }),
-        () =>
-          step.run("branch-d", async () => {
+        (s) =>
+          s.run("branch-d", async () => {
             await new Promise((r) => setTimeout(r, 2000))
             return { branch: "D", duration: "2s" }
           }),

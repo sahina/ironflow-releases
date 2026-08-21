@@ -1,0 +1,13 @@
+# Links the SDK you built locally, so an edit in sdk/js/node shows up here
+# without a reinstall. `workspace:*` in package.json resolves against these.
+packages:
+  - '../../sdk/js/core'
+  - '../../sdk/js/browser'
+  - '../../sdk/js/node'
+
+# tsx and vitest both need esbuild's platform binary, which only lands if its
+# postinstall is allowed to run.
+onlyBuiltDependencies:
+  - esbuild
+allowBuilds:
+  esbuild: true

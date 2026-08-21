@@ -167,6 +167,7 @@ the pill in the top right.
 | `step.compensate()`         | Saga rollback, in reverse order                                       |
 | Projections                 | `availability` and `bookings`, pushed live to the UI                  |
 | Connection state            | `onConnectionChange` drives the status light                          |
+| Offline write queue         | `createClient({ offlineQueue })` — IndexedDB outbox, drains on reconnect |
 | Time travel                 | `getRunTimeline()` behind the scrubber                                |
 
 Deliberately **not** shown, because [reference-app/](../reference-app/) already
@@ -175,9 +176,18 @@ agents, `ironflow inspect`.
 
 ## Honest notes
 
-- **The offline queue is app code, not an Ironflow feature.** The browser SDK has
-  no offline write queue. `app/page.tsx` stashes the request in `localStorage`
-  and replays it on the `online` event — about twenty lines. The UI says so.
+- **Offline writes are not simulated any more.** The browser SDK gained a durable
+  outbox in v0.28.0 (ADR 0053), so `lib/ironflow.ts` opts in with
+  `createClient({ offlineQueue: { identity } })` and the app's own
+  `localStorage` queue is gone. There is no "go offline" button, because a UI
+  flag cannot exercise a real drain loop — use DevTools → Network → Offline,
+  book a trip, and watch the outbox count. "Retry now" calls `queue.flush()`.
+- **One outbox per traveller, keyed by display name.** `identity` and `dbName`
+  both derive from the traveller, so two tabs under two names do not share a
+  queue. Renaming does not rebuild the client — the tab keeps using the original
+  outbox for the rest of the session. The next reload opens the new name's
+  outbox instead, stranding anything still pending in the old one until you
+  rename back. A real app would key on a stable user id, not a nickname.
 - **Seat holds lock the whole flight stream, not one seat.** Two bookings on the
   same flight always serialise, even when there is plenty of room. Fine at demo
   scale; a real system would use per-seat reservation records. See the

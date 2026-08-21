@@ -5,8 +5,9 @@ Four example configurations showing progressive infrastructure complexity.
 ## Quick Test
 
 ```bash
-# Build first
-make build
+# Build first. `embed` matters: from a fresh clone a plain `make build` produces a
+# binary whose `serve` exits "embedded dashboard missing (static/index.html not found)".
+make embed build
 
 # 1. Validate without booting
 ./build/ironflow validate -f examples/yaml-config/ironflow.yaml

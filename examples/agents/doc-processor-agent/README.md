@@ -80,7 +80,7 @@ Exit 0 ⇒ the agent recovered from the crash.
 | `IRONFLOW_URL` | `http://localhost:9123` | Server endpoint (memory backend + scripts) |
 | `IRONFLOW_API_KEY` | unset | API key when server is not in `--dev` mode |
 | `DOC_PROCESSOR_OCR_MS` | `3000` | OCR sleep — shorten in tests, extend for filming |
-| `VERIFY_TIMEOUT_MS` | `90000` | `verify.ts` polling deadline (default 90s leaves headroom over NATS AckWait redelivery; see [tutorial](../../../docs/tutorials/agent-survives-crash.md) callout) |
+| `VERIFY_TIMEOUT_MS` | `210000` | `verify.ts` polling deadline. Crash-resume is gated on concurrency-lease expiry and takes 90s-3min; 210s leaves headroom. See the [tutorial](../../../docs/tutorials/agent-survives-crash.md) callout |
 
 ## Layering
 

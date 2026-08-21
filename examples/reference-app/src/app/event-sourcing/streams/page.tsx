@@ -1,7 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { ironflow, type StreamEvent, type StreamInfo } from "@ironflow/browser";
+import { useRef, useState } from "react";
+import {
+  ironflow,
+  type StreamEvent,
+  type StreamInfo,
+  type SubscriptionEvent,
+} from "@ironflow/browser";
+import { useSystemSubscription } from "@/hooks/use-system-subscription";
 import { Plus, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +31,15 @@ const EVENT_PRESETS: Record<string, string> = {
 
 const EVENT_NAMES = Object.keys(EVENT_PRESETS);
 
+interface StreamActivity {
+  key: string;
+  entityId: string;
+  entityType: string;
+  entityVersion: number;
+  eventName: string;
+  timestamp: Date;
+}
+
 export default function StreamsPage() {
   // Append form state
   const [entityId, setEntityId] = useState("account-001");
@@ -43,6 +58,50 @@ export default function StreamsPage() {
   const [events, setEvents] = useState<StreamEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const [streamError, setStreamError] = useState<string | null>(null);
+
+  // Live activity from system.stream.{entity_id}.appended frames (#1730). This
+  // is the operator view: the frames carry no event body, so the feed shows
+  // what changed and at which version, and "Load Stream" remains the way to
+  // see the data.
+  const [activity, setActivity] = useState<StreamActivity[]>([]);
+  // Monotonic, because the list is capped at 20 and an index would repeat.
+  const activitySeq = useRef(0);
+
+  useSystemSubscription("system.stream.>", (event: SubscriptionEvent) => {
+    // Route on the TRAILING segment, not on parts[2]. An entity ID may contain
+    // ".", so the ID spans a variable number of segments and parts[2] would
+    // read as a different entity — the payload's entity_id is the
+    // authoritative key. Unknown verbs are passed over rather than rendered,
+    // so a future one added to the family does not show up as a blank row.
+    const parts = event.topic.split(".");
+    if (parts[parts.length - 1] !== "appended") return;
+
+    const data = event.data as {
+      entity_id?: string;
+      entity_type?: string;
+      entity_version?: number;
+      event_name?: string;
+    };
+    const entityId = data.entity_id;
+    if (!entityId) return;
+
+    activitySeq.current += 1;
+    const key = `${event.topic}-${activitySeq.current}`;
+
+    setActivity((prev) =>
+      [
+        {
+          key,
+          entityId,
+          entityType: data.entity_type ?? "",
+          entityVersion: data.entity_version ?? 0,
+          eventName: data.event_name ?? "",
+          timestamp: new Date(),
+        },
+        ...prev,
+      ].slice(0, 20)
+    );
+  });
 
   const handleEventSelect = (name: string) => {
     setSelectedEvent(name);
@@ -243,6 +302,66 @@ export default function StreamsPage() {
                   </>
                 )}
               </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Live Activity</CardTitle>
+                  <CardDescription>
+                    Every append in this environment, from{" "}
+                    <code className="font-mono text-xs">system.stream.&gt;</code>
+                  </CardDescription>
+                </div>
+                {activity.length > 0 && (
+                  <Button variant="outline" size="sm" onClick={() => setActivity([])}>
+                    <Trash2 className="h-4 w-4" />
+                    Clear
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 max-h-[280px] overflow-y-auto">
+                {activity.length === 0 ? (
+                  <p className="text-muted-foreground text-sm text-center py-8">
+                    No activity yet. Append an event — from this page, the CLI or an
+                    SDK — and it appears here without a refresh.
+                  </p>
+                ) : (
+                  activity.map((item) => (
+                    <div
+                      key={item.key}
+                      className="flex items-center justify-between gap-2 border rounded-lg p-2 text-sm animate-in fade-in slide-in-from-top-2"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Badge variant="secondary">appended</Badge>
+                        <code className="font-mono text-xs truncate">
+                          {item.entityId}
+                        </code>
+                        {item.entityType && (
+                          <span className="text-xs text-muted-foreground">
+                            {item.entityType}
+                          </span>
+                        )}
+                        <span className="text-xs text-muted-foreground">
+                          v{item.entityVersion}
+                        </span>
+                        {item.eventName && (
+                          <span className="text-xs text-muted-foreground truncate">
+                            {item.eventName}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs text-muted-foreground shrink-0">
+                        {item.timestamp.toLocaleTimeString()}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>

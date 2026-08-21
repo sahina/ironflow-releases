@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Financial-Document RAG — Ironflow Example App Design</title>
+<style>
+  :root{
+    --ivory:#FAF9F5; --paper:#FFFFFF; --slate:#141413;
+    --clay:#D97757; --clay-d:#B85C3E; --oat:#E3DACC;
+    --olive:#788C5D; --plum:#7A5C7E; --steel:#4A6B7C;
+    --g100:#F0EEE6; --g200:#E6E3DA; --g300:#D1CFC5;
+    --g500:#87867F; --g700:#3D3D3A;
+    --serif: ui-serif, Georgia, "Times New Roman", serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:var(--ivory); color:var(--slate);
+       font-family:var(--sans); font-size:16.5px; line-height:1.6;
+       -webkit-font-smoothing:antialiased}
+  .shell{display:grid; grid-template-columns:210px 1fr; gap:44px;
+         max-width:1240px; margin:0 auto; padding:0 32px}
+  nav.toc{position:sticky; top:0; align-self:start; height:100vh; overflow-y:auto;
+          padding:44px 0; border-right:1.5px solid var(--g300)}
+  nav.toc .lbl{font-family:var(--mono); font-size:10.5px; letter-spacing:.12em;
+               text-transform:uppercase; color:var(--g500); margin-bottom:14px}
+  nav.toc a{display:block; color:var(--g700); text-decoration:none; font-size:13.5px;
+            padding:5px 14px 5px 11px; margin-left:-11px;
+            border-left:2px solid transparent}
+  nav.toc a:hover{color:var(--clay-d); border-left-color:var(--clay)}
+  main{padding:44px 0 96px; min-width:0}
+
+  .eyebrow{font-family:var(--mono); font-size:11px; letter-spacing:.11em;
+           text-transform:uppercase; color:var(--g500);
+           display:flex; align-items:center; gap:12px; margin-bottom:20px}
+  .eyebrow::before{content:""; width:24px; height:2.5px; background:var(--clay); flex:none}
+  h1{font-family:var(--serif); font-size:clamp(36px,5vw,58px); line-height:1.05;
+     letter-spacing:-.02em; margin:0 0 20px; font-weight:400}
+  h1 em{font-style:italic; color:var(--clay-d)}
+  h2{font-family:var(--serif); font-size:clamp(24px,2.9vw,32px); line-height:1.16;
+     letter-spacing:-.015em; margin:0 0 16px; font-weight:400}
+  h3{font-size:16.5px; margin:30px 0 10px; font-weight:650}
+  p{margin:0 0 14px; max-width:70ch}
+  section{border-bottom:1.5px solid var(--g300); padding:52px 0 54px}
+  section:first-of-type{padding-top:0}
+  section:last-of-type{border-bottom:none}
+  a{color:var(--clay-d)}
+  code{font-family:var(--mono); font-size:.87em; background:var(--g100);
+       padding:1.5px 5px; border-radius:3px; border:1px solid var(--g200)}
+  strong{font-weight:650}
+  .lede{font-family:var(--serif); font-size:20px; line-height:1.48;
+        color:var(--g700); max-width:66ch; margin-bottom:26px}
+
+  .tldr{background:var(--paper); border:1.5px solid var(--g300);
+        padding:22px 26px; margin:0 0 30px; border-radius:3px}
+  .tldr h4{font-family:var(--mono); font-size:11.5px; letter-spacing:.09em;
+           text-transform:uppercase; color:var(--g500); font-weight:500;
+           margin:0 0 10px; display:flex; align-items:center; gap:11px}
+  .tldr h4::before{content:""; width:24px; height:2.5px; background:var(--clay); flex:none}
+  .tldr p:last-child{margin-bottom:0}
+
+  .note{background:var(--g100); border:1px solid var(--g200); padding:14px 18px;
+        border-radius:3px; margin:18px 0; font-size:15px}
+  .note p{margin:0; max-width:none}
+  .note .tag{font-family:var(--mono); font-size:10.5px; letter-spacing:.09em;
+             text-transform:uppercase; color:var(--g500); font-weight:500;
+             display:flex; align-items:center; gap:9px; margin-bottom:7px}
+  .note .tag::before{content:""; width:16px; height:2px; background:var(--g300); flex:none}
+  .note.warn{border-color:#E8BFAC; background:#FDF6F2}
+  .note.warn .tag::before{background:var(--clay)}
+  .note.good{border-color:#B9C7A6; background:#F5F8F1}
+  .note.good .tag::before{background:var(--olive)}
+
+  /* ---- Diagram primitives.
+     Boxes and arrows are flex siblings, so a connector can never point at
+     empty space and long labels wrap instead of overflowing their box.
+     This replaces hand-placed SVG coordinates, which drifted. ---- */
+  .flow{display:flex; flex-wrap:wrap; align-items:stretch; gap:10px; margin:24px 0}
+  .node{flex:1 1 150px; min-width:0; background:var(--paper);
+        border:1.5px solid var(--g300); border-radius:3px; padding:13px 15px}
+  .node .k{font-family:var(--mono); font-size:10.5px; letter-spacing:.08em;
+           text-transform:uppercase; color:var(--g500); display:block; margin-bottom:5px}
+  .node .t{font-weight:650; font-size:14.5px; display:block; margin-bottom:4px;
+           overflow-wrap:anywhere}
+  .node .d{font-size:13px; color:var(--g700); line-height:1.45; overflow-wrap:anywhere}
+  .node.accent{border-color:var(--clay); border-width:2px}
+  .node.ok{border-color:var(--olive)}
+  .node.bad{border-color:var(--clay-d); background:#FDF6F2}
+  .node.ghost{background:var(--g100); border-style:dashed}
+  .arw{flex:0 0 auto; align-self:center; font-size:19px; color:var(--clay);
+       line-height:1; user-select:none}
+  @media(max-width:640px){ .arw{transform:rotate(90deg)} .node{flex-basis:100%} }
+
+  /* vertical numbered rail — workflow steps */
+  .rail{margin:20px 0 4px; border-left:2px solid var(--g300); padding-left:0}
+  .rail li{list-style:none; position:relative; padding:0 0 16px 26px; margin:0}
+  .rail li::before{content:""; position:absolute; left:-6px; top:7px;
+                   width:10px; height:10px; border-radius:50%;
+                   background:var(--clay); border:2px solid var(--ivory)}
+  .rail li.wait::before{background:var(--steel)}
+  .rail li.comp::before{background:var(--clay-d)}
+  .rail li.emit::before{background:var(--olive)}
+  .rail ul{margin:0; padding:0}
+  .rail .s{font-family:var(--mono); font-size:12.5px; font-weight:600;
+           display:block; overflow-wrap:anywhere}
+  .rail .x{font-size:13.5px; color:var(--g700); line-height:1.45; display:block;
+           margin-top:2px; max-width:68ch}
+  .wf{background:var(--paper); border:1.5px solid var(--g300); border-radius:3px;
+      padding:20px 24px; margin:20px 0}
+  .wf h3{margin:0 0 3px; font-family:var(--mono); font-size:13px; letter-spacing:.04em}
+  .wf .trig{font-size:13px; color:var(--g500); margin:0 0 12px; max-width:none}
+
+  table{border-collapse:collapse; width:100%; margin:20px 0; font-size:14px}
+  th,td{text-align:left; padding:9px 12px; border-bottom:1px solid var(--g200);
+        vertical-align:top; overflow-wrap:anywhere}
+  th{font-family:var(--mono); font-size:10.5px; letter-spacing:.08em;
+     text-transform:uppercase; color:var(--g500); font-weight:500;
+     border-bottom:1.5px solid var(--g300)}
+  td code{white-space:nowrap}
+  .grid2{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; margin:22px 0}
+  .db{background:var(--paper); border:1.5px solid var(--g300); border-radius:3px; padding:18px 20px}
+  .db.owned{border-color:var(--clay); border-width:2px}
+  .db h4{font-family:var(--mono); font-size:12px; margin:0 0 4px; letter-spacing:.04em}
+  .db .who{font-size:12.5px; color:var(--g500); margin:0 0 10px}
+  .db ul{margin:0; padding-left:17px; font-size:13.5px; color:var(--g700); line-height:1.5}
+  ul.plain{padding-left:19px; max-width:70ch}
+  ul.plain li{margin-bottom:7px}
+  footer{padding:34px 0 0; font-size:13px; color:var(--g500)}
+  @media(max-width:900px){
+    .shell{grid-template-columns:1fr; gap:0}
+    nav.toc{position:static; height:auto; border-right:none;
+            border-bottom:1.5px solid var(--g300); padding:28px 0}
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+<nav class="toc">
+  <div class="lbl">Contents</div>
+  <a href="#idea">The idea</a>
+  <a href="#loop">The loop</a>
+  <a href="#boundary">Two databases</a>
+  <a href="#workflows">Four workflows</a>
+  <a href="#split">Splitting a filing</a>
+  <a href="#retrieval">Retrieval</a>
+  <a href="#eval">The eval</a>
+  <a href="#decisions">Decisions</a>
+  <a href="#scope">Scope</a>
+</nav>
+
+<main>
+
+<section id="idea">
+  <div class="eyebrow">Ironflow example app · design</div>
+  <h1>Financial documents,<br>answered <em>and checked</em></h1>
+  <p class="lede">A RAG app where a new batch of documents is treated like a deploy:
+  shadowed, tested against a golden set, then promoted or rolled back.</p>
+
+  <div class="tldr">
+    <h4>In one paragraph</h4>
+    <p>Every 15 minutes it hashes a folder of financial filings and ingests
+    anything new. Claude reads each PDF and pulls out prose, table rows, and a
+    plain-English summary of each table. Those land in an index that nobody can
+    query yet. An eval runs ~30 known questions against that shadow index. Only
+    if it scores well does the live pointer move. If the flip fails, a saga puts
+    it back.</p>
+  </div>
+
+  <p>Most RAG demos stop at <em>it returned something</em>. The interesting part
+  here is the last step: <strong>the system refuses to publish an index that got
+  worse.</strong> That gate is a workflow, not a script, so it retries, resumes
+  after a crash, and leaves an audit trail.</p>
+
+  <div class="note">
+    <span class="tag">Scope</span>
+    <p>Runs locally inside an Ironflow checkout, against a locally built SDK.
+    Publishing it as a standalone downloadable is deliberately deferred.</p>
+  </div>
+</section>
+
+<section id="loop">
+  <h2>The loop</h2>
+  <p>Five stages. The dashed box is the one that makes this different from a
+  normal ingest pipeline.</p>
+
+  <div class="flow">
+    <div class="node"><span class="k">W1</span><span class="t">Poll</span>
+      <span class="d">Hash the folder. Skip anything unchanged.</span></div>
+    <span class="arw">→</span>
+    <div class="node"><span class="k">W2</span><span class="t">Parse</span>
+      <span class="d">Claude reads the PDF. Facts become events.</span></div>
+    <span class="arw">→</span>
+    <div class="node ghost"><span class="k">shadow</span><span class="t">Index v<sub>n+1</sub></span>
+      <span class="d">Embedded and searchable, but not live. Nothing queries it yet.</span></div>
+    <span class="arw">→</span>
+    <div class="node"><span class="k">W3</span><span class="t">Eval</span>
+      <span class="d">~30 known questions, scored three ways.</span></div>
+    <span class="arw">→</span>
+    <div class="node accent"><span class="k">W4</span><span class="t">Promote</span>
+      <span class="d">Move the live pointer — or compensate and roll back.</span></div>
+  </div>
+
+  <div class="note good">
+    <span class="tag">Why it matters</span>
+    <p>A bad filing, a changed chunking strategy, or a model regression cannot
+    silently degrade answers. It has to pass the gate first.</p>
+  </div>
+</section>
+
+<section id="boundary">
+  <h2>Two databases, one rule</h2>
+  <p>One Postgres server, two databases. The application never opens a socket to
+  Ironflow's. This is a hard tenant, not a preference.</p>
+
+  <div class="grid2">
+    <div class="db">
+      <h4>ironflow</h4>
+      <p class="who">Owned by Ironflow. Reached only through the SDK.</p>
+      <ul>
+        <li>Event streams — the write model</li>
+        <li>Three SQL projections: documents, tables, index state</li>
+        <li>Run and step history</li>
+      </ul>
+    </div>
+    <div class="db owned">
+      <h4>ragapp</h4>
+      <p class="who">Owned by the example. Its own connection pool.</p>
+      <ul>
+        <li><code>chunks</code> — pgvector embeddings + full-text</li>
+        <li><code>index_pointer</code> — which version is live</li>
+        <li>Everything vector-shaped lives here</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="flow">
+    <div class="node"><span class="t">Workflow</span>
+      <span class="d">reads and writes Ironflow only via <code>step.*</code> and
+      <code>client.*</code></span></div>
+    <span class="arw">→</span>
+    <div class="node"><span class="t">External projection</span>
+      <span class="d">the one component that bridges: reads events, writes
+      <code>ragapp</code></span></div>
+    <span class="arw">→</span>
+    <div class="node"><span class="t">Retriever</span>
+      <span class="d">queries <code>ragapp</code> directly with its own pool</span></div>
+  </div>
+
+  <p><strong>Ironflow never stores a vector.</strong> That is what keeps the
+  boundary honest — the moment the app needs pgvector, it uses its own database
+  rather than reaching into the platform's.</p>
+</section>
+
+<section id="workflows">
+  <h2>Four workflows</h2>
+  <p>All four run in <strong>pull mode</strong> (<code>createWorker</code>).
+  Dots: <span style="color:var(--clay)">●</span> work,
+  <span style="color:var(--steel)">●</span> wait,
+  <span style="color:var(--olive)">●</span> emit,
+  <span style="color:var(--clay-d)">●</span> compensate.</p>
+
+  <div class="wf">
+    <h3>W1 · pollSource</h3>
+    <p class="trig">Trigger: cron, every 15 minutes</p>
+    <ul class="rail">
+      <li><span class="s">hash-source</span><span class="x">Hash every file in the folder. Content hash, not mtime — a touched file is not a changed file.</span></li>
+      <li><span class="s">diff-seen</span><span class="x">Compare against what has already been ingested. Unchanged files stop here and cost nothing.</span></li>
+      <li><span class="s">open-batch</span><span class="x">Allocate the next index version. This batch's documents will land in it, invisible to queries.</span></li>
+      <li class="emit"><span class="s">emit DocumentVersionCreated</span><span class="x">One event per changed file. Each fans out to its own W2 run.</span></li>
+      <li class="wait"><span class="s">await-parses</span><span class="x">Durable sleep, then count how many reported done. Repeat until the batch is complete.</span></li>
+      <li class="emit"><span class="s">close-batch</span><span class="x">Emit IngestBatchClosed, which is what starts the eval.</span></li>
+    </ul>
+  </div>
+
+  <div class="wf">
+    <h3>W2 · parseDocument</h3>
+    <p class="trig">Trigger: DocumentVersionCreated · one run per document</p>
+    <ul class="rail">
+      <li><span class="s">split-pages</span><span class="x">Cut the PDF into page ranges. A document block has no page-range option, so the cut has to be physical.</span></li>
+      <li><span class="s">extract</span><span class="x">Claude reads each range natively as a PDF and returns structured prose, table rows, and table summaries.</span></li>
+      <li class="emit"><span class="s">emit-artifacts</span><span class="x">One event per artifact, with IDs derived from its own coordinates so a retry cannot duplicate anything.</span></li>
+      <li class="emit"><span class="s">emit DocumentParsed</span><span class="x">Tells W1 this document is done.</span></li>
+    </ul>
+  </div>
+
+  <div class="wf">
+    <h3>W3 · runEval</h3>
+    <p class="trig">Trigger: IngestBatchClosed</p>
+    <ul class="rail">
+      <li><span class="s">load-golden</span><span class="x">Read the golden set — questions with known-correct answers.</span></li>
+      <li><span class="s">score-retrieval</span><span class="x">Did the right chunk come back at all? Cheap, no model call.</span></li>
+      <li><span class="s">score-numeric</span><span class="x">Is the figure exactly right? This is the tier that actually matters for finance.</span></li>
+      <li><span class="s">score-agent</span><span class="x">Run the real agent end to end, including the citation gate.</span></li>
+      <li class="emit"><span class="s">emit EvalVerdict</span><span class="x">Pass or fail, with the failing question IDs attached.</span></li>
+    </ul>
+  </div>
+
+  <div class="wf">
+    <h3>W4 · promoteIndex</h3>
+    <p class="trig">Trigger: EvalVerdict · saga with compensation</p>
+    <ul class="rail">
+      <li><span class="s">check-verdict</span><span class="x">Failed? Stop here. The shadow index stays shadowed and the live one is untouched.</span></li>
+      <li><span class="s">advance-pointer</span><span class="x">Move the live pointer to the new version. This is the only moment users see new data.</span></li>
+      <li><span class="s">verify-live</span><span class="x">Re-ask one golden question against the now-live index.</span></li>
+      <li class="comp"><span class="s">compensate</span><span class="x">If verification fails, put the pointer back. The rollback is a step, so it is durable too.</span></li>
+    </ul>
+  </div>
+</section>
+
+<section id="split">
+  <h2>Splitting a filing three ways</h2>
+  <p>A financial PDF is not one kind of content, so it is not stored as one kind
+  of record.</p>
+
+  <div class="flow">
+    <div class="node"><span class="k">kind: prose</span><span class="t">Narrative</span>
+      <span class="d">Management discussion, notes, risk language. Embedded whole.</span></div>
+    <div class="node"><span class="k">kind: table_row</span><span class="t">Table rows</span>
+      <span class="d">Kept as structured numbers, queried with SQL. Never summarised into text and then re-parsed.</span></div>
+    <div class="node"><span class="k">kind: table_summary</span><span class="t">Table summaries</span>
+      <span class="d">One plain-English sentence per table, embedded so semantic search can find the table.</span></div>
+  </div>
+
+  <div class="note">
+    <span class="tag">Why the summary exists</span>
+    <p>Nobody asks "row 4 of the operations statement". They ask "what was
+    revenue". The summary is what search matches; the rows are where the number
+    is read from. Two hops, each doing what it is good at.</p>
+  </div>
+
+  <h3>Restatements</h3>
+  <p>Companies re-file. The same entity and period can appear twice with
+  different numbers, and the later filing wins.</p>
+
+  <div class="flow">
+    <div class="node"><span class="k">2024-11-01</span><span class="t">Original</span>
+      <span class="d">Revenue 1,284,000</span></div>
+    <span class="arw">→</span>
+    <div class="node ok"><span class="k">2025-02-14</span><span class="t">Restated</span>
+      <span class="d">Revenue 1,251,000 — this is the answer</span></div>
+    <span class="arw">→</span>
+    <div class="node ghost"><span class="t">Both kept</span>
+      <span class="d">A restatement is a new version, never a delete. The old figure stays auditable.</span></div>
+  </div>
+</section>
+
+<section id="retrieval">
+  <h2>Retrieval</h2>
+  <p>Vector search alone is bad at finance. Tickers, line-item labels and
+  acronyms are exact tokens — semantic similarity blurs exactly the thing you
+  need to match. So both run, and the scores are blended.</p>
+
+  <div class="flow">
+    <div class="node"><span class="k">semantic</span><span class="t">Vector</span>
+      <span class="d">voyage-finance-2, 1024 dimensions. Finds meaning.</span></div>
+    <div class="node"><span class="k">lexical</span><span class="t">Keyword</span>
+      <span class="d">Postgres full-text. Finds exact tokens.</span></div>
+    <span class="arw">→</span>
+    <div class="node accent"><span class="t">Blended + scoped</span>
+      <span class="d">Filtered to the live index version, superseded filings dropped.</span></div>
+  </div>
+
+  <p>Reranking is left in as a commented, optional step. It helps, it costs a
+  model call per query, and the example is clearer without it turned on.</p>
+</section>
+
+<section id="eval">
+  <h2>The eval is the point</h2>
+  <p>Three tiers, cheapest first, because they fail for different reasons and
+  you want to know which.</p>
+
+  <table>
+    <tr><th>Tier</th><th>Question it answers</th><th>Cost</th></tr>
+    <tr><td><strong>Retrieval</strong></td><td>Did the right chunk come back at all?</td><td>No model call</td></tr>
+    <tr><td><strong>Numeric</strong></td><td>Is the figure exactly right?</td><td>No model call</td></tr>
+    <tr><td><strong>Agent</strong></td><td>Does the full loop answer correctly, with a citation?</td><td>Full agent run</td></tr>
+  </table>
+
+  <p>A retrieval failure means chunking or embedding broke. A numeric failure
+  with retrieval passing means table extraction broke. An agent failure with
+  both passing means the prompt or the tools broke. One number would have told
+  you none of that.</p>
+
+  <div class="flow">
+    <div class="node ok"><span class="t">Passes</span>
+      <span class="d">Pointer advances. New documents become queryable.</span></div>
+    <span class="arw">→</span>
+    <div class="node bad"><span class="t">Fails</span>
+      <span class="d">Pointer does not move. The previous index keeps serving. Failing question IDs are reported.</span></div>
+  </div>
+
+  <div class="note good">
+    <span class="tag">Ground truth</span>
+    <p>The corpus is generated, not downloaded. Because the figures are authored,
+    the golden set is exactly correct instead of eyeballed off a real PDF — which
+    matters when the whole point is measuring correctness. Swapping in real SEC
+    filings is a documented one-step change.</p>
+  </div>
+</section>
+
+<section id="decisions">
+  <h2>Decisions worth knowing</h2>
+  <table>
+    <tr><th>Choice</th><th>Reason</th></tr>
+    <tr><td>Extracted data lives in Ironflow streams and projections</td><td>One database, real CQRS. The app never touches Ironflow's Postgres directly.</td></tr>
+    <tr><td>Vectors live in the app's own database</td><td>Ironflow has no vector support, and adding one for a demo would break the tenant.</td></tr>
+    <tr><td>Native PDF into Claude</td><td>No OCR stack, no layout parser. Page ranges are cut physically first.</td></tr>
+    <tr><td>Structured output over citations</td><td>The two cannot be combined, so page numbers ride inside the extraction schema.</td></tr>
+    <tr><td>Shadow index + pointer flip</td><td>Makes promotion atomic and rollback a single write.</td></tr>
+    <tr><td>Eval as a workflow, not a script</td><td>Gets retries, crash-resume and history for free.</td></tr>
+    <tr><td>Synthetic corpus by default</td><td>Exact ground truth, and the example runs immediately.</td></tr>
+    <tr><td>Pull mode, not push</td><td>Load-bearing: push-mode step storage collides on repeated step names, which breaks multi-turn agents on resume.</td></tr>
+  </table>
+</section>
+
+<section id="scope">
+  <h2>Scope</h2>
+  <h3>Built</h3>
+  <ul class="plain">
+    <li>Four workflows, three SQL projections, one external vector projection</li>
+    <li>An agent with four tools and a citation gate</li>
+    <li>A golden set with a three-tier scorer</li>
+    <li>Unit tests on the logic where a silent bug produces a plausible wrong number</li>
+  </ul>
+
+  <h3>Not built</h3>
+  <ul class="plain">
+    <li><strong>Standalone publishing.</strong> Runs in-repo only, for now.</li>
+    <li><strong>CI wiring.</strong> Tests are human-run.</li>
+    <li><strong>Reranking.</strong> Present as a commented, optional step.</li>
+    <li><strong>Index scale-up.</strong> The demo corpus is small enough that
+    search is a full scan; the production pattern is documented, not implemented.</li>
+  </ul>
+
+  <div class="note warn">
+    <span class="tag">Known risk</span>
+    <p>The eval gate is only as good as the golden set. Thirty questions catch
+    gross regressions, not subtle ones. Growing the set is the honest way to make
+    the gate stronger — there is no clever substitute.</p>
+  </div>
+</section>
+
+<footer>Ironflow · financial-document RAG example · design overview</footer>
+</main>
+</div>
+</body>
+</html>

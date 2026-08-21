@@ -46,7 +46,35 @@ const processOrder = createFunction(
       return { sent: true, email: data.email };
     });
 
+    // ── Publish: fan the result out to a pub/sub topic ────────────
+    // A durable publish, memoized like any other step. Unlike emit() this does
+    // NOT trigger functions — anything subscribed to the topic just receives it.
+    // Shows up on the dashboard flow map as a blue radio node wired to this
+    // function, once the publish has actually run at least once.
+    await step.publish("notifications.email", {
+      orderId: order.orderId,
+      to: data.email,
+      amount: payment.amount,
+    });
+
     return { order, payment };
+  },
+);
+
+// ── Schedule: A function the cron scheduler runs every hour ─────
+// `cron` on the trigger is all it takes. Shows up on the dashboard flow map
+// as a green clock node wired to this function.
+const hourlyOrderReport = createFunction(
+  {
+    id: "hourly-order-report",
+    description: "Runs at the top of every hour and snapshots order statistics.",
+    triggers: [{ event: EVENTS.HourlyReportTick, cron: "0 * * * *" }],
+    recording: true, // Enable audit recording (powers time-travel debugging)
+  },
+  async ({ step }) => {
+    return await step.run("snapshot-stats", async () => {
+      return { at: new Date().toISOString() };
+    });
   },
 );
 
@@ -69,12 +97,12 @@ const orderStats = createProjection({
 // ── Start the worker ────────────────────────────────────────────
 // Functions and projections run together in one process.
 const worker = createWorker({
-  functions: [processOrder],
+  functions: [processOrder, hourlyOrderReport],
   projections: [orderStats as IronflowProjection],
 });
 
 worker.start().then(() => {
   console.log("✓ Worker started — listening for events");
-  console.log("  Functions:   process-order");
+  console.log("  Functions:   process-order, hourly-order-report (cron 0 * * * *)");
   console.log("  Projections: order-stats");
 });

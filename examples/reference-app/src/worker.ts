@@ -48,14 +48,23 @@ const batchProcessor = ironflow.createFunction(
     const data = event.data as { batchSize?: number }
     const batchSize = data.batchSize ?? 8
 
-    const items = Array.from({ length: batchSize }, (_, i) => ({
-      id: `item-${i + 1}`,
-      value: Math.floor(Math.random() * 100),
-    }))
+    // Inside a step because Math.random() is not deterministic. Outside one,
+    // a retry regenerates every value while the per-item steps below replay
+    // their memoized outputs — the batch comes back as a mix of two attempts'
+    // inputs. Memoizing the items pins them for the life of the run.
+    const items = await step.run("build-batch", async () =>
+      Array.from({ length: batchSize }, (_, i) => ({
+        id: `item-${i + 1}`,
+        value: Math.floor(Math.random() * 100),
+      })))
 
-    const results = await step.map("process-batch", items, async (item) => {
-      await new Promise((r) => setTimeout(r, 500 + Math.random() * 1000))
-      return { ...item, processed: true, result: item.value * 2 }
+    const results = await step.map("process-batch", items, async (item, itemStep) => {
+      // The scoped `itemStep` is what makes each item its own memoized step —
+      // ignore it and the whole map is one opaque, non-durable blob (#1671).
+      return itemStep.run(`process:${item.id}`, async () => {
+        await new Promise((r) => setTimeout(r, 500 + Math.random() * 1000))
+        return { ...item, processed: true, result: item.value * 2 }
+      })
     }, {
       concurrency: 3,
     })

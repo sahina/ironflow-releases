@@ -1,0 +1,27 @@
+{
+  "name": "ironflow-rag-core",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "setup": "tsx --env-file-if-exists=.env setup.ts",
+    "start": "tsx --env-file-if-exists=.env worker.ts",
+    "dev": "tsx watch --env-file-if-exists=.env worker.ts",
+    "ingest": "tsx --env-file-if-exists=.env cli.ts ingest",
+    "ask": "tsx --env-file-if-exists=.env cli.ts ask",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.117.1",
+    "@ironflow/node": "workspace:*",
+    "better-sqlite3": "^13.0.3",
+    "sqlite-vec": "^0.1.9"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/node": "^24.13.3",
+    "tsx": "^4.23.12",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.10"
+  }
+}

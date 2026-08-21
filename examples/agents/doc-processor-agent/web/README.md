@@ -6,7 +6,7 @@ This is the YC pitch demo surface for Lane B-3 (issue #625).
 
 ## Prerequisites
 
-- Ironflow server running locally: `./build/ironflow serve --dev`
+- Ironflow server running locally: built with `make embed build` from the repo root (a plain `make build` produces a binary whose `serve` refuses to start), then `./build/ironflow serve --dev`
 - Doc-processor worker running: from `examples/agents/doc-processor-agent/`, run `pnpm dev`
 - This example installed: `pnpm install` from this directory
 

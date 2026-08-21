@@ -24,10 +24,13 @@ interface DocState {
   category?: string;
 }
 
-// 90s default leaves headroom over the 30s NATS AckWait + the 60s
-// stale-claim recovery interval. Crash-resume cannot fire faster than
-// the redelivery window — see internal/engine/router.go consumerAckWait.
-const TIMEOUT_MS = Number(process.env.VERIFY_TIMEOUT_MS ?? 90000);
+// A killed worker recovers via lease expiry, not NATS redelivery: 60-90s for
+// its concurrency lease to expire (LeaseExpiry 90s) + up to 30s scanner tick +
+// 30s RecoveryGrace + up to 30s pull-dispatch tick = 90s..3min. The old 90s
+// default was BELOW that floor. These are compile-time constants in
+// capacity.DefaultConfig() — `--dev` and IRONFLOW_STALE_CLAIM_THRESHOLD do not
+// shorten them. See docs/explanation/crash-recovery.md (#1674).
+const TIMEOUT_MS = Number(process.env.VERIFY_TIMEOUT_MS ?? 210000);
 const POLL_MS = 500;
 const deadline = Date.now() + TIMEOUT_MS;
 

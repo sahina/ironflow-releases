@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
-import { ironflow, type Subscription, type SubscriptionEvent } from "@ironflow/browser";
+import { useEffect, useState, useCallback } from "react";
+import { ironflow, type SubscriptionEvent } from "@ironflow/browser";
 import { useIronflow } from "@/components/ironflow-provider";
+import { useSystemSubscription } from "@/hooks/use-system-subscription";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -47,19 +48,22 @@ const WORKER_FUNCTION_IDS = new Set(WORKER_FUNCTIONS.map((f) => f.id));
 export default function WorkersPage() {
   const [workers, setWorkers] = useState<WorkerInfo[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isSubscribed, setIsSubscribed] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [workerEvents, setWorkerEvents] = useState<Array<{ type: string; workerId: string; timestamp: Date }>>([]);
+  // Presence from system.worker.{id}.* frames (#1723). GET /api/v1/workers
+  // reports every worker it has ever seen with no health field, so these frames
+  // are the only thing that flips the badge to "Missed heartbeat" while a
+  // worker is dying, and to "Disconnected" once it is evicted. A tab opened
+  // mid-degradation shows "Connected" until the next transition — edge-only
+  // delivery carries no initial state.
+  const [presence, setPresence] = useState<Record<string, { health: string; draining: boolean }>>({});
 
   // New state
   const [runs, setRuns] = useState<WorkerRun[]>([]);
-  const [isRunSubbed, setIsRunSubbed] = useState(false);
   const [triggeringFn, setTriggeringFn] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expandedRun, setExpandedRun] = useState<string | null>(null);
 
-  const subscriptionRef = useRef<Subscription | null>(null);
-  const runSubRef = useRef<Subscription | null>(null);
   const { isConnected } = useIronflow();
 
   const fetchWorkers = useCallback(async () => {
@@ -87,127 +91,108 @@ export default function WorkersPage() {
 
   useEffect(() => {
     if (!isConnected) return;
-
     let cancelled = false;
-    // Defer initial fetch to avoid synchronous setState in effect body
+    // Deferred to avoid a synchronous setState in the effect body.
     void Promise.resolve().then(() => {
       if (!cancelled) fetchWorkers();
     });
-
-    // Worker events subscription
-    const trySubscribeWorkers = async (retries = 3): Promise<void> => {
-      try {
-        const sub = await ironflow.subscribe("system.worker.>", {
-          onEvent: (event: SubscriptionEvent) => {
-            const parts = event.topic.split(".");
-            const workerId = parts[2];
-            const eventType = parts[3];
-
-            setWorkerEvents((prev) => [
-              { type: eventType, workerId, timestamp: new Date() },
-              ...prev,
-            ].slice(0, 20));
-
-            if (eventType === "connected" || eventType === "disconnected") {
-              fetchWorkers();
-            }
-          },
-        });
-
-        if (cancelled) {
-          sub.unsubscribe();
-        } else {
-          subscriptionRef.current = sub;
-          setIsSubscribed(true);
-        }
-      } catch (err) {
-        if (err instanceof Error && err.message.includes("Already subscribed") && retries > 0 && !cancelled) {
-          await new Promise((r) => setTimeout(r, 100));
-          return trySubscribeWorkers(retries - 1);
-        }
-        if (!cancelled) console.error("Worker subscription failed:", err);
-      }
-    };
-
-    // Run events subscription
-    const trySubscribeRuns = async (retries = 3): Promise<void> => {
-      try {
-        const sub = await ironflow.subscribe("system.run.>", {
-          onEvent: (event: SubscriptionEvent) => {
-            const parts = event.topic.split(".");
-            // Run-level events: system.run.{runId}.{eventType} (4 parts)
-            if (parts.length !== 4) return;
-
-            const runId = parts[2];
-            const eventType = parts[3];
-            const data = event.data as { functionId?: string; id?: string; status?: string; output?: unknown };
-
-            if (!data.functionId || !WORKER_FUNCTION_IDS.has(data.functionId)) return;
-
-            if (eventType === "updated" && data.status === "running") {
-              setRuns((prev) => {
-                // Avoid duplicates
-                if (prev.some((r) => r.id === runId)) return prev;
-                return [
-                  { id: runId, functionId: data.functionId!, status: "running", startedAt: new Date() },
-                  ...prev,
-                ].slice(0, 30);
-              });
-            } else if (eventType === "completed") {
-              setRuns((prev) => {
-                const exists = prev.some((r) => r.id === runId);
-                if (exists) {
-                  return prev.map((r) => r.id === runId ? { ...r, status: "completed", output: data.output } : r);
-                }
-                // Run completed without a preceding "updated" event — add it directly
-                return [
-                  { id: runId, functionId: data.functionId!, status: "completed", startedAt: new Date(), output: data.output },
-                  ...prev,
-                ].slice(0, 30);
-              });
-            } else if (eventType === "failed") {
-              setRuns((prev) => {
-                const exists = prev.some((r) => r.id === runId);
-                if (exists) {
-                  return prev.map((r) => r.id === runId ? { ...r, status: "failed" } : r);
-                }
-                return [
-                  { id: runId, functionId: data.functionId!, status: "failed", startedAt: new Date() },
-                  ...prev,
-                ].slice(0, 30);
-              });
-            }
-          },
-        });
-
-        if (cancelled) {
-          sub.unsubscribe();
-        } else {
-          runSubRef.current = sub;
-          setIsRunSubbed(true);
-        }
-      } catch (err) {
-        if (err instanceof Error && err.message.includes("Already subscribed") && retries > 0 && !cancelled) {
-          await new Promise((r) => setTimeout(r, 100));
-          return trySubscribeRuns(retries - 1);
-        }
-        if (!cancelled) console.error("Run subscription failed:", err);
-      }
-    };
-
-    trySubscribeWorkers();
-    trySubscribeRuns();
-
     return () => {
       cancelled = true;
-      subscriptionRef.current?.unsubscribe();
-      subscriptionRef.current = null;
-      setIsSubscribed(false);
-      runSubRef.current?.unsubscribe();
-      runSubRef.current = null;
-      setIsRunSubbed(false);
     };
   }, [isConnected, fetchWorkers]);
+
+  const isSubscribed = useSystemSubscription("system.worker.>", (event: SubscriptionEvent) => {
+    // Worker IDs are client-supplied and unvalidated, so a worker named
+    // "a.health" yields a 5-segment topic whose parts[3] reads as an event
+    // type for a different worker. Only fixed-shape
+    // system.worker.{id}.{event} topics are routed.
+    const parts = event.topic.split(".");
+    if (parts.length !== 4) return;
+    const workerId = parts[2];
+    const eventType = parts[3];
+
+    setWorkerEvents((prev) => [
+      { type: eventType, workerId, timestamp: new Date() },
+      ...prev,
+    ].slice(0, 20));
+
+    if (eventType === "health") {
+      const data = event.data as { health?: string; draining?: boolean };
+      setPresence((prev) => ({
+        ...prev,
+        [workerId]: { health: data.health ?? "healthy", draining: data.draining ?? false },
+      }));
+      return;
+    }
+
+    if (eventType === "connected") {
+      setPresence((prev) => {
+        const next = { ...prev };
+        delete next[workerId];
+        return next;
+      });
+      fetchWorkers();
+      return;
+    }
+
+    if (eventType === "disconnected") {
+      // Terminal, not a reset. GET /api/v1/workers never evicts a worker, so
+      // clearing presence here would drop the row back to its default
+      // "Connected" badge — a dead worker going green, which reads as
+      // recovery.
+      setPresence((prev) => ({
+        ...prev,
+        [workerId]: { health: "disconnected", draining: false },
+      }));
+      fetchWorkers();
+    }
+  });
+
+  const isRunSubbed = useSystemSubscription("system.run.>", (event: SubscriptionEvent) => {
+    const parts = event.topic.split(".");
+    // Run-level events: system.run.{runId}.{eventType} (4 parts)
+    if (parts.length !== 4) return;
+
+    const runId = parts[2];
+    const eventType = parts[3];
+    const data = event.data as { functionId?: string; id?: string; status?: string; output?: unknown };
+
+    if (!data.functionId || !WORKER_FUNCTION_IDS.has(data.functionId)) return;
+
+    if (eventType === "updated" && data.status === "running") {
+      setRuns((prev) => {
+        // Avoid duplicates
+        if (prev.some((r) => r.id === runId)) return prev;
+        return [
+          { id: runId, functionId: data.functionId!, status: "running", startedAt: new Date() },
+          ...prev,
+        ].slice(0, 30);
+      });
+    } else if (eventType === "completed") {
+      setRuns((prev) => {
+        const exists = prev.some((r) => r.id === runId);
+        if (exists) {
+          return prev.map((r) => r.id === runId ? { ...r, status: "completed", output: data.output } : r);
+        }
+        // Run completed without a preceding "updated" event — add it directly
+        return [
+          { id: runId, functionId: data.functionId!, status: "completed", startedAt: new Date(), output: data.output },
+          ...prev,
+        ].slice(0, 30);
+      });
+    } else if (eventType === "failed") {
+      setRuns((prev) => {
+        const exists = prev.some((r) => r.id === runId);
+        if (exists) {
+          return prev.map((r) => r.id === runId ? { ...r, status: "failed" } : r);
+        }
+        return [
+          { id: runId, functionId: data.functionId!, status: "failed", startedAt: new Date() },
+          ...prev,
+        ].slice(0, 30);
+      });
+    }
+  });
 
   const functionLabel = (fnId: string) =>
     WORKER_FUNCTIONS.find((f) => f.id === fnId)?.label ?? fnId;
@@ -278,7 +263,17 @@ export default function WorkersPage() {
                       <HardDrive className="h-4 w-4" />
                       <span className="font-mono text-sm font-medium">{worker.id}</span>
                     </div>
-                    <Badge variant="default">Connected</Badge>
+                    {(() => {
+                      const p = presence[worker.id];
+                      if (p?.health === "disconnected") {
+                        return <Badge variant="destructive">Disconnected</Badge>;
+                      }
+                      if (p?.draining) return <Badge variant="outline">Draining</Badge>;
+                      if (p?.health === "unhealthy") {
+                        return <Badge variant="secondary">Missed heartbeat</Badge>;
+                      }
+                      return <Badge variant="default">Connected</Badge>;
+                    })()}
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 text-sm">

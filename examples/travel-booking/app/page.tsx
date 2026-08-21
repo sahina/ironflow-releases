@@ -1,10 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ironflow } from "@ironflow/browser";
-import type { ConnectionState, Subscription } from "@ironflow/browser";
+import type { ConnectionState, OfflineClient, Subscription } from "@ironflow/browser";
 import type { TimeTravelTimelineEvent } from "@ironflow/core";
-import { getTraveler, setTraveler } from "@/lib/ironflow";
+import { getApp, getTraveler, setTraveler } from "@/lib/ironflow";
 import {
   BOOKING_REQUESTED,
   emptyAvailability,
@@ -19,15 +18,6 @@ import { ChaosPanel, JourneyTimeline, TimeTravel, TravelerPill, TripPicker } fro
 
 type PaymentMode = "normal" | "fail" | "slow";
 
-interface QueuedBooking {
-  bookingId: string;
-  traveler: string;
-  flightId: string;
-  hotelId: string;
-}
-
-const QUEUE_KEY = "travel-booking:queued";
-
 export default function Home() {
   const [availability, setAvailability] = useState<Availability>(emptyAvailability);
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -38,24 +28,44 @@ export default function Home() {
   const [connection, setConnection] = useState<ConnectionState>("disconnected");
   const [paymentMode, setPaymentMode] = useState<PaymentMode>("normal");
   const [workerDown, setWorkerDown] = useState(false);
+  const [app, setApp] = useState<OfflineClient | null>(null);
+  const [appError, setAppError] = useState<string | null>(null);
   const [offline, setOffline] = useState(false);
-  const [queue, setQueue] = useState<QueuedBooking[]>([]);
+  const [queued, setQueued] = useState(0);
   const [busy, setBusy] = useState(false);
   const [timeline, setTimeline] = useState<TimeTravelTimelineEvent[]>([]);
   const [scrub, setScrub] = useState(0);
 
   const subs = useRef<Subscription[]>([]);
 
+  // ── The client ─────────────────────────────────────────────────
+  // Async because the outbox has to be open before the first write can be
+  // answered honestly. Everything below waits for it.
+  //
+  // A failure here has to be visible. Every write path is gated on `app`, so
+  // swallowing this into console.error would leave the whole UI inert with no
+  // reason given and no way back.
+  const startClient = useCallback(() => {
+    setAppError(null);
+    getApp()
+      .then(setApp)
+      .catch((err) => setAppError(err instanceof Error ? err.message : String(err)));
+  }, []);
+
+  useEffect(() => {
+    setTravelerName(getTraveler());
+    startClient();
+  }, [startClient]);
+
   // ── Live read models ───────────────────────────────────────────
   useEffect(() => {
+    if (!app) return;
     let cancelled = false;
-    setTravelerName(getTraveler());
-    setQueue(readQueue());
 
     const wire = async <T,>(name: string, apply: (state: T) => void) => {
-      const initial = await ironflow.getProjection<T>(name).catch(() => null);
+      const initial = await app.client.getProjection<T>(name).catch(() => null);
       if (!cancelled && initial?.state) apply(initial.state);
-      const sub = await ironflow.subscribeToProjection<T>(name, {
+      const sub = await app.client.subscribeToProjection<T>(name, {
         onUpdate: (state) => {
           if (!cancelled && state) apply(state);
         },
@@ -67,8 +77,8 @@ export default function Home() {
     wire<Availability>(PROJECTIONS.Availability, setAvailability).catch(console.error);
     wire<BookingsState>(PROJECTIONS.Bookings, (s) => setBookings(s.bookings ?? [])).catch(console.error);
 
-    const off = ironflow.onConnectionChange(setConnection);
-    setConnection(ironflow.connectionState);
+    const off = app.client.onConnectionChange(setConnection);
+    setConnection(app.client.connectionState);
 
     return () => {
       cancelled = true;
@@ -76,7 +86,7 @@ export default function Home() {
       subs.current = [];
       off();
     };
-  }, []);
+  }, [app]);
 
   // ── Is the worker alive, and what has been broken? ─────────────
   // Polled rather than pushed: a crashed worker can't tell you it died.
@@ -98,55 +108,47 @@ export default function Home() {
   }, []);
 
   // ── Offline queue ──────────────────────────────────────────────
-  // Deliberately app-side. The Ironflow browser SDK has no offline write queue;
-  // this is ~20 lines of localStorage so the demo can show the pattern, and the
-  // UI says so rather than passing it off as a platform feature.
-  const flushQueue = useCallback(async () => {
-    const pending = readQueue();
-    if (pending.length === 0) return;
-    writeQueue([]);
-    setQueue([]);
-    for (const item of pending) {
-      await ironflow.emit(BOOKING_REQUESTED, item).catch(console.error);
-      setCurrentBookingId(item.bookingId);
-    }
-  }, []);
-
+  // The SDK owns this now (ADR 0053). `createClient({ offlineQueue })` persists
+  // every emit to an IndexedDB outbox before it sends and drains it in FIFO on
+  // reconnect, so there is no app-side queue left to write. All that remains is
+  // showing the count.
   useEffect(() => {
-    const onOnline = () => {
-      setOffline(false);
-      flushQueue();
-    };
-    const onOffline = () => setOffline(true);
-    window.addEventListener("online", onOnline);
-    window.addEventListener("offline", onOffline);
-    if (!navigator.onLine) setOffline(true);
+    if (!app) return;
+    return app.queue.subscribe((stats) => setQueued(stats.pending));
+  }, [app]);
+
+  // Real connectivity, not a simulated flag: only a genuine network failure
+  // exercises the drain loop. Use DevTools → Network → Offline to try it.
+  useEffect(() => {
+    const sync = () => setOffline(!navigator.onLine);
+    sync();
+    window.addEventListener("online", sync);
+    window.addEventListener("offline", sync);
     return () => {
-      window.removeEventListener("online", onOnline);
-      window.removeEventListener("offline", onOffline);
+      window.removeEventListener("online", sync);
+      window.removeEventListener("offline", sync);
     };
-  }, [flushQueue]);
+  }, []);
 
   // ── Actions ────────────────────────────────────────────────────
 
   const book = async (as?: string) => {
-    const request: QueuedBooking = {
+    if (!app) return;
+
+    const request = {
+      // Client-generated, so it is the same id whether this booking goes out
+      // now or drains from the outbox in an hour.
       bookingId: crypto.randomUUID(),
       traveler: as ?? traveler,
       flightId,
       hotelId,
     };
 
-    if (offline) {
-      const next = [...readQueue(), request];
-      writeQueue(next);
-      setQueue(next);
-      return;
-    }
-
     setBusy(true);
     try {
-      await ironflow.emit(BOOKING_REQUESTED, request);
+      // One path, online or off. Offline this returns `{ queued: true }` the
+      // moment it is persisted, so there is no branch to write here.
+      await app.emit(BOOKING_REQUESTED, request);
       // Only follow the booking made as *you* — a simulated traveller shouldn't
       // hijack the timeline you're watching.
       if (!as) {
@@ -155,7 +157,9 @@ export default function Home() {
         setScrub(0);
       }
     } catch (err) {
-      console.error("[booking] emit failed:", err);
+      // No longer a network error — the outbox absorbs those. What is left is
+      // a full queue (500 items / 5 MB) or a body that would not serialise.
+      console.error("[booking] emit rejected:", err);
     } finally {
       setBusy(false);
     }
@@ -171,8 +175,8 @@ export default function Home() {
 
   const loadTimeline = async () => {
     const runId = current?.runId;
-    if (!runId) return;
-    const events = await ironflow.getRunTimeline(runId).catch(() => []);
+    if (!app || !runId) return;
+    const events = await app.client.getRunTimeline(runId).catch(() => []);
     setTimeline(events);
     setScrub(Math.max(0, events.length - 1));
   };
@@ -197,6 +201,21 @@ export default function Home() {
         />
       </header>
 
+      {appError && (
+        <div
+          role="alert"
+          className="panel p-3 flex items-baseline gap-3 text-sm"
+          style={{ borderColor: "var(--color-error)", color: "var(--color-error)" }}
+        >
+          <span>
+            Could not start the offline client — booking is disabled. {appError}
+          </span>
+          <button onClick={startClient} className="btn mono ml-auto">
+            Try again
+          </button>
+        </div>
+      )}
+
       <div className="grid grid-cols-[300px_1fr_200px] gap-4 flex-1">
         <TripPicker
           availability={availability}
@@ -206,8 +225,9 @@ export default function Home() {
           onHotel={setHotelId}
           onBook={() => book()}
           busy={busy}
+          ready={Boolean(app)}
           offline={offline}
-          queued={queue.length}
+          queued={queued}
         />
 
         <JourneyTimeline booking={current} />
@@ -223,11 +243,9 @@ export default function Home() {
             chaos("payment-mode", mode);
           }}
           onSimulate={() => book(otherTraveler(traveler))}
-          onToggleOffline={() => {
-            const next = !offline;
-            setOffline(next);
-            if (!next) flushQueue();
-          }}
+          ready={Boolean(app)}
+          queued={queued}
+          onFlush={() => app?.queue.flush().catch(console.error)}
           onReset={() => chaos("reset")}
         />
       </div>
@@ -244,18 +262,6 @@ export default function Home() {
 }
 
 // ─── helpers ────────────────────────────────────────────────────
-
-function readQueue(): QueuedBooking[] {
-  try {
-    return JSON.parse(window.localStorage.getItem(QUEUE_KEY) ?? "[]") as QueuedBooking[];
-  } catch {
-    return [];
-  }
-}
-
-function writeQueue(items: QueuedBooking[]): void {
-  window.localStorage.setItem(QUEUE_KEY, JSON.stringify(items));
-}
 
 function otherTraveler(me: string): string {
   return me === "Robin" ? "Sam" : "Robin";

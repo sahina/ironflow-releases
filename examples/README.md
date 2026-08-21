@@ -31,6 +31,8 @@ Every Ironflow application follows four pillars:
 | [ai-agent/](./ai-agent/)                         | Durable AI research agent | AI engineers          | `agent()`, `tool()`, `llm()`, event-sourced memory |
 | [agents/doc-processor-agent/](./agents/doc-processor-agent/) | Crash-resume proof | AI engineers      | `kill -9` mid-pipeline and resume; browser demo in [`web/`](./agents/doc-processor-agent/web/) |
 | [agents/code-review-agent/](./agents/code-review-agent/) | Human-in-the-loop gate | AI engineers    | `approve()` pausing a run for up to 24h     |
+| [financial-rag/](./financial-rag/)               | RAG with an eval gate     | AI engineers          | Shadow index, golden-set eval, promote-or-rollback saga |
+| [rag-core/](./rag-core/)                         | RAG part 1: event-sourced index | AI engineers    | Zero-Docker RAG: durable ingest, embeddings in events, sqlite-vec projection |
 | [yaml-config/](./yaml-config/)                   | Config file examples      | Operators             | Server, cluster, and platform `ironflow.yaml` |
 
 ## Prerequisites

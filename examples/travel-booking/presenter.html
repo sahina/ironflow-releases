@@ -301,7 +301,7 @@
       <rect x="840" y="92" width="238" height="26" fill="none" stroke="#334155"/><text x="852" y="109">Crash worker</text>
       <rect x="840" y="124" width="238" height="26" fill="none" stroke="#334155"/><text x="852" y="141">Fail payment</text>
       <rect x="840" y="156" width="238" height="26" fill="none" stroke="#334155"/><text x="852" y="173">Slow payment</text>
-      <rect x="840" y="188" width="238" height="26" fill="none" stroke="#334155"/><text x="852" y="205">Go offline</text>
+      <rect x="840" y="188" width="238" height="26" fill="none" stroke="#334155"/><text x="852" y="205">Retry now</text>
       <rect x="840" y="220" width="238" height="26" fill="none" stroke="#334155"/><text x="852" y="237">Simulate traveller</text>
       <rect x="840" y="252" width="238" height="26" fill="none" stroke="#334155"/><text x="852" y="269">Reset inventory</text>
     </g>
@@ -992,10 +992,11 @@
     <div class="card tint">
       <h3>If someone asks what's fake</h3>
       <p style="margin:0; font-size:14.5px">
-        The payment provider, and the offline queue — that one is about twenty lines of
-        <code>localStorage</code> in the demo, <strong>not</strong> an Ironflow feature, and the UI
-        says so. Everything else is the real engine: real entity streams, a real version conflict,
-        a real <code>kill −9</code>.
+        The payment provider. That's it. The offline queue used to be on this list — it was
+        twenty lines of <code>localStorage</code> in the demo — but v0.28.0 shipped a real
+        IndexedDB outbox in the browser SDK, so the demo now uses
+        <code>createClient({ offlineQueue })</code> like any app would. Everything else is the
+        real engine: real entity streams, a real version conflict, a real <code>kill −9</code>.
       </p>
     </div>
     <div class="card tint">

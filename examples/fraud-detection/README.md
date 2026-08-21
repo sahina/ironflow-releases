@@ -157,7 +157,8 @@ job, no nightly ETL.
 
 ### Prerequisites
 
-- Ironflow binary built (`make build` from the repo root)
+- Ironflow binary built — Step 1 below runs `make all`. A plain `make build` is not
+  enough: the resulting binary's `serve` refuses to start.
 - Node.js 22+ and pnpm
 
 ### Step 1: Build and Start Ironflow

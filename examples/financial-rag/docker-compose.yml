@@ -1,0 +1,25 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: ironflow
+      POSTGRES_PASSWORD: ironflow
+      POSTGRES_DB: ironflow
+    ports:
+      # 5434, not 5433: the repo's own docker-compose.test.yml binds 5433 for
+      # ironflow-test-postgres, which `make test-pg` (and therefore `make ci`)
+      # starts. Sharing the port means anyone who has run the test suite gets
+      # "port is already allocated" here.
+      - "5434:5432"
+    volumes:
+      # Creates the second database and enables pgvector on it, and only on it.
+      # Runs once, on an empty data directory.
+      - ./initdb.sql:/docker-entrypoint-initdb.d/10-init.sql:ro
+    # Without this, `docker compose up -d` returns before Postgres accepts
+    # connections and the next command in the README races the DB.
+    # `docker compose up -d --wait` blocks until this passes.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ironflow -d ragapp"]
+      interval: 2s
+      timeout: 3s
+      retries: 15

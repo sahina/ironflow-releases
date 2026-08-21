@@ -21,6 +21,8 @@ export function TripPicker(props: {
   onHotel: (id: string) => void;
   onBook: () => void;
   busy: boolean;
+  /** False until the offline client has opened its outbox. */
+  ready: boolean;
   offline: boolean;
   queued: number;
 }) {
@@ -82,10 +84,16 @@ export function TripPicker(props: {
 
       <button
         onClick={props.onBook}
-        disabled={props.busy || !flightId || !hotelId}
+        disabled={!props.ready || props.busy || !flightId || !hotelId}
         className="btn btn-primary mono"
       >
-        {props.busy ? "Booking…" : props.offline ? "Queue booking (offline)" : "Book trip"}
+        {!props.ready
+          ? "Starting…"
+          : props.busy
+            ? "Booking…"
+            : props.offline
+              ? "Queue booking (offline)"
+              : "Book trip"}
       </button>
 
       {props.queued > 0 && (
@@ -93,7 +101,7 @@ export function TripPicker(props: {
           {props.queued} booking{props.queued === 1 ? "" : "s"} waiting for the network.
           <br />
           <span style={{ color: "var(--color-text-muted)" }}>
-            This queue is app code in this demo, not an Ironflow feature.
+            Saved in the SDK&rsquo;s IndexedDB outbox, sent when the network returns.
           </span>
         </p>
       )}
@@ -225,7 +233,10 @@ export function ChaosPanel(props: {
   onCrash: () => void;
   onPaymentMode: (mode: "normal" | "fail" | "slow") => void;
   onSimulate: () => void;
-  onToggleOffline: () => void;
+  /** False until the offline client has opened its outbox. */
+  ready: boolean;
+  queued: number;
+  onFlush: () => void;
   onReset: () => void;
 }) {
   return (
@@ -250,14 +261,21 @@ export function ChaosPanel(props: {
         {props.paymentMode === "slow" ? "✓ " : ""}Slow payment
       </button>
 
+      {/* No "go offline" button: a UI flag cannot exercise a real drain loop.
+          Use DevTools → Network → Offline, book a trip, then come back. */}
       <button
-        onClick={props.onToggleOffline}
-        className={`btn mono ${props.offline ? "btn-active" : ""}`}
+        onClick={props.onFlush}
+        disabled={props.queued === 0}
+        className="btn mono"
+        title={props.queued === 0 ? "Nothing queued" : "Drain the outbox now, resetting the retry backoff"}
       >
-        {props.offline ? "✓ Offline" : "Go offline"}
+        Retry now{props.queued > 0 ? ` (${props.queued})` : ""}
       </button>
+      <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
+        Offline: DevTools &rarr; Network &rarr; Offline, then book.
+      </p>
 
-      <button onClick={props.onSimulate} className="btn mono">
+      <button onClick={props.onSimulate} disabled={!props.ready} className="btn mono">
         Simulate traveller
       </button>
 
@@ -275,6 +293,19 @@ export function ChaosPanel(props: {
           ok={props.connection === "connected"}
           label={props.connection}
           pulse={props.connection === "connecting" || props.connection === "reconnecting"}
+        />
+        <Status
+          ok={!props.offline && props.queued === 0}
+          label={
+            props.offline
+              ? props.queued > 0
+                ? `offline, ${props.queued} queued`
+                : "offline"
+              : props.queued > 0
+                ? `${props.queued} queued`
+                : "outbox empty"
+          }
+          pulse={props.queued > 0}
         />
       </div>
     </section>
