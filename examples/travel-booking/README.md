@@ -32,7 +32,7 @@ booking.requested
 ## Prerequisites
 
 - Node.js 24+, pnpm
-- Go 1.25+ (to build the Ironflow binary)
+- Go 1.26+ (to build the Ironflow binary)
 
 No `.env` setup needed — both the browser and the worker default to
 `http://localhost:9123`, and the chaos control server to port 3100. Override with

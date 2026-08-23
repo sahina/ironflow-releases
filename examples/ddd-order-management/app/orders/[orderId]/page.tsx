@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, use } from "react";
+import Link from "next/link";
 import { ironflow } from "../../../lib/ironflow";
 import type { StreamEvent, Subscription } from "@ironflow/browser";
 import { STREAM_EVENTS } from "../../../events";
@@ -155,9 +156,9 @@ export default function OrderDetailPage({
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <a href="/orders" className="text-blue-600 hover:underline text-sm">
+        <Link href="/orders" className="text-blue-600 hover:underline text-sm">
           &larr; Orders
-        </a>
+        </Link>
         <h2 className="text-2xl font-bold">Order {orderId}</h2>
         {summary && (
           <span

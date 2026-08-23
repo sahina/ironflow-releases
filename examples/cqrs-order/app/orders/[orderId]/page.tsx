@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { ironflow } from "../../../lib/ironflow-browser";
 import type { Subscription, StreamEvent } from "@ironflow/browser";
 import type { OrderDetail, OrderDetailViewState } from "../../../lib/types";
@@ -92,9 +93,9 @@ export default function OrderDetailPage({
   return (
     <div className="space-y-6">
       <header>
-        <a href="/" className="text-sm text-blue-600 hover:underline">
+        <Link href="/" className="text-sm text-blue-600 hover:underline">
           ← Back
-        </a>
+        </Link>
         <h2 className="text-2xl font-bold mt-1">Order {orderId}</h2>
         <p className="text-gray-500 text-sm">
           Read model: <code className="bg-gray-100 px-1 rounded">order-detail-view</code>

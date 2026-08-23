@@ -26,7 +26,7 @@ When adding a new SDK feature, add a page here to validate it works end-to-end.
 
 ## Prerequisites
 
-- Go 1.25+ (required to build Ironflow)
+- Go 1.26+ (required to build Ironflow)
 - Node.js 22+
 - pnpm
 

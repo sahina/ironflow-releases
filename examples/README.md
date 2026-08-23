@@ -37,7 +37,7 @@ Every Ironflow application follows four pillars:
 
 ## Prerequisites
 
-- Go 1.25+ (required to build Ironflow)
+- Go 1.26+ (required to build Ironflow)
 - Node.js 22+ and pnpm (for TypeScript examples)
 
 ## Quick Reference

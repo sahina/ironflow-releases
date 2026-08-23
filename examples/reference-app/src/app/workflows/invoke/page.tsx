@@ -38,8 +38,6 @@ export default function InvokeDemoPage() {
   const [runId, setRunId] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [result, setResult] = useState<any>(null);
   const [steps, setSteps] = useState<StepInfo[]>([]);
   const [systemEvents, setSystemEvents] = useState<SystemEvent[]>([]);
   const subscriptionRef = useRef<Subscription | null>(null);
@@ -100,7 +98,6 @@ export default function InvokeDemoPage() {
   const startWorkflow = async () => {
     setIsRunning(true);
     setError(null);
-    setResult(null);
     setSteps([]);
     setSystemEvents([]);
 
@@ -125,21 +122,18 @@ export default function InvokeDemoPage() {
     setRunId(null);
     setIsRunning(false);
     setError(null);
-    setResult(null);
     setSteps([]);
     setSystemEvents([]);
   };
 
-  // Extract result from completed run events
-  useEffect(() => {
-    const completedRunEvent = systemEvents.find(
-      (e) => e.topic.endsWith(".completed") && !e.topic.includes(".step.")
-    );
-    if (completedRunEvent && completedRunEvent.data) {
-      const data = completedRunEvent.data as Record<string, unknown>;
-      setResult(data.output ?? completedRunEvent.data);
-    }
-  }, [systemEvents]);
+  // Derived from the completed run event rather than mirrored into state: both
+  // startWorkflow and reset already clear systemEvents, so this clears with them.
+  const completedRunEvent = systemEvents.find(
+    (e) => e.topic.endsWith(".completed") && !e.topic.includes(".step.")
+  );
+  const result = completedRunEvent?.data
+    ? ((completedRunEvent.data as Record<string, unknown>).output ?? completedRunEvent.data)
+    : null;
 
   return (
     <div className="container mx-auto py-8 px-4">
