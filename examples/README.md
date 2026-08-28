@@ -19,7 +19,7 @@ Every Ironflow application follows four pillars:
 
 | Example                                          | Purpose                   | Audience              | What You'll Learn                           |
 | ------------------------------------------------ | ------------------------- | --------------------- | ------------------------------------------- |
-| [quickstart/](./quickstart/)                     | Core CH flow in 5 minutes | Getting started       | All four pillars in ~80 lines               |
+| [quickstart/](./quickstart/)                     | Core CH flow in 5 minutes | Getting started       | All four pillars in ~110 lines               |
 | [ddd-order-management/](./ddd-order-management/) | DDD patterns on Ironflow  | Building real systems | Aggregates, CQRS, sagas, commands vs events |
 | [cqrs-order/](./cqrs-order/)                     | CQRS walkthrough, runnable | Tutorial companion     | Implements `docs/tutorials/cqrs-walkthrough.mdx` step-by-step |
 | [go-quickstart/](./go-quickstart/)               | Go SDK validation         | Go developers         | Same CH flow in Go                          |
@@ -43,7 +43,7 @@ Every Ironflow application follows four pillars:
 ## Quick Reference
 
 ```bash
-# Build everything (binary + JS SDK + dashboard)
+# Build the binary and the embedded dashboard (does NOT build the JS SDK)
 make all
 
 # Start the server
@@ -66,6 +66,9 @@ cd examples/ddd-order-management && pnpm install && pnpm worker
 cd examples/cqrs-order && pnpm install && pnpm worker
 # In another terminal: pnpm dev
 
+# Run the travel-booking showcase (pnpm dev supervises the UI and the worker)
+cd examples/travel-booking && pnpm install && pnpm dev
+
 # Run the Go quickstart
 cd examples/go-quickstart && go run main.go
 
@@ -87,6 +90,19 @@ cd examples/ai-agent && pnpm install && pnpm dev
 # Run the agent examples (doc-processor-agent, code-review-agent)
 cd examples/agents/doc-processor-agent && pnpm install && pnpm dev
 # In another terminal: pnpm trigger -- doc-1 https://example.com/invoice.png
+
+cd examples/agents/code-review-agent && pnpm install && pnpm dev
+# In another terminal: pnpm trigger -- octocat/hello 42
+# Then approve the runId it prints: pnpm approve -- <runId>
+
+# Run the RAG part 1 example (no Docker; needs a bootstrap API key in .env)
+cd examples/rag-core && pnpm install && pnpm setup && pnpm start
+# In another terminal: pnpm ingest, then pnpm ask "..."
+
+# Run the financial RAG example (needs Docker + ANTHROPIC_API_KEY)
+cd examples/financial-rag && pnpm install && docker compose up -d --wait
+# Then: pnpm setup && pnpm seed-corpus && pnpm start
+# In another terminal: pnpm poll, then pnpm ask "..."
 
 # Validate the YAML configuration examples (no install needed)
 ./build/ironflow validate -f examples/yaml-config/ironflow.yaml

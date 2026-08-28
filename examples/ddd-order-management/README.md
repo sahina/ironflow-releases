@@ -67,6 +67,13 @@ pnpm -C ../../sdk/js build   # Build the JS SDK (examples link to local packages
 pnpm install
 ```
 
+`pnpm worker` loads `.env.local` with `--env-file` (not `--env-file-if-exists`), so
+the file must exist. It is gitignored — create it if your clone has none:
+
+```bash
+printf 'NEXT_PUBLIC_IRONFLOW_SERVER_URL=http://localhost:9123\nIRONFLOW_SERVER_URL=http://localhost:9123\n' > .env.local
+```
+
 ### 3. Start the worker
 
 ```bash

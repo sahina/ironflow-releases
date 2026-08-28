@@ -132,10 +132,11 @@ broken. If you get both, it is broken in a different way.
 
 ### If the eval does not pass
 
-Expected, and the interesting case. `eval complete` shows `passed: false`, no
-`index promoted` line follows, the pointer stays where it was, and `pnpm ask`
-reports an empty corpus on a first run. That is the gate working — a candidate
-index that cannot answer the golden set does not go live.
+Expected, and the interesting case. `eval complete` shows `passed: false`, the
+`record-regression` function logs `index NOT promoted — eval regressed` instead
+of `index promoted`, the pointer stays where it was, and `pnpm ask` reports an
+empty corpus on a first run. That is the gate working — a candidate index that
+cannot answer the golden set does not go live.
 
 The verdict names the failing question IDs. `run-eval` logs a `scored` line per
 row, so compare its `retrievalPassed` and `numericPassed` against the tiers
@@ -178,7 +179,9 @@ Three tables in the first, zero in the second. If a `proj_` table shows up in
 
 ## Why pull mode
 
-All four workflows use `createWorker`, not `serve()`. **Do not port them.**
+All five workflows — `poll-source`, `parse-document`, `run-eval`,
+`promote-index`, `record-regression` — use `createWorker`, not `serve()`.
+**Do not port them.**
 
 The agent loop calls `step.run("llm.turn")` once per turn. The SDK
 disambiguates that into `run:llm.turn:0,1,2…`, but the push executor persists

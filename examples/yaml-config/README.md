@@ -49,4 +49,11 @@ NATS_URL="nats://localhost:4222" \
 IRONFLOW_NODE_ID="node-1" \
 IRONFLOW_MASTER_KEY="abc123" \
 ./build/ironflow validate -f examples/yaml-config/ironflow-cluster.yaml
+
+# Platform (needs env vars)
+IRONFLOW_DATABASE_URL="postgres://localhost/test" \
+NATS_URL="nats://localhost:4222" \
+IRONFLOW_NODE_ID="node-1" \
+IRONFLOW_MASTER_KEY="abc123" \
+./build/ironflow validate -f examples/yaml-config/ironflow-platform.yaml
 ```

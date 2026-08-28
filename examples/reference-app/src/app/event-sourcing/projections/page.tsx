@@ -7,7 +7,7 @@ import {
   type ProjectionStatusInfo,
 } from "@ironflow/browser";
 import { useIronflow } from "@/components/ironflow-provider";
-import { RefreshCw, Radio, WifiOff, RotateCcw } from "lucide-react";
+import { RefreshCw, Radio, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -75,9 +75,6 @@ export default function ProjectionsPage() {
   >([]);
   const [listLoading, setListLoading] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
-
-  // Rebuild
-  const [rebuilding, setRebuilding] = useState(false);
 
   const fetchState = useCallback(async () => {
     setStateError(null);
@@ -201,33 +198,6 @@ export default function ProjectionsPage() {
       const message =
         err instanceof Error ? err.message : "Failed to subscribe";
       setStateError(message);
-    }
-  };
-
-  const handleRebuild = async () => {
-    setStatusError(null);
-
-    if (!ironflow.isConfigured) {
-      setStatusError("Client not configured. Please wait for connection.");
-      return;
-    }
-
-    setRebuilding(true);
-    try {
-      await ironflow.rebuildProjection(PROJECTION_NAME);
-      // Re-fetch status and state after rebuild
-      await Promise.all([fetchStatus(), fetchState()]);
-    } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : "Failed to rebuild projection";
-      // 404 means projection doesn't exist yet — not an error worth displaying
-      if (!message.includes("404")) {
-        setStatusError(message);
-      }
-    } finally {
-      setRebuilding(false);
     }
   };
 
@@ -430,25 +400,6 @@ export default function ProjectionsPage() {
                 </p>
               )
             )}
-
-            <Button
-              onClick={handleRebuild}
-              disabled={rebuilding || !projectionStatus}
-              variant="outline"
-              className="w-full"
-            >
-              {rebuilding ? (
-                <>
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                  Rebuilding...
-                </>
-              ) : (
-                <>
-                  <RotateCcw className="h-4 w-4" />
-                  Rebuild Projection
-                </>
-              )}
-            </Button>
           </CardContent>
         </Card>
 

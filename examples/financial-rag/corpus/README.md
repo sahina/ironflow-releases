@@ -22,7 +22,7 @@ ENTITY_PERIOD_ASOF.pdf
 
 ## Why synthetic
 
-The eval needs ground truth. Deriving thirty correct answers by reading a real
+The eval needs ground truth. Deriving thirteen correct answers by reading a real
 EDGAR filing is hours of careful work and easy to get subtly wrong — and an
 eval scored against slightly-wrong answers is worse than no eval.
 

@@ -38,7 +38,7 @@ pnpm dev
 # Trigger a review (separate terminal)
 pnpm trigger -- octocat/hello 42
 
-# Worker logs print the runId. Approve it:
+# `pnpm trigger` prints the runId (and the exact approve command). Approve it:
 pnpm approve -- <runId>
 
 # Or reject:
@@ -90,6 +90,7 @@ Edit `src/llm.ts`. The reference Anthropic implementation is in the comments —
 ## Files
 
 - `src/agent.ts` — agent definition wiring tool + llm + approve
+- `src/events.ts` — event names shared between the trigger script and the agent
 - `src/llm.ts` — LLM call closure (sub for real provider)
 - `src/tools.ts` — fetch-diff, post-comment
 - `src/worker.ts` — pull-mode worker entrypoint

@@ -36,9 +36,11 @@ Every step in the tutorial maps to a file here so you can read the doc with the 
 
 The walkthrough shows the HTTP route calling `placeOrderHandler(cmd)` directly. The Ironflow server currently requires a worker to register at least one function, so this example hosts the handler as a `place-order` function triggered by `create.order`. The route emits the command; the function executes the same `placeOrderHandler` body. Both paths produce identical CQRS shape — you get durable retries and step memoization for free.
 
-Only `createClient`, `createFunction`, `createProjection`, `createWorker`, `emit`, `streams.*`, `commandDedup()`, and the
+Only `createClient`, `createFunction`, `createProjection`, `createWorker`,
+`NonRetryableError`, `ironflow.{emit,streams.append,commandDedup}`, and the
 browser `ironflow.{configure,getProjection,subscribeToProjection,streams.read}` are
-Ironflow SDK calls. Everything else (`customerRepo`, `productCatalog`, `commandDedup`,
+Ironflow SDK calls. Everything else (`customerRepo`, `productCatalog`, the local
+`commandDedup` wrapper in [`lib/command-dedup.ts`](./lib/command-dedup.ts),
 `authenticate`, `foldOrder`, `placeOrder`, `placeOrderHandler`) is illustrative user
 code you would write in your own app.
 
@@ -66,6 +68,13 @@ cd examples/cqrs-order
 pnpm install
 ```
 
+`pnpm worker` loads `.env.local` with `--env-file` (not `--env-file-if-exists`), so
+the file must exist. It is gitignored — create it if your clone has none:
+
+```bash
+printf 'NEXT_PUBLIC_IRONFLOW_SERVER_URL=http://localhost:9123\nIRONFLOW_SERVER_URL=http://localhost:9123\n' > .env.local
+```
+
 ### 4. Start the projection worker
 
 ```bash
@@ -75,13 +84,21 @@ pnpm worker
 You should see:
 
 ```text
-CQRS walkthrough worker started
-  Functions:
-    - place-order              (triggered by create.order)
-  Projections:
-    - order-detail-view        (per-order, non-partitioned)
-    - customer-orders-list     (partitioned by customer.id)
+[ironflow-worker] Starting worker worker-<id> with 1 functions
+[ironflow-worker] Registered function: place-order
+[ironflow-worker] Connected to server at http://localhost:9123
+[ironflow-worker] Started 2 projection runner(s)
+[ironflow-worker] Projection runner started (streaming): order-detail-view
+[ironflow-worker] Projection runner started (streaming): customer-orders-list
 ```
+
+The `CQRS walkthrough worker started` banner at the bottom of `worker.ts` is
+chained off `worker.start()`, and `start()` does not resolve until the worker
+stops — so it does not appear at startup. The `[ironflow-worker]` lines above are
+what tell you the worker is up. It registers one function, `place-order`
+(triggered by `create.order`), and two projections, `order-detail-view`
+(per-order, non-partitioned) and `customer-orders-list` (partitioned by
+`customer.id`).
 
 ### 5. Start the Next.js app (new terminal)
 

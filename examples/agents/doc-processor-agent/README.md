@@ -66,12 +66,15 @@ Exit 0 ⇒ the agent recovered from the crash.
 ## Files
 
 - `src/agent.ts` — `agent()` definition with `tools` and `memory` config
+- `src/events.ts` — event names shared between the scripts and the agent
 - `src/tools.ts` — `defineTool()` for ocr, classify, publish
 - `src/memory.ts` — `createProjection()` deriving doc state
 - `src/worker.ts` — pull-mode worker entrypoint
 - `scripts/trigger.ts` — emit a `doc.received` event
 - `scripts/verify.ts` — poll the projection until a docId is published
 - `scripts/demo-crash-resume.sh` — the full kill -9 demo
+- `scripts/record-demo.sh` — narrative wrapper around the demo, tuned for asciinema
+- `web/` — browser UI for the same agent ([README](./web/README.md))
 
 ## Environment
 

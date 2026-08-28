@@ -49,6 +49,7 @@ Open <http://localhost:3000>.
 | File                 | Purpose                                                                           |
 | -------------------- | --------------------------------------------------------------------------------- |
 | `instrumentation.ts` | Starts Ironflow worker on Next.js boot (function + projection)                    |
+| `events.ts`          | Event names as a typed contract, shared by the worker and the UI                  |
 | `app/page.tsx`       | Client component — emits events via browser SDK, subscribes to projection updates |
 | `lib/ironflow.ts`    | Browser SDK configuration                                                         |
 | `app/layout.tsx`     | Root layout with header                                                           |

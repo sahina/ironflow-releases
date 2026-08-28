@@ -122,7 +122,7 @@ const client = new Anthropic();
 
 export async function summarizeWith(topic: string, sources: SearchResult[]) {
   const r = await client.messages.create({
-    model: "claude-opus-4-5",
+    model: "claude-opus-5",
     max_tokens: 1024,
     messages: [{
       role: "user",

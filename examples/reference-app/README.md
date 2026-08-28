@@ -51,6 +51,27 @@ When adding a new SDK feature, add a page here to validate it works end-to-end.
 3. **Open the application**:
    Navigate to [http://localhost:3000](http://localhost:3000) in your browser.
 
+4. **Start the pull-mode worker** (needed by `realtime/workers`, which triggers the
+   worker-only `data-pipeline` / `batch-processor` functions, and by
+   `event-sourcing/projections`, which reads the worker's `bank-account-balance`
+   projection):
+
+   ```bash
+   pnpm worker         # or: pnpm worker:grpc
+   ```
+
+   Both scripts load `.env.local` with `--env-file` (not `--env-file-if-exists`),
+   so the file must *exist* — but everything in it is optional, since the code
+   defaults to `http://localhost:9123`. It is gitignored, so create an empty one
+   if your clone has none:
+
+   ```bash
+   touch .env.local
+   ```
+
+   The vars the app reads, all optional: `IRONFLOW_SERVER_URL` / `IRONFLOW_URL`,
+   `IRONFLOW_API_KEY`, `IRONFLOW_SIGNING_KEY`, `NEXT_PUBLIC_URL`.
+
 ## Tech Stack
 
 - **Framework**: Next.js 16 with App Router
@@ -128,7 +149,8 @@ examples/reference-app/
 │   │   ├── webhooks.ts          # Webhook definitions
 │   │   └── utils.ts             # Utility functions
 │   └── hooks/
-│       └── use-mobile.ts        # Mobile detection hook
+│       ├── use-mobile.ts        # Mobile detection hook
+│       └── use-system-subscription.ts # Component-lifetime pub/sub subscription hook
 ├── package.json
 ├── next.config.ts
 └── tsconfig.json

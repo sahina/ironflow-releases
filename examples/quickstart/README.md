@@ -1,6 +1,6 @@
 # Quickstart: Continuous History in 5 Minutes
 
-This example builds a simple order processing system in ~80 lines that demonstrates all four pillars of **Continuous History**: emit, react, derive, and rewind.
+This example builds a simple order processing system in ~110 lines that demonstrates all four pillars of **Continuous History**: emit, react, derive, and rewind.
 
 ## What is Continuous History?
 
@@ -10,7 +10,9 @@ Record every change as an immutable event. React with durable workflows. Derive 
 
 A worker that:
 
-- **Reacts** to `order.placed` events with a 3-step durable workflow
+- **Reacts** to `order.placed` events with a 3-step durable workflow, then fans the
+  result out to a pub/sub topic with `step.publish()`
+- Runs a second function, `hourly-order-report`, on a `cron` trigger
 - **Derives** order statistics via a projection (pure reducer)
 - Supports **rewind** via recorded step execution
 
@@ -29,13 +31,14 @@ ironflow emit order.placed --data '{"orderId":"ord-1","total":49.99,"email":"a@b
 The `processOrder` function triggers on `order.placed` and runs three memoized steps. If the process crashes mid-way, it resumes from the last completed step — not from the beginning.
 
 ```typescript
-// worker.ts — lines 19-51
+// worker.ts — lines 19-62
 const processOrder = createFunction(
   { id: "process-order", triggers: [{ event: "order.placed" }], recording: true },
   async ({ event, step }) => {
     const order = await step.run("validate-order", async () => { ... });
     const payment = await step.run("process-payment", async () => { ... });
     await step.run("send-confirmation", async () => { ... });
+    await step.publish("notifications.email", { ... });
   },
 );
 ```
@@ -47,7 +50,7 @@ Each `step.run()` is memoized: on retry, completed steps return their cached res
 The `orderStats` projection is a pure reducer that builds a read model from the event stream. No manual queries — the projection stays consistent automatically.
 
 ```typescript
-// worker.ts — lines 56-67
+// worker.ts — lines 84-95
 const orderStats = createProjection({
   name: "order-stats",
   events: ["order.placed"],
@@ -104,10 +107,18 @@ pnpm tsx worker.ts
 You should see:
 
 ```text
-✓ Worker started — listening for events
-  Functions:   process-order
-  Projections: order-stats
+[ironflow-worker] Starting worker worker-<id> with 2 functions
+[ironflow-worker] Registered function: process-order
+[ironflow-worker] Registered function: hourly-order-report
+[ironflow-worker] Connected to server at http://localhost:9123
+[ironflow-worker] Started 1 projection runner(s)
+[ironflow-worker] Projection runner started (streaming): order-stats
 ```
+
+The `✓ Worker started` banner at the bottom of `worker.ts` is chained off
+`worker.start()`, and `start()` does not resolve until the worker stops — so it
+does not appear at startup. The `[ironflow-worker]` lines above are what tell you
+the worker is up.
 
 ### 3. Emit an event
 

@@ -31,11 +31,13 @@ export function useIronflow() {
 interface IronflowProviderProps {
   children: ReactNode;
   serverUrl?: string;
+  sessionToken?: string;
 }
 
 export function IronflowProvider({
   children,
   serverUrl = "http://localhost:9123",
+  sessionToken,
 }: IronflowProviderProps) {
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(true);
@@ -43,10 +45,9 @@ export function IronflowProvider({
 
   useEffect(() => {
     // Configure the ironflow client
-    const apiKey = process.env.NEXT_PUBLIC_IRONFLOW_API_KEY;
     ironflow.configure({
       serverUrl,
-      ...(apiKey && { auth: { apiKey } }),
+      ...(sessionToken && { auth: { token: sessionToken } }),
       reconnect: {
         enabled: true,
         maxAttempts: 10,
@@ -84,7 +85,7 @@ export function IronflowProvider({
       ironflow.disconnect();
       setIsConnected(false);
     };
-  }, [serverUrl]);
+  }, [serverUrl, sessionToken]);
 
   return (
     <IronflowContext.Provider value={{ isConnected, isConnecting, error }}>

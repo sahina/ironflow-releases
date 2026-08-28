@@ -187,17 +187,17 @@ pnpm start
 You should see:
 
 ```text
-  Fraud Detection Pipeline — Running
-  ──────────────────────────────────
-  Function:    fraud/evaluate
-  Projection:  fraud-decision-stats
-  Model:       fraud_v4.2
-  KV Bucket:   fraud-velocity
-  Entity:      fraud-eval:{txnId}
-  Topic:       fraud-alerts
-
-  Waiting for transaction.authorized events...
+[ironflow-worker] Starting worker worker-<id> with 1 functions
+[ironflow-worker] Registered function: fraud/evaluate
+[ironflow-worker] Connected to server at http://localhost:9123
+[ironflow-worker] Started 1 projection runner(s)
+[ironflow-worker] Projection runner started (streaming): fraud-decision-stats
 ```
+
+The `Fraud Detection Pipeline — Running` banner at the bottom of `worker.ts` is
+chained off `worker.start()`, and `start()` does not resolve until the worker
+stops — so it does not appear at startup. The `[ironflow-worker]` lines above are
+what tell you the worker is up.
 
 ### Step 3: Seed Sample Transactions
 

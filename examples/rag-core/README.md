@@ -228,5 +228,7 @@ events.ts        the event contract — the index is a function of these
 workflows/       the durable ingest workflow
 projections/     the external projection that writes rag.db
 worker.ts        createWorker — pull mode
+setup.ts         pnpm setup — creates rag.db (chunks + vec_chunks)
 cli.ts           pnpm ingest / pnpm ask
+tests/           pure-logic tests — pnpm test
 ```
