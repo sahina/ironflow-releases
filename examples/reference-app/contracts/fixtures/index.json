@@ -1,0 +1,29 @@
+{
+  "$comment": "Language-neutral fixture manifest. Go, TypeScript and Python contract tests read this file and loop; none of them parse filenames or copy fixtures.",
+  "schemaDir": "schemas",
+  "cases": [
+    { "fixture": "fixtures/valid/place.order.json", "schema": "place.order.v1.schema.json", "expect": "valid" },
+    { "fixture": "fixtures/valid/approve.order.json", "schema": "approve.order.v1.schema.json", "expect": "valid" },
+    { "fixture": "fixtures/valid/demo.payment.continue.json", "schema": "demo.payment.continue.v1.schema.json", "expect": "valid" },
+    { "fixture": "fixtures/valid/order.placed.json", "schema": "order.placed.v1.schema.json", "expect": "valid" },
+    { "fixture": "fixtures/valid/order.approved.json", "schema": "order.approved.v1.schema.json", "expect": "valid" },
+    { "fixture": "fixtures/valid/order.released.json", "schema": "order.released.v1.schema.json", "expect": "valid" },
+    { "fixture": "fixtures/valid/payment.authorized.json", "schema": "payment.authorized.v1.schema.json", "expect": "valid" },
+    { "fixture": "fixtures/valid/payment.captured.json", "schema": "payment.captured.v1.schema.json", "expect": "valid" },
+    { "fixture": "fixtures/valid/payment.declined.json", "schema": "payment.declined.v1.schema.json", "expect": "valid" },
+    { "fixture": "fixtures/valid/order.paid.json", "schema": "order.paid.v1.schema.json", "expect": "valid" },
+    { "fixture": "fixtures/valid/order.payment_failed.json", "schema": "order.payment_failed.v1.schema.json", "expect": "valid" },
+    { "fixture": "fixtures/valid/notifications.order-status.json", "schema": "notifications.order-status.v1.schema.json", "expect": "valid" },
+    { "fixture": "fixtures/valid/notification.sent.json", "schema": "notification.sent.v1.schema.json", "expect": "valid" },
+
+    { "fixture": "fixtures/invalid/schema/place.order.missing-order-id.json", "schema": "place.order.v1.schema.json", "expect": "schema-invalid", "reason": "orderId is required" },
+    { "fixture": "fixtures/invalid/schema/place.order.empty-items.json", "schema": "place.order.v1.schema.json", "expect": "schema-invalid", "reason": "an order has at least one line item" },
+    { "fixture": "fixtures/invalid/schema/place.order.non-usd-currency.json", "schema": "place.order.v1.schema.json", "expect": "schema-invalid", "reason": "currency is fixed to USD" },
+    { "fixture": "fixtures/invalid/schema/place.order.unsafe-entity-id.json", "schema": "place.order.v1.schema.json", "expect": "schema-invalid", "reason": "orderId must be one safe Ironflow subject segment" },
+    { "fixture": "fixtures/invalid/schema/place.order.missing-metadata.json", "schema": "place.order.v1.schema.json", "expect": "schema-invalid", "reason": "every message carries correlation, causation, producer and demo session metadata" },
+    { "fixture": "fixtures/invalid/schema/order.paid.unknown-field.json", "schema": "order.paid.v1.schema.json", "expect": "schema-invalid", "reason": "unknown fields are rejected" },
+
+    { "fixture": "fixtures/invalid/domain/place.order.unknown-catalog-item.json", "schema": "place.order.v1.schema.json", "expect": "domain-invalid", "reason": "sku is not in the committed catalog; only the ordering service can tell" },
+    { "fixture": "fixtures/invalid/domain/place.order.incorrect-total.json", "schema": "place.order.v1.schema.json", "expect": "domain-invalid", "reason": "totalCents disagrees with the catalog; the ordering service recalculates and rejects" }
+  ]
+}

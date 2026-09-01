@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ironflow.run/reference-app/contracts/catalog.schema.json",
+  "title": "Reference app product catalog",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "currency", "products"],
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "currency": { "type": "string", "const": "USD" },
+    "products": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sku", "name", "unitPriceCents"],
+        "properties": {
+          "sku": { "$ref": "https://ironflow.run/reference-app/contracts/common.v1.schema.json#/$defs/sku" },
+          "name": { "type": "string", "minLength": 1, "maxLength": 60 },
+          "unitPriceCents": { "$ref": "https://ironflow.run/reference-app/contracts/common.v1.schema.json#/$defs/amountCents" }
+        }
+      }
+    }
+  }
+}

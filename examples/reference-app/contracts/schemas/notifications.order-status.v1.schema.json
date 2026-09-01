@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ironflow.run/reference-app/contracts/notifications.order-status.v1.schema.json",
+  "title": "notifications.order-status message (v1)",
+  "description": "Pub/Sub topic consumed by the Python notification service.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "data",
+    "metadata"
+  ],
+  "properties": {
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "messageId",
+        "orderId",
+        "status",
+        "customerEmail",
+        "occurredAt"
+      ],
+      "properties": {
+        "messageId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "orderId": {
+          "$ref": "https://ironflow.run/reference-app/contracts/common.v1.schema.json#/$defs/entityId"
+        },
+        "status": {
+          "$ref": "https://ironflow.run/reference-app/contracts/common.v1.schema.json#/$defs/orderStatus"
+        },
+        "customerEmail": {
+          "$ref": "https://ironflow.run/reference-app/contracts/common.v1.schema.json#/$defs/email"
+        },
+        "occurredAt": {
+          "$ref": "https://ironflow.run/reference-app/contracts/common.v1.schema.json#/$defs/timestamp"
+        }
+      }
+    },
+    "metadata": {
+      "$ref": "https://ironflow.run/reference-app/contracts/metadata.v1.schema.json"
+    }
+  }
+}

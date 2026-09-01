@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ironflow.run/reference-app/contracts/common.v1.schema.json",
+  "title": "Shared primitives (v1)",
+  "$defs": {
+    "entityId": {
+      "description": "One safe Ironflow subject segment: lowercase UUID without separators.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "sku": { "type": "string", "pattern": "^sku_[a-z0-9_]{1,32}$" },
+    "amountCents": { "type": "integer", "minimum": 1 },
+    "currency": { "type": "string", "const": "USD" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "email": { "type": "string", "format": "email", "maxLength": 254 },
+    "paymentMethodToken": {
+      "description": "Demo scenario selector. pm_crash pauses before capture until demo.payment.continue.",
+      "type": "string",
+      "enum": ["pm_success", "pm_decline", "pm_crash"]
+    },
+    "orderStatus": {
+      "type": "string",
+      "enum": ["pending_approval", "processing_payment", "paid", "payment_failed"]
+    }
+  }
+}

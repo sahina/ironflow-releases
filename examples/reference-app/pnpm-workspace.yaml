@@ -1,4 +1,6 @@
 packages:
+  - 'apps/web'
+  - 'services/payments-node'
   - '../../sdk/js/core'
   - '../../sdk/js/browser'
   - '../../sdk/js/node'

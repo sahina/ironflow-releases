@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ironflow.run/reference-app/contracts/order.released.v1.schema.json",
+  "title": "order.released fact (v1)",
+  "description": "The durable approval wait completed. Payment may start.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "data",
+    "metadata"
+  ],
+  "properties": {
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "orderId",
+        "totalCents",
+        "currency",
+        "paymentMethodToken",
+        "releasedAt"
+      ],
+      "properties": {
+        "orderId": {
+          "$ref": "https://ironflow.run/reference-app/contracts/common.v1.schema.json#/$defs/entityId"
+        },
+        "totalCents": {
+          "$ref": "https://ironflow.run/reference-app/contracts/common.v1.schema.json#/$defs/amountCents"
+        },
+        "currency": {
+          "$ref": "https://ironflow.run/reference-app/contracts/common.v1.schema.json#/$defs/currency"
+        },
+        "paymentMethodToken": {
+          "$ref": "https://ironflow.run/reference-app/contracts/common.v1.schema.json#/$defs/paymentMethodToken"
+        },
+        "releasedAt": {
+          "$ref": "https://ironflow.run/reference-app/contracts/common.v1.schema.json#/$defs/timestamp"
+        }
+      }
+    },
+    "metadata": {
+      "$ref": "https://ironflow.run/reference-app/contracts/metadata.v1.schema.json"
+    }
+  }
+}

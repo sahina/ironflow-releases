@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ironflow.run/reference-app/contracts/order.paid.v1.schema.json",
+  "title": "order.paid fact (v1)",
+  "description": "Caused by payment.captured only, never by payment.authorized.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "data",
+    "metadata"
+  ],
+  "properties": {
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "orderId",
+        "captureId",
+        "totalCents",
+        "currency",
+        "paidAt"
+      ],
+      "properties": {
+        "orderId": {
+          "$ref": "https://ironflow.run/reference-app/contracts/common.v1.schema.json#/$defs/entityId"
+        },
+        "captureId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "totalCents": {
+          "$ref": "https://ironflow.run/reference-app/contracts/common.v1.schema.json#/$defs/amountCents"
+        },
+        "currency": {
+          "$ref": "https://ironflow.run/reference-app/contracts/common.v1.schema.json#/$defs/currency"
+        },
+        "paidAt": {
+          "$ref": "https://ironflow.run/reference-app/contracts/common.v1.schema.json#/$defs/timestamp"
+        }
+      }
+    },
+    "metadata": {
+      "$ref": "https://ironflow.run/reference-app/contracts/metadata.v1.schema.json"
+    }
+  }
+}

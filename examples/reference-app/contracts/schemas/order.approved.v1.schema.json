@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ironflow.run/reference-app/contracts/order.approved.v1.schema.json",
+  "title": "order.approved fact (v1)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "data",
+    "metadata"
+  ],
+  "properties": {
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "orderId",
+        "approvedBy",
+        "approvedAt"
+      ],
+      "properties": {
+        "orderId": {
+          "$ref": "https://ironflow.run/reference-app/contracts/common.v1.schema.json#/$defs/entityId"
+        },
+        "approvedBy": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "approvedAt": {
+          "$ref": "https://ironflow.run/reference-app/contracts/common.v1.schema.json#/$defs/timestamp"
+        }
+      }
+    },
+    "metadata": {
+      "$ref": "https://ironflow.run/reference-app/contracts/metadata.v1.schema.json"
+    }
+  }
+}

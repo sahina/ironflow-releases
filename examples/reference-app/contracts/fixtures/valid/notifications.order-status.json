@@ -1,0 +1,15 @@
+{
+  "data": {
+    "messageId": "0f3b6c1d9a4e47b28c5d1e6f70a2b3c4-paid",
+    "orderId": "0f3b6c1d9a4e47b28c5d1e6f70a2b3c4",
+    "status": "paid",
+    "customerEmail": "ada@example.com",
+    "occurredAt": "2026-08-28T10:01:06Z"
+  },
+  "metadata": {
+    "correlationId": "0f3b6c1d9a4e47b28c5d1e6f70a2b3c4",
+    "causationId": "evt_order_paid_1",
+    "producer": "orders-go",
+    "demoSessionId": "8a1c2d3e4f5061728394a5b6c7d8e9f0"
+  }
+}

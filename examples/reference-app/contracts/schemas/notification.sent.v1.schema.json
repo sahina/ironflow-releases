@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ironflow.run/reference-app/contracts/notification.sent.v1.schema.json",
+  "title": "notification.sent fact (v1)",
+  "description": "Records a local delivery. Never changes order state.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "data",
+    "metadata"
+  ],
+  "properties": {
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "orderId",
+        "messageId",
+        "channel",
+        "status",
+        "sentAt"
+      ],
+      "properties": {
+        "orderId": {
+          "$ref": "https://ironflow.run/reference-app/contracts/common.v1.schema.json#/$defs/entityId"
+        },
+        "messageId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "channel": {
+          "type": "string",
+          "const": "local-log"
+        },
+        "status": {
+          "$ref": "https://ironflow.run/reference-app/contracts/common.v1.schema.json#/$defs/orderStatus"
+        },
+        "sentAt": {
+          "$ref": "https://ironflow.run/reference-app/contracts/common.v1.schema.json#/$defs/timestamp"
+        }
+      }
+    },
+    "metadata": {
+      "$ref": "https://ironflow.run/reference-app/contracts/metadata.v1.schema.json"
+    }
+  }
+}

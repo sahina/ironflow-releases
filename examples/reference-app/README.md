@@ -1,206 +1,116 @@
-# Ironflow Reference App
+# Ironflow reference app
 
-Comprehensive feature validation app that exercises the full Ironflow SDK surface. **This is not a learning example** — see [quickstart/](../quickstart/) for getting started or [ddd-order-management/](../ddd-order-management/) for DDD patterns.
+A small, realistic order-processing system built from four processes in three
+languages, coordinated by one local Ironflow server. It is a reference system,
+not a feature gallery: the domain is deliberately tiny so the coordination is
+the thing you look at.
 
-## Purpose
+> **Under construction.** This example is being rebuilt in slices, tracked in
+> [#1894](https://github.com/sahina/ironflow/issues/1894). The shared contracts
+> and the launcher exist today: `make reference-app` starts a real engine on a
+> discovered port and holds it open. The four application processes land in the
+> following slices, so the components marked *(not yet)* do not start yet. The
+> previous SDK feature gallery that lived here was removed; its history is in git.
 
-- Validate every SDK API works end-to-end with a real UI
-- Serve as a reference for specific API usage patterns
-- Regression testing for SDK changes
+## The system
 
-## Feature Coverage
+| Component | Stack | Responsibility |
+|---|---|---|
+| Web *(not yet)* | Next.js, `@ironflow/browser` | Shop, operations view, system map, live state |
+| Ordering *(not yet)* | Go SDK | Order stream, approval rules, durable wait, managed projection |
+| Payments *(not yet)* | Node TypeScript SDK | Payment stream, durable authorize/capture, crash recovery |
+| Notifications *(not yet)* | Python `ironflow-py` | Client-only subscriber with a persisted resume cursor |
 
-| Category | Pages | CH Pillars | Key APIs Validated |
-| ---------- | ------- | ------------ | ------------------- |
-| Events | 6 | Emit | emit, subscribe, filter, replay, webhooks |
-| Workflows | 10 | React | trigger, runs, steps, cron, hot-patch, parallel, invoke, saga, secrets, timeouts |
-| Pub/Sub | 3 | Emit, React | publish, subscribe, topics |
-| Real-time | 4 | React | connection state, consumer groups, concurrency, workers |
-| Event Sourcing | 4 | Emit, Derive, Rewind | streams, projections, subscriptions, upcasting |
-| Configuration | 3 | — | config set/patch/watch |
-| KV Store | 3 | — | buckets, keys, watch |
+The services never call each other over business HTTP. They communicate through
+Ironflow commands, entity events, projections and Pub/Sub.
 
-## For Contributors
-
-When adding a new SDK feature, add a page here to validate it works end-to-end.
-
-## Prerequisites
-
-- Go 1.26+ (required to build Ironflow)
-- Node.js 22+
-- pnpm
-
-## Getting Started
-
-1. **Build and start the Ironflow server** (from the repository root):
-
-   ```bash
-   make all                       # Build binary and dashboard
-   ./build/ironflow serve --dev   # Start server at localhost:9123
-   ```
-
-2. **Build the JS SDK and install dependencies**:
-
-   ```bash
-   cd examples/reference-app
-   pnpm -C ../../sdk/js build   # Build the JS SDK (examples link to local packages)
-   pnpm install
-   pnpm dev
-   ```
-
-3. **Open the application**:
-   Navigate to [http://localhost:3000](http://localhost:3000) in your browser.
-
-4. **Start the pull-mode worker** (needed by `realtime/workers`, which triggers the
-   worker-only `data-pipeline` / `batch-processor` functions, and by
-   `event-sourcing/projections`, which reads the worker's `bank-account-balance`
-   projection):
-
-   ```bash
-   pnpm worker         # or: pnpm worker:grpc
-   ```
-
-   Both scripts load `.env.local` with `--env-file` (not `--env-file-if-exists`),
-   so the file must *exist* — but everything in it is optional, since the code
-   defaults to `http://localhost:9123`. It is gitignored, so create an empty one
-   if your clone has none:
-
-   ```bash
-   touch .env.local
-   ```
-
-   The vars the app reads, all optional: `IRONFLOW_SERVER_URL` / `IRONFLOW_URL`,
-   `IRONFLOW_API_KEY`, `IRONFLOW_SIGNING_KEY`, `NEXT_PUBLIC_URL`.
-
-## Tech Stack
-
-- **Framework**: Next.js 16 with App Router
-- **UI**: React 19, Tailwind CSS 4, shadcn/ui (New York style)
-- **Ironflow SDKs**:
-  - `@ironflow/browser` - Client-side real-time subscriptions
-  - `@ironflow/node` - Server-side workflow handlers
-- **Form Handling**: React Hook Form with Zod validation
-- **Charts**: Recharts
-- **Icons**: Lucide React
-
-## Project Structure
+## What exists today
 
 ```text
-examples/reference-app/
-├── src/
-│   ├── app/
-│   │   ├── api/
-│   │   │   ├── ironflow/        # Ironflow HTTP handler + function registration
-│   │   │   └── pubsub/          # Pub/sub publish endpoint
-│   │   ├── events/
-│   │   │   ├── emit/            # Event emission demo
-│   │   │   ├── subscribe/       # Event subscription demo
-│   │   │   ├── patterns/        # Pattern matching demo
-│   │   │   ├── filtering/       # CEL filter expressions demo
-│   │   │   ├── replay/          # Event replay demo
-│   │   │   └── webhooks/        # Webhook ingestion demo
-│   │   ├── workflows/
-│   │   │   ├── trigger/         # Workflow trigger demo
-│   │   │   ├── runs/            # Run listing and detail demo
-│   │   │   ├── steps/           # Step visualization demo
-│   │   │   ├── cron/            # Cron-scheduled workflows demo
-│   │   │   ├── hot-patch/       # Hot patching failed steps demo
-│   │   │   ├── parallel/        # Parallel execution demo
-│   │   │   ├── invoke/          # step.invoke() / invokeAsync() demo
-│   │   │   ├── sagas/           # Saga compensation demo
-│   │   │   ├── secrets/         # Secrets management demo
-│   │   │   └── timeouts/        # Step-level timeouts demo
-│   │   ├── pubsub/
-│   │   │   ├── publish/         # Topic publishing demo
-│   │   │   ├── subscribe/       # Topic subscription demo
-│   │   │   └── topics/          # Topic management demo
-│   │   ├── realtime/
-│   │   │   ├── connection/      # Connection state demo
-│   │   │   ├── consumer-groups/ # Consumer groups demo
-│   │   │   ├── concurrency/     # Concurrency control demo
-│   │   │   └── workers/         # Worker management demo
-│   │   ├── event-sourcing/
-│   │   │   ├── streams/         # Entity streams demo
-│   │   │   ├── projections/     # Projections demo
-│   │   │   ├── subscribe/       # Stream subscription demo
-│   │   │   └── upcasting/       # Event versioning demo
-│   │   ├── config/
-│   │   │   ├── configs/         # Config listing demo
-│   │   │   ├── editor/          # Config editor demo
-│   │   │   └── watch/           # Config watch demo
-│   │   ├── kv/
-│   │   │   ├── buckets/         # KV bucket management demo
-│   │   │   ├── keys/            # KV key operations demo
-│   │   │   └── watch/           # KV watch demo
-│   │   ├── layout.tsx           # Root layout with providers
-│   │   └── page.tsx             # Home page
-│   ├── worker.ts                # Pull mode worker script
-│   ├── components/
-│   │   ├── ui/                  # shadcn/ui components
-│   │   ├── app-sidebar.tsx      # Navigation sidebar
-│   │   ├── connection-status.tsx # Connection indicator
-│   │   ├── error-alert.tsx      # Error display component
-│   │   ├── event-card.tsx       # Event card component
-│   │   ├── event-emit-form.tsx  # Event emission form
-│   │   └── ironflow-provider.tsx # Ironflow client provider
-│   ├── lib/
-│   │   ├── events.ts            # Shared event-name constants
-│   │   ├── functions.ts         # Workflow function definitions
-│   │   ├── webhooks.ts          # Webhook definitions
-│   │   └── utils.ts             # Utility functions
-│   └── hooks/
-│       ├── use-mobile.ts        # Mobile detection hook
-│       └── use-system-subscription.ts # Component-lifetime pub/sub subscription hook
-├── package.json
-├── next.config.ts
-└── tsconfig.json
+contracts/
+  schemas/       One JSON Schema per command, fact and notification message
+  fixtures/      Valid and invalid payloads, plus index.json (the case manifest)
+  catalog.json   The committed three-product catalog
+  validate.mjs   The TypeScript-side contract test
+scripts/
+  dev.mjs        The supervisor: starts the engine, then every service
+  control.mjs    The presenter crash control
+  reset.mjs      The guarded delete
+  test-live.mjs  The live gate, against the real engine binary
+  lib/processes.mjs  Spawn, kill and the child table the services plug into
+  lib/readiness.mjs  Poll-until helpers with one deadline and message each
+  lib/control.mjs    The handshake file, the control plane, the delete guard
+  lib/*.test.mjs     Unit tests, run by `make supervisor`
+CONTEXT-MAP.md   Domain vocabulary, ownership, stream writers, causal rules
+services/*/CONTEXT.md   One document per bounded context
 ```
 
-## SDK Usage Examples
+`contracts/` is the cross-language source of truth. Go, TypeScript and Python
+each validate the same fixtures against the same schemas, so a payload shape
+cannot drift between languages. No fixture is ever copied into a service.
 
-### Browser Client (Real-time Subscriptions)
+Two conventions worth knowing before you read the schemas:
 
-```typescript
-import { ironflow } from "@ironflow/browser";
+- Each schema file is a `{data, metadata}` envelope. That envelope is a
+  **test-time shape** — Ironflow carries data and metadata on separate channels,
+  so a service registers the `properties.data` subschema, never the envelope.
+- Fixtures under `fixtures/invalid/schema/` must be rejected by the schema.
+  Fixtures under `fixtures/invalid/domain/` are well formed on the wire on
+  purpose: only the ordering service, which holds the catalog, can reject them.
 
-// Configure and connect (typically done in a provider)
-ironflow.configure({ serverUrl: "http://localhost:9123" });
-await ironflow.connect();
+## Commands
 
-// Subscribe to events
-const subscription = await ironflow.subscribe("events:user.created", {
-  onEvent: (event) => {
-    console.log("Received event:", event);
-  },
-});
+Run these from the **repository root**; the two that start a server build the
+engine first.
 
-// Cleanup
-subscription.unsubscribe();
+```bash
+make reference-app                 # build and start the whole system; Ctrl-C stops it
+make reference-app-crash-payment   # (not yet) from a second terminal: crash and restart the payment worker
+make reference-app-reset           # delete examples/reference-app/.data and nothing else
+make test-reference-app            # the fast gate: contracts, launcher tests, typecheck
+make test-reference-app-live       # the live gate: the same launcher, the real engine
 ```
 
-### Node Handler (Serverless Workflows)
+Run `make` **in this directory** for the workspace-only checks (`make contracts`,
+`make supervisor`, `make check`).
 
-```typescript
-import { serve, ironflow } from "@ironflow/node";
+## Running it
 
-// Define a workflow function
-const processOrder = ironflow.createFunction(
-  {
-    id: "process-order",
-    triggers: [{ event: "order.created" }],
-  },
-  async ({ event, step }) => {
-    const result = await step.run("validate", async () => {
-      return { orderId: (event.data as { orderId: string }).orderId, status: "validated" };
-    });
-    return result;
-  }
-);
+`make reference-app` picks nothing. The engine binds port `0` and reports the
+port it was given; the supervisor reads it and passes that URL to every child
+through the environment. Two checkouts can run at once, and there is no
+configuration to edit.
 
-// Create the HTTP handler
-const handler = serve({
-  functions: [processOrder],
-});
+Startup order is engine, then readiness, then services, then the web
+application. A child that exits before it is ready fails the whole start with a
+named reason rather than leaving you at a silent prompt.
 
-export const POST = handler;
-```
+Everything lives in `.data/`, which is git-ignored:
+
+| Path | What it is |
+|---|---|
+| `ironflow.db`, `nats/` | Engine history. Survives restarts on purpose. |
+| `bootstrap-key.json` | The admin key the engine writes on first boot. |
+| `port.json` | The port the engine bound this run. |
+| `supervisor.json` | The crash control's port and token, mode `0600`. |
+
+Authentication stays **on**. The engine runs with a real bootstrap admin key
+rather than `--dev`, which would leave an unauthenticated admin API on a
+loopback port that any local process could drive. The supervisor holds that key
+and hands it to the services; it never reaches browser code.
+
+A normal run keeps its history. The **New demo session** control in the UI
+filters what you see instead of deleting *(not yet)*. `make reference-app-reset`
+is the only thing that deletes: it re-derives its target from its own location,
+refuses anything that is not `examples/reference-app/.data`, refuses a symlink,
+and refuses to run at all while the supervisor is alive.
+
+## Reading order
+
+Contracts first, then the services in the order events flow through them:
+Ordering, Payments, Notifications, and the web application last.
+
+## Not a production template
+
+Direct browser commands and development bootstrap access are deliberate local
+demo choices. Do not copy them into a production application.

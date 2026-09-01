@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ironflow.run/reference-app/contracts/payment.captured.v1.schema.json",
+  "title": "payment.captured fact (v1)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "data",
+    "metadata"
+  ],
+  "properties": {
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "orderId",
+        "authorizationId",
+        "captureId",
+        "amountCents",
+        "currency",
+        "capturedAt"
+      ],
+      "properties": {
+        "orderId": {
+          "$ref": "https://ironflow.run/reference-app/contracts/common.v1.schema.json#/$defs/entityId"
+        },
+        "authorizationId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "captureId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "amountCents": {
+          "$ref": "https://ironflow.run/reference-app/contracts/common.v1.schema.json#/$defs/amountCents"
+        },
+        "currency": {
+          "$ref": "https://ironflow.run/reference-app/contracts/common.v1.schema.json#/$defs/currency"
+        },
+        "capturedAt": {
+          "$ref": "https://ironflow.run/reference-app/contracts/common.v1.schema.json#/$defs/timestamp"
+        }
+      }
+    },
+    "metadata": {
+      "$ref": "https://ironflow.run/reference-app/contracts/metadata.v1.schema.json"
+    }
+  }
+}

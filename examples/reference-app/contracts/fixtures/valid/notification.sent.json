@@ -1,0 +1,15 @@
+{
+  "data": {
+    "orderId": "0f3b6c1d9a4e47b28c5d1e6f70a2b3c4",
+    "messageId": "0f3b6c1d9a4e47b28c5d1e6f70a2b3c4-paid",
+    "channel": "local-log",
+    "status": "paid",
+    "sentAt": "2026-08-28T10:01:07Z"
+  },
+  "metadata": {
+    "correlationId": "0f3b6c1d9a4e47b28c5d1e6f70a2b3c4",
+    "causationId": "msg_order_status_paid",
+    "producer": "notifications-python",
+    "demoSessionId": "8a1c2d3e4f5061728394a5b6c7d8e9f0"
+  }
+}

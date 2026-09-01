@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ironflow.run/reference-app/contracts/metadata.v1.schema.json",
+  "title": "Message metadata (v1)",
+  "description": "Carried on the Ironflow metadata channel, beside the message data.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["correlationId", "causationId", "producer", "demoSessionId"],
+  "properties": {
+    "correlationId": { "$ref": "https://ironflow.run/reference-app/contracts/common.v1.schema.json#/$defs/entityId" },
+    "causationId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "producer": { "type": "string", "enum": ["web", "orders-go", "payments-node", "notifications-python"] },
+    "demoSessionId": { "$ref": "https://ironflow.run/reference-app/contracts/common.v1.schema.json#/$defs/entityId" }
+  }
+}

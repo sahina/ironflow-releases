@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "currency": "USD",
+  "products": [
+    { "sku": "sku_desk_lamp", "name": "Desk Lamp", "unitPriceCents": 4500 },
+    { "sku": "sku_notebook", "name": "Notebook", "unitPriceCents": 1200 },
+    { "sku": "sku_headphones", "name": "Headphones", "unitPriceCents": 18900 }
+  ]
+}

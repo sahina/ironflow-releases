@@ -25,7 +25,7 @@ Every Ironflow application follows four pillars:
 | [go-quickstart/](./go-quickstart/)               | Go SDK validation         | Go developers         | Same CH flow in Go                          |
 | [todo-web/](./todo-web/)                         | Bare-bones Next.js todo   | Getting started       | Embedded worker, events, projections        |
 | [travel-booking/](./travel-booking/)             | The 90-second showcase demo | Anyone new to Ironflow | Saga rollback, crash-resume, a race for the last seat, time travel |
-| [reference-app/](./reference-app/)               | Full API validation       | SDK contributors, QA  | Exhaustive feature coverage (30+ pages)     |
+| [reference-app/](./reference-app/)               | Polyglot order processing | Multi-language systems | Go, TypeScript and Python services on one Ironflow backend (in progress, #1894) |
 | [fraud-detection/](./fraud-detection/)           | Real-time risk pipeline   | Building real systems | `step.parallel()`, KV counters, pub/sub alerts |
 | [compliance-audit/](./compliance-audit/)         | Audit trail + execution proof | Regulated workloads | Entity-stream lineage in the Compliance dashboard |
 | [ai-agent/](./ai-agent/)                         | Durable AI research agent | AI engineers          | `agent()`, `tool()`, `llm()`, event-sourced memory |
@@ -72,8 +72,9 @@ cd examples/travel-booking && pnpm install && pnpm dev
 # Run the Go quickstart
 cd examples/go-quickstart && go run main.go
 
-# Run the reference app
-cd examples/reference-app && pnpm install && pnpm dev
+# Validate the reference app's cross-language contracts
+# (the full system launcher arrives with the supervisor, #1894)
+cd examples/reference-app && pnpm install && make contracts
 
 # Run the fraud detection pipeline
 cd examples/fraud-detection && pnpm install && pnpm start
