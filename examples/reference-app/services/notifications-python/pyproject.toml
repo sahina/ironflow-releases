@@ -1,0 +1,50 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "reference-notifications"
+version = "0.1.0"
+description = "Notifications context of the Ironflow polyglot reference app: a client-only ConnectRPC subscriber with a persisted resume cursor."
+requires-python = ">=3.10"
+dependencies = [
+  # Pinned to a released wheel, from PyPI. Not the repository's own version —
+  # this example exists partly to prove the published package works, so it
+  # deliberately lags the working tree rather than tracking it.
+  #
+  # Contributors changing sdk/python can point this at the working tree instead:
+  #   pip install -e ../../../../sdk/python
+  # run AFTER the install below. That is a deliberate override, not the default
+  # path — the example must keep proving the released wheel works.
+  "ironflow-py==0.33.1",
+  # Exact, like the SDK pin above: `make test-reference-app` is a gate, and a
+  # gate whose dependency set moves under it fails for reasons that are not the
+  # diff. There is no lockfile here; these three lines are it.
+  "jsonschema==4.26.0",
+]
+
+[project.optional-dependencies]
+# types-jsonschema, not an ignore_missing_imports override: the package IS
+# installed, so mypy reports `import-untyped` rather than `import-not-found`
+# and the override silences neither. Real stubs type the call site instead.
+dev = ["pytest==9.1.1", "mypy==2.3.1", "ruff==0.16.5", "types-jsonschema==4.26.0.20260518"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/reference_notifications"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+mypy_path = "src"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

@@ -36,7 +36,10 @@ services:
       retries: 3
 
   postgres:
-    image: postgres:16-alpine
+    # The default is frozen at the major that initdb'd the postgres-data volume
+    # below — a newer major refuses to boot against it. Override POSTGRES_IMAGE
+    # only after migrating the volume (pg_dump/restore or pg_upgrade).
+    image: ${POSTGRES_IMAGE:-postgres:16-alpine}
     profiles:
       - postgres
     environment:

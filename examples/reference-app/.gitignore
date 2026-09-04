@@ -17,7 +17,15 @@ __pycache__/
 *.egg-info/
 
 # go
+services/orders-go/bin/
 *.test
+
+# Next writes these on every `next dev`
+# (node_modules/next/dist/server/lib/generate-agent-files.js). The repository
+# already ignores AGENTS.md everywhere, and the generated CLAUDE.md does nothing
+# but import it — committing one without the other points at a file that is not
+# in the repository. `next dev` recreates both.
+apps/web/CLAUDE.md
 
 # misc
 .DS_Store

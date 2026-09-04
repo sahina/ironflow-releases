@@ -25,7 +25,7 @@ Every Ironflow application follows four pillars:
 | [go-quickstart/](./go-quickstart/)               | Go SDK validation         | Go developers         | Same CH flow in Go                          |
 | [todo-web/](./todo-web/)                         | Bare-bones Next.js todo   | Getting started       | Embedded worker, events, projections        |
 | [travel-booking/](./travel-booking/)             | The 90-second showcase demo | Anyone new to Ironflow | Saga rollback, crash-resume, a race for the last seat, time travel |
-| [reference-app/](./reference-app/)               | Polyglot order processing | Multi-language systems | Go, TypeScript and Python services on one Ironflow backend (in progress, #1894) |
+| [reference-app/](./reference-app/)               | Polyglot order processing | Multi-language systems | Go, TypeScript and Python services on one Ironflow backend: entity streams, a durable wait, durable steps, Pub/Sub and crash recovery |
 | [fraud-detection/](./fraud-detection/)           | Real-time risk pipeline   | Building real systems | `step.parallel()`, KV counters, pub/sub alerts |
 | [compliance-audit/](./compliance-audit/)         | Audit trail + execution proof | Regulated workloads | Entity-stream lineage in the Compliance dashboard |
 | [ai-agent/](./ai-agent/)                         | Durable AI research agent | AI engineers          | `agent()`, `tool()`, `llm()`, event-sourced memory |
@@ -38,7 +38,8 @@ Every Ironflow application follows four pillars:
 ## Prerequisites
 
 - Go 1.26+ (required to build Ironflow)
-- Node.js 22+ and pnpm (for TypeScript examples)
+- Node.js 22+ and pnpm (for TypeScript examples; `reference-app/` needs 24.2+)
+- Python 3.10+ (for `reference-app/`'s notification service only)
 
 ## Quick Reference
 
@@ -72,9 +73,9 @@ cd examples/travel-booking && pnpm install && pnpm dev
 # Run the Go quickstart
 cd examples/go-quickstart && go run main.go
 
-# Validate the reference app's cross-language contracts
-# (the full system launcher arrives with the supervisor, #1894)
-cd examples/reference-app && pnpm install && make contracts
+# Start the reference app: engine, Go ordering, Node payments, Python notifications
+# and the web application, all on discovered ports
+make reference-app
 
 # Run the fraud detection pipeline
 cd examples/fraud-detection && pnpm install && pnpm start

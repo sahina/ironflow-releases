@@ -9,7 +9,10 @@
     "reset": "node scripts/reset.mjs",
     "test:contracts": "node contracts/validate.mjs",
     "test:supervisor": "node --test \"scripts/**/*.test.mjs\"",
-    "test:live": "node scripts/test-live.mjs",
+    "test:live": "node scripts/test-live.mjs && node scripts/test-crash-resume.mjs && node scripts/test-walkthrough.mjs",
+    "test:crash": "node scripts/test-crash-resume.mjs",
+    "test:load": "node scripts/test-load.mjs",
+    "test:walkthrough": "node scripts/test-walkthrough.mjs",
     "test": "pnpm run test:contracts && pnpm run test:supervisor && pnpm --filter \"./apps/**\" --filter \"./services/**\" --if-present test",
     "build": "pnpm --filter \"./apps/**\" --filter \"./services/**\" --if-present build",
     "lint": "pnpm --filter \"./apps/**\" --filter \"./services/**\" --if-present lint",
@@ -17,7 +20,8 @@
   },
   "devDependencies": {
     "ajv": "^8.20.0",
-    "ajv-formats": "^3.0.1"
+    "ajv-formats": "^3.0.1",
+    "playwright-core": "1.62.1"
   },
   "engines": {
     "node": ">=24.2"

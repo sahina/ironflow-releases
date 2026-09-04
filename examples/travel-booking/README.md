@@ -170,9 +170,12 @@ the pill in the top right.
 | Offline write queue         | `createClient({ offlineQueue })` — IndexedDB outbox, drains on reconnect |
 | Time travel                 | `getRunTimeline()` behind the scrubber                                |
 
-Deliberately **not** shown, because [reference-app/](../reference-app/) already
-covers them: cron, KV, pub/sub, config watch, upcasters, circuit breaker, AI
-agents, `ironflow inspect`.
+Deliberately **not** shown: cron, KV, config watch, upcasters, circuit breaker
+and AI agents. Nothing else demonstrates them either — the SDK feature gallery
+that once did was removed in #1966, and SDK coverage belongs in SDK tests. What
+[reference-app/](../reference-app/) shows instead is the same four pillars
+across **three languages** and four processes; this example is one TypeScript
+process and one screen.
 
 ## Honest notes
 

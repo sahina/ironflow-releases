@@ -10,10 +10,23 @@
 // Run it with `make reference-app`. It stays in the foreground until you stop
 // it, and it leaves `.data/` intact so history survives a restart.
 import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import { createServer } from "node:net";
 import { join, resolve } from "node:path";
 
 import { Supervisor } from "./lib/processes.mjs";
-import { waitForHttpOk, waitForJsonFile } from "./lib/readiness.mjs";
+import {
+  FRESH_HEARTBEAT_MS,
+  freshWorkerIds,
+  ORDER_FUNCTION_ID,
+  PAYMENT_FUNCTION_ID,
+} from "./lib/workers.mjs";
+import {
+  HEARTBEAT_BUCKET,
+  heartbeatIsFresh,
+  NOTIFICATIONS_HEARTBEAT_KEY,
+  parseHeartbeat,
+} from "./lib/heartbeat.mjs";
+import { waitFor, waitForHttpOk, waitForJsonFile } from "./lib/readiness.mjs";
 import {
   APP_DIR,
   DATA_DIR as DEFAULT_DATA_DIR,
@@ -31,6 +44,30 @@ const REPO_ROOT = resolve(APP_DIR, "../..");
 // the one command that deletes must not take its target from the environment.
 const BINARY = process.env.REFERENCE_APP_IRONFLOW_BIN || join(REPO_ROOT, "build", "ironflow");
 const DATA_DIR = process.env.REFERENCE_APP_DATA_DIR || DEFAULT_DATA_DIR;
+// Same shape as the engine override, and the same reason: the supervisor tests
+// run the whole startup path against fake children.
+const ORDERS_BIN =
+  process.env.REFERENCE_APP_ORDERS_BIN || join(APP_DIR, "services", "orders-go", "bin", "orders");
+// A compiled JS entrypoint, run by this same Node. `make reference-app` builds
+// it; the tests point the override at a fake child.
+const PAYMENTS_BIN =
+  process.env.REFERENCE_APP_PAYMENTS_BIN || join(APP_DIR, "services", "payments-node", "dist", "main.js");
+// The interpreter of the notification service's own virtualenv, which is where
+// the pinned `ironflow-py` wheel lives. `make reference-app` creates it.
+const NOTIFICATIONS_DIR = join(APP_DIR, "services", "notifications-python");
+const NOTIFICATIONS_BIN =
+  process.env.REFERENCE_APP_NOTIFICATIONS_BIN || join(NOTIFICATIONS_DIR, ".venv", "bin", "python");
+const WEB_BIN =
+  process.env.REFERENCE_APP_WEB_BIN || join(APP_DIR, "apps", "web", "node_modules", ".bin", "next");
+
+// Start the four backend processes without the web application.
+//
+// Only the load gate sets this. `next dev` logs every request it serves and the
+// pages poll the whole `orders` read model every 2s — on a run placing hundreds
+// of orders that is a second client competing for the same engine, and its
+// share of the numbers is not separable afterwards. A presenter never sets it;
+// `make reference-app` starts the web application as before.
+const SKIP_WEB = process.env.REFERENCE_APP_SKIP_WEB === "1";
 
 const PORT_FILE = join(DATA_DIR, "port.json");
 const BOOTSTRAP_KEY_FILE = join(DATA_DIR, "bootstrap-key.json");
@@ -74,6 +111,12 @@ function engineRow() {
       "--nats-port", "-1",
       "--db", join(DATA_DIR, "ironflow.db"),
       "--nats-store-dir", join(DATA_DIR, "nats"),
+      // No dashboard login, no API key. The engine is loopback-only, and the
+      // alternative — a bootstrap key in a file this same user can read — gates
+      // nothing a local process could not already do, while making a presenter
+      // sign in to their own demo. The key file is still written, so dropping
+      // this flag restores authentication with no other change.
+      "--dev",
       "--bootstrap-key-file", BOOTSTRAP_KEY_FILE,
     ],
     cwd: APP_DIR,
@@ -89,9 +132,9 @@ function engineRow() {
   };
 }
 
-// The bootstrap key is written on first boot only and then persists in .data/.
-// Auth stays on: `--dev` would leave an unauthenticated admin API on a loopback
-// port that any local process could drive.
+// The bootstrap key is written on first boot even under --dev, and persists in
+// .data/. Nothing needs it while dev mode is on; the services still receive it
+// so that dropping --dev is a one-line change.
 function readBootstrapKey() {
   if (!existsSync(BOOTSTRAP_KEY_FILE)) {
     throw new Error(
@@ -132,12 +175,187 @@ export function buildChildEnv({ url, apiKey, dataDir = DATA_DIR, env = process.e
 }
 
 /**
- * Service rows, in start order. Empty today: the Go ordering, Node payment,
- * Python notification and web children arrive in later slices of #1894, one row
- * each. See the child-table shape in lib/processes.mjs.
+ * Wait until an event schema is registered.
+ *
+ * This is what "the ordering service is ready" means: the plan requires every
+ * publisher's schemas to exist before the example reports ready, and a schema
+ * the engine can list is stronger evidence than a line on the child's stdout.
  */
-export function serviceRows(_context) {
-  return [];
+async function waitForSchema({ url, apiKey, eventName, timeoutMs = 60_000 }) {
+  await waitFor(
+    `${eventName} schema`,
+    async () => {
+      const response = await fetch(`${url}/api/v1/events/schemas`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+        signal: AbortSignal.timeout(5_000),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const body = await response.json();
+      const names = (body.schemas ?? []).map((schema) => schema.event_name ?? schema.eventName);
+      if (!names.includes(eventName)) throw new Error(`${eventName} is not registered yet`);
+      return true;
+    },
+    { timeoutMs },
+  );
+}
+
+/**
+ * Wait until a worker running `functionId` has heartbeated recently.
+ *
+ * The payment row cannot use waitForSchema: a registered schema outlives the
+ * process that registered it, so after the first boot that probe is already
+ * satisfied and `crashAndRestart` would report success for a replacement that
+ * spawned and immediately died. A fresh heartbeat is a claim about the process
+ * that is running now.
+ *
+ * The freshness rule itself lives in lib/workers.mjs, shared with the live
+ * scripts.
+ */
+async function waitForWorker({ url, apiKey, functionId, timeoutMs = 60_000 }) {
+  await waitFor(
+    `a live ${functionId} worker`,
+    async () => {
+      const response = await fetch(`${url}/api/v1/workers`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+        signal: AbortSignal.timeout(5_000),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const workers = (await response.json()).workers ?? [];
+      if (freshWorkerIds(workers, functionId).length === 0) {
+        throw new Error(`no ${functionId} worker has heartbeated in the last ${FRESH_HEARTBEAT_MS}ms`);
+      }
+      return true;
+    },
+    { timeoutMs },
+  );
+}
+
+/**
+ * Wait until the Python notification service has written a fresh heartbeat.
+ *
+ * It is a client-only subscriber: the Python SDK ships no worker runtime, so it
+ * registers no function and claims no worker slot, and `waitForWorker` cannot
+ * see it. `waitForSchema` cannot either — a registered schema outlives the
+ * process that registered it, so after the first boot that probe is satisfied
+ * before this service has started at all. A timestamp it rewrites every few
+ * seconds is the only claim about the process that is running now.
+ */
+async function waitForHeartbeat({ url, apiKey, timeoutMs = 60_000 }) {
+  await waitFor(
+    "a live notifications subscriber",
+    async () => {
+      const response = await fetch(
+        `${url}/api/v1/kv/buckets/${HEARTBEAT_BUCKET}/keys/${NOTIFICATIONS_HEARTBEAT_KEY}`,
+        { headers: { Authorization: `Bearer ${apiKey}` }, signal: AbortSignal.timeout(5_000) },
+      );
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const beat = parseHeartbeat(await response.json());
+      if (!heartbeatIsFresh(beat)) {
+        throw new Error(`the notifications heartbeat is not fresher than ${FRESH_HEARTBEAT_MS}ms`);
+      }
+      return true;
+    },
+    { timeoutMs },
+  );
+}
+
+/**
+ * A free loopback port, the way the engine gets one: ask the OS.
+ *
+ * Next needs its port on the command line, so unlike the engine it cannot bind
+ * :0 and report back. The gap between closing this socket and Next binding is a
+ * race in theory; on a developer's machine it is not one worth a lock.
+ */
+function freePort() {
+  // `done`/`fail`, not `resolve`/`reject`: path's resolve is already in scope.
+  return new Promise((done, fail) => {
+    const probe = createServer();
+    probe.unref();
+    probe.on("error", fail);
+    probe.listen(0, "127.0.0.1", () => {
+      const { port } = probe.address();
+      probe.close(() => done(port));
+    });
+  });
+}
+
+/**
+ * Service rows, in start order. See the child-table shape in lib/processes.mjs.
+ */
+export function serviceRows({ url, env, webPort }) {
+  if (!existsSync(ORDERS_BIN)) {
+    throw new Error(`no ordering binary at ${ORDERS_BIN} — start the example with \`make reference-app\`, which builds it`);
+  }
+  if (!existsSync(PAYMENTS_BIN)) {
+    throw new Error(`no payment worker at ${PAYMENTS_BIN} — start the example with \`make reference-app\`, which builds it`);
+  }
+  if (!existsSync(NOTIFICATIONS_BIN)) {
+    throw new Error(`no notifications interpreter at ${NOTIFICATIONS_BIN} — start the example with \`make reference-app\`, which creates it`);
+  }
+  if (!SKIP_WEB && !existsSync(WEB_BIN)) {
+    throw new Error(`no web toolchain at ${WEB_BIN} — run \`pnpm -C examples/reference-app install\``);
+  }
+  const webUrl = `http://127.0.0.1:${webPort}`;
+  return [
+    {
+      name: "orders",
+      // A prebuilt binary, not `go run`: a cold compile of the SDK can outlast
+      // the readiness probe, and `make reference-app` has already built it.
+      cmd: [ORDERS_BIN],
+      cwd: join(APP_DIR, "services", "orders-go"),
+      env,
+      // Both, in order: the schemas must exist before the first command can be
+      // validated, and a live worker is what proves this process — not a
+      // previous run's — is the one serving them. The worker probe also pins
+      // the function id `/system` reads to decide whether Ordering is running.
+      ready: async () => {
+        await waitForSchema({ url, apiKey: env.IRONFLOW_API_KEY, eventName: "order.placed" });
+        await waitForWorker({ url, apiKey: env.IRONFLOW_API_KEY, functionId: ORDER_FUNCTION_ID });
+      },
+    },
+    {
+      name: "payments",
+      cmd: [process.execPath, PAYMENTS_BIN],
+      cwd: join(APP_DIR, "services", "payments-node"),
+      env,
+      // The one child the presenter is allowed to kill. Everything the crash
+      // scenario demonstrates depends on the rest of the system staying up.
+      crashable: true,
+      // Both, in order: the schemas must exist before the first order can be
+      // validated, and the worker itself must be live before the crash control
+      // may report that a replacement is back.
+      ready: async () => {
+        await waitForSchema({ url, apiKey: env.IRONFLOW_API_KEY, eventName: "payment.authorized" });
+        await waitForWorker({ url, apiKey: env.IRONFLOW_API_KEY, functionId: PAYMENT_FUNCTION_ID });
+      },
+    },
+    {
+      name: "notifications",
+      // `-m`, and cwd at the service root: the package is installed into that
+      // virtualenv, so this needs no PYTHONPATH and picks up the same code the
+      // tests import.
+      cmd: [NOTIFICATIONS_BIN, "-m", "reference_notifications.main"],
+      cwd: NOTIFICATIONS_DIR,
+      env,
+      // Ready means "it is heartbeating", which is the same claim /system makes
+      // about it. Schema registration alone would report success for a process
+      // that registered and then died.
+      ready: () => waitForHeartbeat({ url, apiKey: env.IRONFLOW_API_KEY }),
+    },
+    ...(SKIP_WEB ? [] : [{
+      name: "web",
+      cmd: [WEB_BIN, "dev", "--port", String(webPort)],
+      cwd: join(APP_DIR, "apps", "web"),
+      env,
+      // Next forks its compiler workers, so a PID-only kill would orphan them
+      // and leave the port held.
+      group: true,
+      // The first request compiles the route, which is why this waits on /shop
+      // rather than on the process: a server that is listening but still
+      // compiling is not a page a presenter can open.
+      ready: () => waitForHttpOk(`${webUrl}/shop`, { timeoutMs: READY_TIMEOUT_MS }),
+    }]),
+  ];
 }
 
 // Two supervisors sharing one .data directory corrupt each other: the second
@@ -217,15 +435,15 @@ async function main() {
     const { http_port: port } = JSON.parse(readFileSync(PORT_FILE, "utf8"));
     const url = `http://127.0.0.1:${port}`;
     const env = buildChildEnv({ url, apiKey: readBootstrapKey() });
+    const webPort = await freePort();
 
-    for (const row of serviceRows({ url, env })) {
+    for (const row of serviceRows({ url, env, webPort })) {
       await supervisor.start(row);
     }
 
     control = await startControlServer({
       actions: {
-        // Targets any row marked crashable. Until the payment service lands,
-        // this answers with a clear "no such service" instead of a stack trace.
+        // Targets any row marked crashable, which today is only payments.
         crash: (target) => supervisor.crashAndRestart(target ?? "payments"),
       },
     });
@@ -234,7 +452,8 @@ async function main() {
     log("ready");
     log(`  dashboard  ${url}`);
     log(`  engine     ${url}/api/v1`);
-    log("  web        not yet — the web application arrives in a later slice of #1894");
+    if (!SKIP_WEB) log(`  web        http://127.0.0.1:${webPort}/shop`);
+    log("crash the payment worker with `make reference-app-crash-payment` in a second terminal");
     log("stop with Ctrl-C; data persists in .data/");
 
     await engine.exited;

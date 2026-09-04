@@ -15,7 +15,9 @@ services:
       retries: 5
 
   postgres:
-    image: postgres:16-alpine
+    # Frozen at the major that initdb'd postgres_data. Set POSTGRES_IMAGE in
+    # .env to move it, and read the note there first.
+    image: ${POSTGRES_IMAGE:-postgres:16-alpine}
     environment:
       POSTGRES_DB: ironflow
       POSTGRES_USER: ironflow

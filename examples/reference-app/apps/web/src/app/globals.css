@@ -1,0 +1,206 @@
+/* Dark only, and deliberately small: the reference app is about the coordination,
+   not about a design system.
+
+   These are this example's own tokens, NOT brand/tokens.css. The shared brand
+   package lives outside this workspace and pulls in fonts; a reference app that
+   is read as much as it is run does not need it. Do not describe this palette as
+   brand-correct — it deliberately is not. */
+:root {
+  color-scheme: dark;
+  --ink: #e8e8ea;
+  --ink-dim: #9a9aa2;
+  --ground: #121215;
+  --raised: #1b1b20;
+  --line: #2a2a31;
+  --accent: #7c9cff;
+  --warn: #ffcc66;
+  --ok: #7fd18c;
+  --bad: #ff8f8f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0 0 4rem;
+  background: var(--ground);
+  color: var(--ink);
+  font: 15px/1.5 ui-sans-serif, system-ui, sans-serif;
+}
+
+header {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--line);
+}
+
+nav {
+  display: flex;
+  gap: 1rem;
+}
+
+a {
+  color: var(--accent);
+}
+
+.banner {
+  margin: 0;
+  padding: 0.6rem 1.5rem;
+  background: color-mix(in srgb, var(--warn) 12%, var(--ground));
+  border-bottom: 1px solid var(--line);
+  color: var(--warn);
+  font-size: 13px;
+}
+
+main {
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.session {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+  color: var(--ink-dim);
+  font-size: 13px;
+}
+
+ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+button {
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--raised);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+input {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--raised);
+  color: var(--ink);
+  font: inherit;
+}
+
+[role="alert"] {
+  color: var(--warn);
+}
+
+details {
+  border-top: 1px solid var(--line);
+  padding-top: 0.5rem;
+  color: var(--ink-dim);
+  font-size: 13px;
+}
+
+time {
+  color: var(--ink-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+/* /system: one row per participant, and one per source directory. Both are the
+   same shape — a name, a claim, and a way to look deeper. */
+.status li,
+.source li {
+  display: grid;
+  grid-template-columns: 12rem 9rem 1fr;
+  gap: 0.5rem 1rem;
+  align-items: baseline;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.source li {
+  grid-template-columns: 12rem 1fr auto;
+}
+
+.status-evidence {
+  grid-column: 1 / -1;
+  color: var(--ink-dim);
+}
+
+.status-name small,
+.source small {
+  color: var(--ink-dim);
+}
+
+/* Health reads as a word first; the colour only reinforces it, so the page is
+   still correct in a screenshot, in print, and to a reader who cannot see it. */
+.status li[data-health="up"] .status-health {
+  color: var(--ok);
+}
+
+.status li[data-health="down"] .status-health {
+  color: var(--bad);
+}
+
+.status li[data-health="unknown"] .status-health {
+  color: var(--ink-dim);
+}
+
+@media (max-width: 40rem) {
+  .status li,
+  .source li {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Diagrams scale with the page rather than assuming a width, so the same
+   drawing is readable on a phone and on a projector. */
+.diagram {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--raised);
+  /* A wide sequence scrolls inside its own box; the page never scrolls sideways. */
+  overflow-x: auto;
+}
+
+.diagram svg {
+  display: block;
+  /* Wide enough that the drawing never scales below its designed label size.
+     The widest viewBox is 684 units; below that, labels shrink instead of the
+     box scrolling, which is the wrong trade on a phone. */
+  min-width: 43rem;
+  width: 100%;
+  height: auto;
+  color: var(--ink);
+}
+
+/* The links under a timeline. Without this they run together as one line of
+   inline text, which reads as a single broken sentence. */
+.timeline-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 0.75rem 0 0;
+}
