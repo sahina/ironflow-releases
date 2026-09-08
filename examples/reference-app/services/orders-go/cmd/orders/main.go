@@ -12,6 +12,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 
 	"github.com/sahina/ironflow/examples/reference-app/services/orders-go/internal/order"
@@ -61,10 +62,19 @@ func run() error {
 		return err
 	}
 
-	deps := order.Deps{Streams: order.NewStreams(client), Catalog: catalog}
+	streams := order.Streams(order.NewStreams(client))
+	if targets := os.Getenv(approvalConflictOrdersEnv); targets != "" {
+		streams = newApprovalConflictProbe(streams, targets, log.Printf)
+	}
+	maxConcurrentJobs, err := orderWorkerConcurrency(os.Getenv(orderMaxConcurrentJobsEnv))
+	if err != nil {
+		return err
+	}
+	deps := order.Deps{Streams: streams, Catalog: catalog}
 	worker := ironflow.NewWorker(ironflow.WorkerConfig{
-		Functions:   order.Functions(deps),
-		Projections: []ironflow.Projection{order.Projection()},
+		Functions:         order.Functions(deps),
+		Projections:       []ironflow.Projection{order.Projection()},
+		MaxConcurrentJobs: maxConcurrentJobs,
 	})
 
 	signals := make(chan os.Signal, 1)
@@ -78,6 +88,17 @@ func run() error {
 
 	log.Printf("ordering ready — %d products, %d schemas registered", len(catalog.Products), len(ownedSchemas))
 	return worker.Run(ctx)
+}
+
+func orderWorkerConcurrency(raw string) (int, error) {
+	if raw == "" {
+		return 0, nil // SDK default
+	}
+	value, err := strconv.Atoi(raw)
+	if err != nil || value <= 0 {
+		return 0, fmt.Errorf("%s must be a positive integer, got %q", orderMaxConcurrentJobsEnv, raw)
+	}
+	return value, nil
 }
 
 // registerSchemas is idempotent: re-registering the same version with the same

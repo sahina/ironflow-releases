@@ -260,9 +260,16 @@ func approveOrder(deps Deps) ironflow.Function {
 			if err := ctx.Event.Data(&cmd); err != nil {
 				return nil, fmt.Errorf("parse approve.order: %w", err)
 			}
-			return ironflow.Run(ctx, StepAppendApproved, func() (StepResult, error) {
+			result, err := ironflow.Run(ctx, StepAppendApproved, func() (StepResult, error) {
 				return deps.ApproveStep(ctx.RunContext(), cmd, ctx.Event.ID)
 			})
+			if IsConflict(err) {
+				// The SDK cannot assume every HTTP 409 is safe to retry. This
+				// handler can: it will re-read the stream, and a duplicate then
+				// becomes an already-approved no-op.
+				return nil, ironflow.WrapError(err, "approval stream changed", "ORDER_VERSION_CONFLICT", true)
+			}
+			return result, err
 		},
 	)
 }

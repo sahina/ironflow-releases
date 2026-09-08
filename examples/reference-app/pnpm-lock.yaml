@@ -21,14 +21,14 @@ importers:
   ../../sdk/js/browser:
     dependencies:
       '@bufbuild/protobuf':
-        specifier: ^2.14.0
-        version: 2.14.0
+        specifier: ^2.14.1
+        version: 2.14.1
       '@connectrpc/connect':
         specifier: ^2.1.2
-        version: 2.1.2(@bufbuild/protobuf@2.14.0)
+        version: 2.1.2(@bufbuild/protobuf@2.14.1)
       '@connectrpc/connect-web':
         specifier: ^2.1.2
-        version: 2.1.2(@bufbuild/protobuf@2.14.0)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.14.0))
+        version: 2.1.2(@bufbuild/protobuf@2.14.1)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.14.1))
       '@ironflow/core':
         specifier: workspace:^
         version: link:../core
@@ -75,11 +75,11 @@ importers:
         version: 2.1.9(@types/node@22.20.1)(jsdom@30.0.1)(lightningcss@1.33.0)(supports-color@7.2.0)
     optionalDependencies:
       '@bufbuild/protobuf':
-        specifier: ^2.14.0
-        version: 2.14.0
+        specifier: ^2.14.1
+        version: 2.14.1
       '@connectrpc/connect':
         specifier: ^2.1.2
-        version: 2.1.2(@bufbuild/protobuf@2.14.0)
+        version: 2.1.2(@bufbuild/protobuf@2.14.1)
 
   ../../sdk/js/node:
     dependencies:
@@ -104,14 +104,14 @@ importers:
         version: 2.1.9(@types/node@22.20.1)(jsdom@30.0.1)(lightningcss@1.33.0)(supports-color@7.2.0)
     optionalDependencies:
       '@bufbuild/protobuf':
-        specifier: ^2.14.0
-        version: 2.14.0
+        specifier: ^2.14.1
+        version: 2.14.1
       '@connectrpc/connect':
         specifier: ^2.1.2
-        version: 2.1.2(@bufbuild/protobuf@2.14.0)
+        version: 2.1.2(@bufbuild/protobuf@2.14.1)
       '@connectrpc/connect-node':
         specifier: ^2.1.2
-        version: 2.1.2(@bufbuild/protobuf@2.14.0)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.14.0))
+        version: 2.1.2(@bufbuild/protobuf@2.14.1)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.14.1))
 
   apps/web:
     dependencies:
@@ -237,8 +237,8 @@ packages:
     resolution: {integrity: sha512-ctxtJ/eA+t+6q2++vj5j7FYX3nRu311q1wfYH3xjlLOsczhlhxAg2FWNUXhpGvAw3BWo1xBcvOV6/YLc2r5FJw==}
     hasBin: true
 
-  '@bufbuild/protobuf@2.14.0':
-    resolution: {integrity: sha512-C3UGsiCwSprE2NKIIFA3hCDlpXTMCAXRZuEVp88L1GY36Y41+rYL5fryE+nOFhp4p4JPQvdV8PQ4DWgHgeTE+w==}
+  '@bufbuild/protobuf@2.14.1':
+    resolution: {integrity: sha512-agRJn3+EJDUe8AvxTx/LnHA/GErvLE62pSaSk7+MwFOtOv8eWBu/qCq2qoZjBjVZ3C2aiFJCveuSs17KMkYGOw==}
 
   '@connectrpc/connect-node@2.1.2':
     resolution: {integrity: sha512-+i/aAOpsI8sIx1mbYp6d99zvxaUSF6t/jP9Ux9maAmjsZPgmIQ3JuIeYi0zJIP9zlCnBlJjkpPosshCgdRuThQ==}
@@ -2290,22 +2290,22 @@ snapshots:
     dependencies:
       css-tree: 3.2.1
 
-  '@bufbuild/protobuf@2.14.0': {}
+  '@bufbuild/protobuf@2.14.1': {}
 
-  '@connectrpc/connect-node@2.1.2(@bufbuild/protobuf@2.14.0)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.14.0))':
+  '@connectrpc/connect-node@2.1.2(@bufbuild/protobuf@2.14.1)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.14.1))':
     dependencies:
-      '@bufbuild/protobuf': 2.14.0
-      '@connectrpc/connect': 2.1.2(@bufbuild/protobuf@2.14.0)
+      '@bufbuild/protobuf': 2.14.1
+      '@connectrpc/connect': 2.1.2(@bufbuild/protobuf@2.14.1)
     optional: true
 
-  '@connectrpc/connect-web@2.1.2(@bufbuild/protobuf@2.14.0)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.14.0))':
+  '@connectrpc/connect-web@2.1.2(@bufbuild/protobuf@2.14.1)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.14.1))':
     dependencies:
-      '@bufbuild/protobuf': 2.14.0
-      '@connectrpc/connect': 2.1.2(@bufbuild/protobuf@2.14.0)
+      '@bufbuild/protobuf': 2.14.1
+      '@connectrpc/connect': 2.1.2(@bufbuild/protobuf@2.14.1)
 
-  '@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.14.0)':
+  '@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.14.1)':
     dependencies:
-      '@bufbuild/protobuf': 2.14.0
+      '@bufbuild/protobuf': 2.14.1
 
   '@csstools/color-helpers@5.1.0': {}
 

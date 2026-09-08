@@ -86,21 +86,27 @@ def register_schemas(client: IronflowClient, contracts_dir: Path) -> None:
     """Idempotent: re-registering the same version with the same document is an
     upsert, so a restart is free."""
     for name in OWNED_SCHEMAS:
-        client.schemas_create(
-            {
+        # The released SDK pin predates the schema RPC facade. Its public
+        # request method can send the same Connect JSON without a new dependency.
+        client.request(
+            "POST",
+            "/ironflow.v1.EventSchemaService/RegisterSchema",
+            body={
                 "event_name": name,
                 "version": 1,
-                # A JSON string, not an object: `schema_json` is what the route
-                # decodes and compiles.
                 "schema_json": json.dumps(load_data_schema(contracts_dir, name)),
                 "description": "Reference app notification delivery record",
-            }
+            },
         )
 
 
 def emitter(client: IronflowClient):  # type: ignore[no-untyped-def]
     def emit(name: str, data: dict[str, Any], metadata: dict[str, Any]) -> None:
-        client.events_create({"name": name, "data": data, "metadata": metadata})
+        client.request(
+            "POST",
+            "/ironflow.v1.IronflowService/Emit",
+            body={"event": name, "data": data, "metadata": metadata},
+        )
 
     return emit
 

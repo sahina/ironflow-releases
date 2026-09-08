@@ -287,31 +287,23 @@ async function main() {
     });
 
     // The join /system and the timeline depend on, which no unit test can
-    // check: a fake stipulates both sides of it. The projection's own event ids
-    // are NOT the ids runs are keyed by — a managed projection sees the outbox
-    // entry's id on the live path — so the link is resolved by order instead,
-    // and this is what proves that side still holds.
+    // check: a fake stipulates both sides of it. Projection facts and runs now
+    // expose the same event ids, so the UI can link them without inspecting
+    // domain payloads.
     await check("the runs behind an order are findable from what the browser can read", async () => {
       const runs = await api.runs({ limit: "100" });
-      const mine = runs.filter((run) => run.input?.orderId === orderId);
-      assert.ok(
-        mine.length > 0,
-        `no run records an input orderId matching ${orderId}; the timeline's run links resolve nothing`,
-      );
-      assert.ok(
-        mine.some((run) => run.function_id === "place-order"),
-        `the order's runs are ${mine.map((run) => run.function_id).join(", ")}, with no place-order`,
-      );
-
-      // And the trap this replaced: the projection's event ids share no values
-      // with the run list, so a lookup joining them silently finds nothing.
       const projected = await api.projectedOrder(orderId);
       const timelineIds = new Set(projected.timeline.map((entry) => entry.eventId).filter(Boolean));
       assert.ok(timelineIds.size > 0, "the projection recorded no event ids at all");
-      assert.equal(
-        runs.filter((run) => timelineIds.has(run.event_id)).length,
-        0,
-        "run.event_id now matches the projection's event ids — the by-order join can be simplified",
+
+      const mine = runs.filter((run) => timelineIds.has(run.event_id));
+      assert.ok(
+        mine.length > 0,
+        `no run records an event id from order ${orderId}; the timeline's run links resolve nothing`,
+      );
+      assert.ok(
+        mine.some((run) => run.function_id === "order-approval-process"),
+        `the timeline's runs are ${mine.map((run) => run.function_id).join(", ")}, with no approval process`,
       );
     });
 

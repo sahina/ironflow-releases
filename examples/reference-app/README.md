@@ -24,6 +24,7 @@ contracts/
   schemas/       One JSON Schema per command, fact and notification message
   fixtures/      Valid and invalid payloads, plus index.json (the case manifest)
   catalog.json   The committed three-product catalog
+  catalog.schema.json  The shape catalog.json must satisfy
   validate.mjs   The TypeScript-side contract test
 scripts/
   dev.mjs        The supervisor: starts the engine, then every service
@@ -39,7 +40,9 @@ scripts/
   lib/processes.mjs  Spawn, kill and the child table the services plug into
   lib/readiness.mjs  Poll-until helpers with one deadline and message each
   lib/control.mjs    The handshake file, the control plane, the delete guard
-  lib/*.test.mjs     Unit tests, run by `make supervisor`
+  lib/load.mjs       The paginated run snapshot the load gate reads
+  lib/workers.mjs    Worker presence, shared by the supervisor and both live scripts
+  **/*.test.mjs      Unit tests, run by `make supervisor`
 apps/web/
   src/app/             /shop, /operations and /system
   src/components/      The views, the diagrams, and the provider that injects the client

@@ -77,7 +77,7 @@ ironflow run list
 ironflow inspect <run-id>
 
 # Query the agent's memory projection
-curl -s http://localhost:9123/api/v1/projections/agent-memory | jq '.state'
+curl -s -X POST http://localhost:9123/ironflow.v1.ProjectionService/GetProjection -H 'Content-Type: application/json' -d '{"name":"agent-memory"}' | jq '.state'
 ```
 
 ## Customizing

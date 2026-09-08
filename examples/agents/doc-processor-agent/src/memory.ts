@@ -9,7 +9,7 @@ import { EVENTS } from "./events.js";
 // rebuilds identically from history.
 //
 // Query the projection state:
-//   curl http://localhost:9123/api/v1/projections/doc-processor-memory | jq
+//   curl -X POST http://localhost:9123/ironflow.v1.ProjectionService/GetProjection -H 'Content-Type: application/json' -d '{"name":"doc-processor-memory"}' | jq
 //
 // ────────────────────────────────────────────────────────────────
 

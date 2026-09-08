@@ -28,7 +28,7 @@ Every step in the tutorial maps to a file here so you can read the doc with the 
 | Step 8 — Projections           | [`worker.ts`](./worker.ts)                                                                                                       |
 | Step 9 — Queries               | [`app/page.tsx`](./app/page.tsx), [`app/orders/[orderId]/page.tsx`](./app/orders/[orderId]/page.tsx)                             |
 | Step 10 — Eventual consistency | Optimistic subscription in [`app/orders/[orderId]/page.tsx`](./app/orders/[orderId]/page.tsx)                                    |
-| Step 11 — Rebuild              | `POST /api/v1/projections/order-detail-view/rebuild` (run from CLI)                                                              |
+| Step 11 — Rebuild              | `POST /ironflow.v1.ProjectionService/RebuildProjection` (run from CLI)                                                              |
 | Command idempotency            | [`lib/command-dedup.ts`](./lib/command-dedup.ts)                                                                                 |
 | Enrichment (customer/product)  | [`lib/enrichment.ts`](./lib/enrichment.ts) (in-memory demo data)                                                                 |
 
@@ -117,12 +117,19 @@ Open <http://localhost:3000>.
 4. Place the same order twice by copying the request in devtools and resending
    with the same `commandId` and `orderId` in the body. Verify dedup two ways:
    the worker log shows the second invocation short-circuiting (no new
-   `streams.append` call), and `curl $IRONFLOW_SERVER_URL/api/v1/streams/{orderId}/events`
-   returns one event, not two.
+   `streams.append` call, and the stream read returns one event, not two:
+
+   ```bash
+   curl -X POST "$IRONFLOW_SERVER_URL/ironflow.v1.EntityStreamService/ReadStream" \
+     -H 'Content-Type: application/json' \
+     -d '{"entityId":"{orderId}"}'
+   ```
+
+   Replace `{orderId}` with the order ID from the request body.
 5. Rebuild a projection:
 
    ```bash
-   curl -X POST http://localhost:9123/api/v1/projections/order-detail-view/rebuild
+   curl -X POST http://localhost:9123/ironflow.v1.ProjectionService/RebuildProjection -H 'Content-Type: application/json' -d '{"name":"order-detail-view"}'
    ```
 
    State clears, replays from the event log, and the UI updates as events

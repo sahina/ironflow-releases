@@ -1,6 +1,6 @@
 # Go Quickstart: Continuous History in 5 Minutes
 
-This example builds a simple order processing system in ~100 lines of Go that demonstrates all four pillars of **Continuous History**: emit, react, derive, and rewind.
+This example builds a simple order processing system in ~120 lines of Go that demonstrates all four pillars of **Continuous History**: emit, react, derive, and rewind.
 
 ## What is Continuous History?
 
@@ -80,7 +80,7 @@ var OrderStats = ironflow.CreateProjection(ironflow.ProjectionConfig{
 Query the projection via API:
 
 ```bash
-curl http://localhost:9123/api/v1/projections/order-stats
+curl -X POST http://localhost:9123/ironflow.v1.ProjectionService/GetProjection -H 'Content-Type: application/json' -d '{"name":"order-stats"}'
 ```
 
 ### 4. REWIND — Time Travel
@@ -129,7 +129,7 @@ ironflow emit order.placed --data '{"orderId":"ord-1","total":49.99,"email":"tes
 ### 4. Query the projection
 
 ```bash
-curl http://localhost:9123/api/v1/projections/order-stats
+curl -X POST http://localhost:9123/ironflow.v1.ProjectionService/GetProjection -H 'Content-Type: application/json' -d '{"name":"order-stats"}'
 ```
 
 ### 5. Inspect the run

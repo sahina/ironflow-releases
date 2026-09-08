@@ -119,9 +119,8 @@ def _announce(deps: Deps, delivery: Delivery) -> None:
     validate_message(deps.contracts_dir, EVENT_NOTIFICATION_SENT, fact)
     deps.emit(EVENT_NOTIFICATION_SENT, fact, _metadata(delivery))
     # After the emit, so a crash in between leaves the delivery unacknowledged
-    # and `resend_unacknowledged` replays it. `POST /api/v1/events` takes no
-    # idempotency key — only entity appends and topic publishes do — so the emit
-    # is at-least-once and a replayed one shows as a second timeline entry.
+    # and `resend_unacknowledged` replays it. This emitter does not supply an
+    # idempotency key, so a replay can add a second timeline entry.
     deps.store.mark_emitted(delivery.message_id)
 
 

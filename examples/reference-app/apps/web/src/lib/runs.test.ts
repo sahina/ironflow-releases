@@ -1,46 +1,42 @@
 import { describe, expect, test } from "vitest";
 
-import { parseRuns, runsForOrder, type RunSummary } from "@/lib/runs";
+import { parseRuns, runsForEvents, type RunSummary } from "@/lib/runs";
 
-const ORDER = "0f3b6c1d9a4e47b28c5d1e6f70a2b3c4";
+const EVENTS = ["evt-placed", "evt-captured"];
 
 const runs: RunSummary[] = [
-  { id: "run-1", functionId: "place-order", orderId: ORDER },
-  { id: "run-2", functionId: "process-payment", orderId: ORDER },
-  { id: "run-3", functionId: "place-order", orderId: "1a2b3c4d5e6f708192a3b4c5d6e7f809" },
-  { id: "run-4", functionId: "health-probe" },
+  { id: "run-1", functionId: "approve-order", eventId: "evt-placed" },
+  { id: "run-2", functionId: "record-payment", eventId: "evt-captured" },
+  { id: "run-3", functionId: "approve-order", eventId: "evt-other" },
 ];
 
-describe("resolving an order to its runs", () => {
-  test("finds every run the order caused, and nothing else", () => {
-    expect(runsForOrder(runs, ORDER).map((run) => run.id)).toEqual(["run-1", "run-2"]);
+describe("resolving timeline facts to their runs", () => {
+  test("finds every run the timeline events caused, and nothing else", () => {
+    expect(runsForEvents(runs, EVENTS).map((run) => run.id)).toEqual(["run-1", "run-2"]);
   });
 
-  test("an order no recent run names has none", () => {
-    // Recent runs are a window, not the whole history. An older order simply
+  test("an event no recent run names has none", () => {
+    // Recent runs are a window, not the whole history. An older event simply
     // shows no links, which is honest — this UI does not rebuild the inspector.
-    expect(runsForOrder(runs, "9".repeat(32))).toEqual([]);
+    expect(runsForEvents(runs, ["evt-old"])).toEqual([]);
   });
 
-  test("a run with no order in its input never matches an order without one", () => {
-    // The trap this guards: `undefined === undefined` would match run-4 to any
-    // caller that passed an empty id.
-    expect(runsForOrder(runs, "")).toEqual([]);
+  test("a timeline with no event ids has no runs", () => {
+    expect(runsForEvents(runs, [""])).toEqual([]);
   });
 
   test("reads the run list the engine actually returns", () => {
-    // Snake case on the wire, and the order lives in the triggering event's
-    // data, which the engine records as the run input.
+    // Accept the raw wire shape and the browser SDK's mapped shape.
     expect(
       parseRuns([
-        { id: "run-1", function_id: "place-order", input: { orderId: ORDER, totalCents: 4500 } },
-        { id: "run-2", function_id: "process-payment", input: null },
+        { id: "run-1", function_id: "approve-order", event_id: "evt-placed" },
+        { id: "run-2", functionId: "record-payment", eventId: "evt-captured" },
         { nonsense: true },
         "not an object",
       ]),
     ).toEqual([
-      { id: "run-1", functionId: "place-order", orderId: ORDER },
-      { id: "run-2", functionId: "process-payment", orderId: undefined },
+      { id: "run-1", functionId: "approve-order", eventId: "evt-placed" },
+      { id: "run-2", functionId: "record-payment", eventId: "evt-captured" },
     ]);
   });
 });

@@ -89,7 +89,7 @@ describe("the event timeline", () => {
     // for all of them on render would poll the engine for links nobody looked
     // at.
     const client = renderTimeline({
-      runs: [{ id: "run-1", function_id: "place-order", input: { orderId: order.orderId } }],
+      runs: [{ id: "run-1", function_id: "order-approval-process", event_id: "evt-placed" }],
     });
 
     expect(client.runsRequested).toBe(0);
@@ -102,9 +102,9 @@ describe("the event timeline", () => {
     // down while its own fetch is in flight passes against a fake that does.
     renderTimeline({
       runs: [
-        { id: "run-1", function_id: "place-order", input: { orderId: order.orderId } },
-        { id: "run-2", function_id: "process-payment", input: { orderId: order.orderId } },
-        { id: "run-3", function_id: "place-order", input: { orderId: "9".repeat(32) } },
+        { id: "run-1", function_id: "order-approval-process", event_id: "evt-placed" },
+        { id: "run-2", function_id: "record-payment", event_id: "evt-captured" },
+        { id: "run-3", function_id: "order-approval-process", event_id: "evt-other" },
       ],
       runsDelayMs: 50,
     });
@@ -113,11 +113,11 @@ describe("the event timeline", () => {
 
     const list = await screen.findByRole("list", { name: "Runs for this order" });
     await waitFor(() => expect(within(list).getAllByRole("link")).toHaveLength(2));
-    expect(within(list).getByRole("link", { name: /process-payment/ })).toHaveAttribute(
+    expect(within(list).getByRole("link", { name: /record-payment/ })).toHaveAttribute(
       "href",
       `${DASHBOARD}/runs/run-2`,
     );
-    // Another order's run is not this order's business.
+    // A run started by a fact outside this timeline does not belong here.
     expect(list).not.toContainHTML("run-3");
   });
 
@@ -128,7 +128,7 @@ describe("the event timeline", () => {
     // The delay is the assertion: without it this passes before the fetch has
     // even resolved, which is also what a broken filter would do.
     const client = renderTimeline({
-      runs: [{ id: "run-1", function_id: "place-order", input: { orderId: "9".repeat(32) } }],
+      runs: [{ id: "run-1", function_id: "order-approval-process", event_id: "evt-other" }],
       runsDelayMs: 20,
     });
 

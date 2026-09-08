@@ -185,8 +185,10 @@ async function waitForSchema({ url, apiKey, eventName, timeoutMs = 60_000 }) {
   await waitFor(
     `${eventName} schema`,
     async () => {
-      const response = await fetch(`${url}/api/v1/events/schemas`, {
-        headers: { Authorization: `Bearer ${apiKey}` },
+      const response = await fetch(`${url}/ironflow.v1.EventSchemaService/ListSchemas`, {
+        method: "POST",
+        body: JSON.stringify({ eventName }),
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
         signal: AbortSignal.timeout(5_000),
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);

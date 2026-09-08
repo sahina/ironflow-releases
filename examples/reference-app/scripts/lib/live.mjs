@@ -215,10 +215,34 @@ export function engineApi({ url, apiKey }) {
   };
 
   const projectedOrders = async () => {
-    const response = await fetch(`${url}/api/v1/projections/orders`, { headers, signal: signal() });
+    const response = await fetch(`${url}/ironflow.v1.ProjectionService/GetProjection`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ name: "orders" }),
+      signal: signal(),
+    });
     if (!response.ok) return {};
     const body = await response.json();
-    return body?.state?.state?.orders ?? {};
+    return (body?.stateValue ?? body?.state)?.orders ?? {};
+  };
+
+  const runsPage = async (query = {}) => {
+    const body = await post("/ironflow.v1.IronflowService/ListRuns", {
+      functionId: query.function_id, eventId: query.event_id, search: query.search,
+      limit: query.limit === undefined ? undefined : Number(query.limit),
+      offset: query.offset === undefined ? undefined : Number(query.offset),
+      since: query.since, until: query.until,
+      statuses: query.status?.split(",").map(status => `RUN_STATUS_${status.trim().toUpperCase()}`),
+    });
+    const runs = (body.runs ?? []).map(run => ({
+      id: run.id, function_id: run.functionId, event_id: run.eventId,
+      status: run.status?.replace("RUN_STATUS_", "").toLowerCase(),
+      input: run.inputValue !== undefined ? run.inputValue : run.input,
+      output: run.outputValue !== undefined ? run.outputValue : run.output,
+      error: run.errorValue !== undefined ? run.errorValue : run.error,
+      created_at: run.createdAt, ended_at: run.endedAt,
+    }));
+    return {runs, count:runs.length, total_count:body.totalCount ?? 0};
   };
 
   return {
@@ -230,9 +254,8 @@ export function engineApi({ url, apiKey }) {
     // namespace back (`topic:{name}`).
     publish: (topic, data) => post("/ironflow.v1.PubSubService/Publish", { topic, data }),
     async schemaNames() {
-      const response = await fetch(`${url}/api/v1/events/schemas`, { headers, signal: signal() });
-      if (!response.ok) throw new Error(`schemas: HTTP ${response.status}`);
-      return ((await response.json()).schemas ?? []).map((schema) => schema.event_name ?? schema.eventName);
+      const body = await post("/ironflow.v1.EventSchemaService/ListSchemas", {});
+      return (body.schemas ?? []).map((schema) => schema.eventName);
     },
     /**
      * Every order in the read model, keyed by id.
@@ -249,16 +272,20 @@ export function engineApi({ url, apiKey }) {
       .then((body) => body.events ?? []),
     paymentStream: (orderId) => post("/ironflow.v1.EntityStreamService/ReadStream", { entity_id: `payment-${orderId}` })
       .then((body) => body.events ?? []),
+    runsPage,
     async runs(query = {}) {
-      const search = new URLSearchParams(query).toString();
-      const response = await fetch(`${url}/api/v1/runs${search ? `?${search}` : ""}`, { headers, signal: signal() });
-      if (!response.ok) throw new Error(`runs: HTTP ${response.status}`);
-      return (await response.json()).runs ?? [];
+      return (await runsPage(query)).runs ?? [];
     },
     async runSteps(runId) {
-      const response = await fetch(`${url}/api/v1/runs/${runId}/steps`, { headers, signal: signal() });
-      if (!response.ok) throw new Error(`run steps: HTTP ${response.status}`);
-      return (await response.json()).steps ?? [];
+      const body = await post("/ironflow.v1.IronflowService/GetRunSteps", {runId});
+      return (body.steps ?? []).map(step => ({
+        id:step.id, step_id:step.stepId, run_id:step.runId,
+        step_type:step.stepType?.replace("STEP_TYPE_", "").toLowerCase(),
+        status:step.storedStatus ?? step.status?.replace("STEP_STATUS_", "").toLowerCase(),
+        wait_event_name:step.waitEventName,
+        input:step.inputValue !== undefined ? step.inputValue : step.input,
+        output:step.outputValue !== undefined ? step.outputValue : step.output,
+      }));
     },
     async workers() {
       const response = await fetch(`${url}/api/v1/workers`, { headers, signal: signal() });

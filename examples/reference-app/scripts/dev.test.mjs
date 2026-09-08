@@ -43,10 +43,10 @@ writeFileSync(flag("--bootstrap-key-file"), JSON.stringify({ key: "ifkey_fake", 
 // /ready plus the schema list the service readiness probes read. The fake
 // answers as though both publishers had already registered, which is what
 // FAKE_SERVICE stands in for.
-const schemas = JSON.stringify({ schemas: [{ event_name: "order.placed", version: 1 }, { event_name: "payment.authorized", version: 1 }] });
+const schemas = JSON.stringify({ schemas: [{ eventName: "order.placed", version: 1 }, { eventName: "payment.authorized", version: 1 }] });
 const server = createServer((req, res) => {
   if (req.url === "/ready") { res.writeHead(200); return res.end(); }
-  if (req.url === "/api/v1/events/schemas") {
+  if (req.url === "/ironflow.v1.EventSchemaService/ListSchemas") {
     res.writeHead(200, { "content-type": "application/json" });
     return res.end(schemas);
   }
@@ -98,7 +98,7 @@ if (portFlag !== -1) {
 // own script rather than a flag: dev.mjs hands the engine a scrubbed
 // environment, so no FAKE_ENGINE_* variable would reach it.
 const UNREGISTERED_ENGINE = FAKE_ENGINE.replace(
-  '[{ event_name: "order.placed", version: 1 }, { event_name: "payment.authorized", version: 1 }]',
+  '[{ eventName: "order.placed", version: 1 }, { eventName: "payment.authorized", version: 1 }]',
   "[]",
 );
 

@@ -154,6 +154,22 @@ func TestApproveStepIsANoOpOnRedelivery(t *testing.T) {
 	}
 }
 
+func TestApproveOrderMarksAVersionConflictRetryable(t *testing.T) {
+	conflict := ironflow.WrapError(ErrConflict, "stale entity version", "CONFLICT", false)
+	streams := &fakeStreams{facts: []Fact{placed(1)}, appendErr: conflict}
+	client := testClient(t, testDeps(t, streams))
+
+	run := client.Emit(t, "approve.order", ApproveCommand{
+		OrderID: testOrderID, ApprovedBy: "ops@example.com",
+	})
+	if run.Status != "failed" {
+		t.Fatalf("status = %q, want failed", run.Status)
+	}
+	if !ironflow.IsRetryable(run.Error) {
+		t.Fatalf("approval conflict is not retryable: %v", run.Error)
+	}
+}
+
 func TestApproveStepRefusesANonPendingOrder(t *testing.T) {
 	streams := &fakeStreams{facts: []Fact{
 		placed(1), fact(EventOrderApproved, 2, nil), fact(EventOrderReleased, 3, nil), fact(EventOrderPaid, 4, nil),

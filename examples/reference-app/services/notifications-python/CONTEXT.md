@@ -29,13 +29,9 @@ It hosts no functions and executes no steps. Shared vocabulary is in
 
 ## Three things this service learned the hard way
 
-1. **`POST /api/v1/events` takes no idempotency key.** Entity appends and topic
-   publishes carry one; a plain event trigger does not. So "a stable idempotency key" is
-   satisfied locally, not by the engine: the `deliveries` table is keyed by the message
-   ID, and that same ID travels as the fact's `causationId`. The emit itself is
-   therefore at-least-once. A replayed one does not corrupt the read model — the
-   projection overwrites the same `order.notification` fields — but it appends a second
-   timeline entry, which is how you would notice.
+1. **Notification delivery and notification facts have different guarantees.**
+   A message ID identifies one delivery. Notification facts are at-least-once:
+   a replay can add a second timeline entry while leaving the read model unchanged.
 2. **Liveness cannot be a worker record or a registered schema.** The Python SDK ships no
    worker runtime, so this service appears nowhere in `GET /api/v1/workers`; and a
    registered schema outlives the process that registered it, so after the first boot

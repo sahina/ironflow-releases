@@ -50,6 +50,7 @@ import { DatabaseSync } from "node:sqlite";
 
 import { DATA_DIR } from "./lib/control.mjs";
 import { checker, commandMetadata, engineApi, newId, redact, startSupervisor, staysTrue } from "./lib/live.mjs";
+import { listRunsSnapshot, projectedFactCount, runsByStatus } from "./lib/load.mjs";
 import { waitFor } from "./lib/readiness.mjs";
 
 const LOAD_DATA = join(DATA_DIR, "load-test");
@@ -91,6 +92,9 @@ const DELIVERY_MS = 60_000 + ORDERS * 250;
 // through three: pending_approval, processing_payment, and its terminal state.
 // scripts/test-live.mjs asserts exactly that list for a single happy-path order.
 const DELIVERIES_PER_ORDER = 3;
+const APPROVAL_PROCESS_FUNCTION_ID = "order-approval-process";
+const APPROVE_FUNCTION_ID = "approve-order";
+const APPROVAL_WAIT_STEP_ID = "wait-approval";
 
 const check = checker();
 const log = (line) => process.stdout.write(`${line}\n`);
@@ -176,26 +180,43 @@ async function main() {
   // more than the change under test would.
   rmSync(LOAD_DATA, { recursive: true, force: true });
 
+  const session = newId();
+  const orders = Array.from({ length: ORDERS }, (_, i) => ({
+    id: newId(),
+    declines: DECLINE_EVERY > 0 && i % DECLINE_EVERY === DECLINE_EVERY - 1,
+    conflicts: i < CONFLICTS,
+  }));
+  const conflictOrders = orders.filter((order) => order.conflicts);
+
   let supervisor;
   try {
-    log(`reference-app load gate — ${ORDERS} orders at ~${RATE}/s, ${CONFLICTS} conflicting approvals`);
+    log(`reference-app load gate — ${ORDERS} orders at ~${RATE}/s, ${conflictOrders.length} conflicting approvals`);
     supervisor = await startSupervisor({
       dataDir: LOAD_DATA,
       // The web application is a second client polling the whole read model
       // every 2s. Not started here; see dev.mjs.
-      env: { REFERENCE_APP_SKIP_WEB: "1" },
+      env: {
+        REFERENCE_APP_SKIP_WEB: "1",
+        // The order worker's load-only Streams wrapper synchronizes these
+        // duplicate appends after both handlers have read the same version.
+        REFERENCE_APP_APPROVAL_CONFLICT_ORDERS: conflictOrders.map((order) => order.id).join(","),
+        // One slot beyond every possible first half prevents the probe barrier
+        // from occupying the whole worker before a duplicate can join it.
+        REFERENCE_APP_ORDER_MAX_CONCURRENT_JOBS: String(Math.max(10, conflictOrders.length + 1)),
+      },
     });
     const { url, apiKey } = supervisor;
     const api = engineApi({ url, apiKey });
 
-    const session = newId();
-    const orders = Array.from({ length: ORDERS }, (_, i) => ({
-      id: newId(),
-      declines: DECLINE_EVERY > 0 && i % DECLINE_EVERY === DECLINE_EVERY - 1,
-      conflicts: i < CONFLICTS,
-    }));
-    const byId = new Map(orders.map((order) => [order.id, order]));
     const terminalOf = (order) => (order.declines ? "payment_failed" : "paid");
+
+    const printRunSnapshot = (stage, snapshot) => {
+      if (!snapshot || snapshot.runs.length === 0) return;
+      const coverage = snapshot.complete
+        ? `${snapshot.runs.length}/${snapshot.totalCount} runs`
+        : `${snapshot.runs.length}/${snapshot.totalCount} runs, incomplete moving snapshot`;
+      log(`   runs by status ${stage} (${coverage}): ${JSON.stringify(runsByStatus(snapshot.runs))}`);
+    };
 
     /**
      * One poll of the read model, indexed.
@@ -205,9 +226,10 @@ async function main() {
      * work against an O(n) response, and the driver would become the load.
      */
     const pollProjection = async () => {
-      const at = Date.now();
       const projected = await api.projectedOrders();
-      return { at, projected };
+      // Visibility is observed only when the response arrives. Stamping before
+      // the request can predate a fact that became visible while it was read.
+      return { at: Date.now(), projected };
     };
 
     // ---------------------------------------------------------------- phase A
@@ -267,6 +289,36 @@ async function main() {
       );
     });
 
+    await check("every approval process parks its durable wait", async () => {
+      const expected = new Set(orders.map((order) => order.id));
+      const parkedByOrder = new Map();
+      await waitFor(
+        `all ${ORDERS} wait-approval steps to reach waiting`,
+        async () => {
+          const snapshot = await listRunsSnapshot(api, { function_id: APPROVAL_PROCESS_FUNCTION_ID });
+          const candidates = snapshot.runs.filter((run) => expected.has(run.input?.orderId));
+          await pooled(candidates, POOL, async (run) => {
+            const orderID = run.input?.orderId;
+            if (!orderID || parkedByOrder.has(orderID)) return;
+            const steps = await api.runSteps(run.id);
+            if (steps.some((step) =>
+              step.step_id.includes(`:${APPROVAL_WAIT_STEP_ID}:`) &&
+              step.wait_event_name === "order.approved" &&
+              step.status === "waiting",
+            )) {
+              parkedByOrder.set(orderID, run.id);
+            }
+          });
+          if (parkedByOrder.size === expected.size) return true;
+          throw new Error(
+            `${parkedByOrder.size}/${expected.size} waits parked; ` +
+            `run snapshot held ${snapshot.runs.length}/${snapshot.totalCount}${snapshot.complete ? "" : " and was incomplete"}`,
+          );
+        },
+        { timeoutMs: CONVERGE_MS, intervalMs: 250 },
+      );
+    });
+
     // ---------------------------------------------------------------- phase B
     log(`\nB. holding ${ORDERS} parked approval waits for ${SOAK_MS}ms`);
     const soakStart = Date.now();
@@ -289,11 +341,8 @@ async function main() {
     const soakElapsed = Date.now() - soakStart;
     log(`   held for ${soakElapsed}ms`);
 
-    const parked = await api.runs({ limit: "1000" }).catch(() => []);
-    if (parked.length) {
-      const byStatus = parked.reduce((acc, run) => ({ ...acc, [run.status]: (acc[run.status] ?? 0) + 1 }), {});
-      log(`   runs by status while parked: ${JSON.stringify(byStatus)}`);
-    }
+    const parked = await listRunsSnapshot(api).catch(() => undefined);
+    printRunSnapshot("while parked", parked);
 
     // ---------------------------------------------------------------- phase C
     log(`\nC. releasing all ${ORDERS} waits at once`);
@@ -304,10 +353,9 @@ async function main() {
       const send = () =>
         api.emit("approve.order", { orderId: order.id, approvedBy: "load@example.com" }, commandMetadata(order.id, session));
       try {
-        // A conflicting order sends the same approval twice, concurrently. Both
-        // runs read the order stream and append with an expected version, so one
-        // must lose the race and retry — and the retry must then find the order
-        // already approved rather than append a second fact.
+        // A conflicting order sends the same approval twice. The load-only
+        // stream wrapper holds both appends after their reads, so one must lose
+        // the expected-version check and retry.
         await (order.conflicts ? Promise.all([send(), send()]) : send());
       } catch (error) {
         approveErrors.push(`${order.id}: ${error.message}`);
@@ -335,7 +383,7 @@ async function main() {
       await waitFor(
         `all ${ORDERS} orders to reach a terminal status`,
         async () => {
-          drain ??= await api.runs({ limit: "1000" }).catch(() => []);
+          drain ??= await listRunsSnapshot(api).catch(() => undefined);
           const { at, projected } = await pollProjection();
           const stuck = [];
           for (const order of orders) {
@@ -352,10 +400,7 @@ async function main() {
       );
     });
 
-    if (drain?.length) {
-      const byStatus = drain.reduce((acc, run) => ({ ...acc, [run.status]: (acc[run.status] ?? 0) + 1 }), {});
-      log(`   runs by status while draining: ${JSON.stringify(byStatus)}`);
-    }
+    printRunSnapshot("while draining", drain);
 
     // ------------------------------------------------------------ the streams
     // One read per order, after the load, not during it: this is measurement,
@@ -384,6 +429,38 @@ async function main() {
       for (const order of orders.filter((o) => o.conflicts)) {
         const approvals = order.order.filter((event) => event.name === "order.approved");
         assert.equal(approvals.length, 1, `order ${order.id} was approved ${approvals.length} times`);
+      }
+    });
+
+    await check("each duplicate approval causes an optimistic conflict and retry", async () => {
+      let snapshot;
+      await waitFor(
+        "every conflicting approval run to retry",
+        async () => {
+          snapshot = await listRunsSnapshot(api, { function_id: APPROVE_FUNCTION_ID });
+          const output = supervisor.text();
+          const pending = conflictOrders.filter((order) => {
+            const runs = snapshot.runs.filter((run) => run.input?.orderId === order.id);
+            const marker = `load approval conflict observed: order=${order.id}`;
+            return runs.length !== 2 || !runs.some((run) => run.attempt > 1) || !output.includes(marker);
+          });
+          if (pending.length === 0) return true;
+          throw new Error(`${pending.length}/${conflictOrders.length} conflict probes have not retried`);
+        },
+        { timeoutMs: CONVERGE_MS, intervalMs: 250 },
+      );
+
+      assert.ok(snapshot.complete, `approval run snapshot held ${snapshot.runs.length}/${snapshot.totalCount} runs`);
+      const output = supervisor.text();
+      for (const order of conflictOrders) {
+        const runs = snapshot.runs.filter((run) => run.input?.orderId === order.id);
+        assert.equal(runs.length, 2, `order ${order.id} has ${runs.length} approval runs, expected 2`);
+        assert.ok(
+          runs.some((run) => run.attempt > 1),
+          `order ${order.id} recorded no retried approval run: ${runs.map((run) => run.attempt).join(", ")}`,
+        );
+        const marker = `load approval conflict observed: order=${order.id}`;
+        assert.equal(output.split(marker).length - 1, 1, `order ${order.id} did not record exactly one version conflict`);
       }
     });
 
@@ -433,6 +510,35 @@ async function main() {
       assert.equal(dupes.length, 0, `${dupes.length} message ids were delivered twice`);
       const unacked = notifications("SELECT COUNT(*) AS n FROM deliveries WHERE emitted != 1")[0]?.n ?? 0;
       assert.equal(Number(unacked), 0, `${unacked} deliveries were committed but never acknowledged`);
+    });
+
+    await check("every notification fact reaches the order projection", async () => {
+      await waitFor(
+        `${ORDERS * DELIVERIES_PER_ORDER} notification.sent facts to reach the read model`,
+        async () => {
+          const { projected } = await pollProjection();
+          const behind = orders.filter(
+            (order) => projectedFactCount(projected[order.id], "notification.sent") < DELIVERIES_PER_ORDER,
+          );
+          if (behind.length === 0) return true;
+          throw new Error(
+            `${behind.length} orders are behind, e.g. ` +
+            behind.slice(0, 5).map((order) =>
+              `${order.id}=${projectedFactCount(projected[order.id], "notification.sent")}/${DELIVERIES_PER_ORDER}`,
+            ).join(", "),
+          );
+        },
+        { timeoutMs: DELIVERY_MS, intervalMs: 250 },
+      );
+
+      const projected = await api.projectedOrders();
+      for (const order of orders) {
+        assert.equal(
+          projectedFactCount(projected[order.id], "notification.sent"),
+          DELIVERIES_PER_ORDER,
+          `order ${order.id} projected the wrong number of notification.sent facts`,
+        );
+      }
     });
 
     // ------------------------------------------------------------- the report
@@ -522,7 +628,7 @@ async function main() {
     log(`
 ================================================================
 reference-app load report
-  ${ORDERS} orders, ~${(ORDERS / (placeElapsed / 1000)).toFixed(1)}/s placed, ${orders.filter((o) => o.declines).length} declined, ${CONFLICTS} with a concurrent duplicate approval
+  ${ORDERS} orders, ~${(ORDERS / (placeElapsed / 1000)).toFixed(1)}/s placed, ${orders.filter((o) => o.declines).length} declined, ${conflictOrders.length} with a concurrent duplicate approval
   release burst: ${ORDERS} approvals in ${approveElapsed}ms
 
   Measured against SQLite (single writer) with the engine in --dev
@@ -537,7 +643,7 @@ APP LANE — informational only; degradation here is this example's own
 design (one unpartitioned projection document, ponytail: in projection.go)
 ${table(appLane)}
   read model after ${ORDERS} orders: ${(readBytes / 1024).toFixed(0)}KB in ${readMs}ms for one read
-  projection lag is bounded below by the 250ms poll interval
+  projection visibility uses response time; uncertainty is one 250ms polling interval plus read time
 
 FACT ARRIVAL SPREAD — first to last, across all ${ORDERS} orders. A span whose
 end fact has a spread near zero did not measure a queue draining; every order's

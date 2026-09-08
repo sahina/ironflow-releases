@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { dashboardRunUrl, dashboardStreamUrl } from "@/lib/dashboard-links";
 import { producerLabel, type ProjectedOrder } from "@/lib/orders";
-import { useRunsForOrder } from "@/lib/use-run-links";
+import { useRunsForEvents } from "@/lib/use-run-links";
 
 /**
  * The domain facts behind one order, in order, with the service and language
@@ -12,10 +12,9 @@ import { useRunsForOrder } from "@/lib/use-run-links";
  * headline, and the payloads stay in the dashboard rather than being rebuilt
  * here.
  *
- * Below the facts: the entity streams, and the runs this order caused. Runs are
- * listed per order rather than per fact — the projection records event ids from
- * a different id space than the one runs are keyed by, and a run produces
- * several facts anyway. They are fetched only when the timeline is opened.
+ * Below the facts: the entity streams, and the runs those facts started. The
+ * projection and run list share event ids, so the links need no domain-data
+ * convention. They are fetched only when the timeline is opened.
  */
 export function Timeline({
   order,
@@ -32,7 +31,11 @@ export function Timeline({
   runId?: string;
 }) {
   const [opened, setOpened] = useState(false);
-  const runs = useRunsForOrder(order.orderId, opened);
+  const eventIds = useMemo(
+    () => order.timeline.flatMap((entry) => (entry.eventId ? [entry.eventId] : [])),
+    [order.timeline],
+  );
+  const runs = useRunsForEvents(eventIds, opened);
 
   return (
     <details onToggle={(event) => setOpened(event.currentTarget.open || opened)}>

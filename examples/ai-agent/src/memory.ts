@@ -7,7 +7,7 @@ import { createProjection } from "@ironflow/node";
 // projection rebuilds deterministically from history.
 //
 // Query the projection state:
-//   curl http://localhost:9123/api/v1/projections/agent-memory | jq
+//   curl -X POST http://localhost:9123/ironflow.v1.ProjectionService/GetProjection -H 'Content-Type: application/json' -d '{"name":"agent-memory"}' | jq
 //
 // ────────────────────────────────────────────────────────────────
 

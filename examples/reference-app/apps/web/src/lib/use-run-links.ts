@@ -3,13 +3,13 @@
 import { useCallback } from "react";
 
 import { useIronflow } from "@/components/ironflow-provider";
-import { parseRuns, runsForOrder, type RunSummary } from "@/lib/runs";
+import { parseRuns, runsForEvents, type RunSummary } from "@/lib/runs";
 import { usePoll } from "@/lib/use-poll";
 
 const NONE: RunSummary[] = [];
 
 /**
- * The recent runs behind one order, while its timeline is open.
+ * The recent runs started by the facts in one open timeline.
  *
  * `enabled` is what makes it lazy. Every order on the operations page holds a
  * timeline, and loading runs for all of them on render would ask the engine for
@@ -20,7 +20,7 @@ const NONE: RunSummary[] = [];
  * An engine that cannot answer leaves the list empty, which renders no link —
  * never a broken one.
  */
-export function useRunsForOrder(orderId: string, enabled: boolean): RunSummary[] {
+export function useRunsForEvents(eventIds: readonly string[], enabled: boolean): RunSummary[] {
   const ironflow = useIronflow();
 
   const look = useCallback(async (): Promise<RunSummary[]> => {
@@ -28,5 +28,5 @@ export function useRunsForOrder(orderId: string, enabled: boolean): RunSummary[]
     return parseRuns(await ironflow.listRuns());
   }, [enabled, ironflow]);
 
-  return runsForOrder(usePoll(look, NONE), orderId);
+  return runsForEvents(usePoll(look, NONE), eventIds);
 }
