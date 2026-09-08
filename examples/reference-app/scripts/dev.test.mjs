@@ -365,10 +365,12 @@ test("the web application is started and its URL is printed once", async (t) => 
     rmSync(root, { recursive: true, force: true });
   });
 
-  const output = await dev.until(/\[dev]\s+ready\n/);
+  // Waits for the web line itself, not for `ready`: dev.mjs logs ready and the
+  // three URLs as four separate writes, so a snapshot taken the moment ready
+  // matches can be missing the web line that follows it.
+  const output = await dev.until(/web\s+http:\/\/127\.0\.0\.1:\d+\/shop/);
   // A presenter reads the URL off this line; nothing else tells them the port.
   const web = output.match(/web\s+(http:\/\/127\.0\.0\.1:\d+)\/shop/);
-  assert.ok(web, `no web URL in:\n${output}`);
   // And the port really is serving, not just chosen.
   assert.equal((await fetch(`${web[1]}/shop`)).status, 200);
 
