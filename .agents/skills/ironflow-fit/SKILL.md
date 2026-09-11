@@ -1,6 +1,6 @@
 ---
 name: ironflow-fit
-version: 0.36.1
+version: 0.37.0
 description: |
   Analyze a codebase or workspace and produce a visual HTML report on whether and where
   Ironflow fits — event-driven readiness, ranked opportunities with file:line evidence,
@@ -58,10 +58,12 @@ For anything about non-Go/TS adoption, the published docs are the source and the
 report should **link rather than restate**:
 
 ```
-docs/how-to-guides/integration/other-languages.md   client generation, registration,
-                                                     push mode, known gaps
-docs/reference/api/push-protocol.md                  the full push wire contract
-docs/reference/sdk-comparison.md                     the tier model
+https://docs.ironflow.run/how-to-guides/integration/other-languages/
+                       client generation, registration, push mode, known gaps
+https://docs.ironflow.run/reference/api/push-protocol/
+                       the full push wire contract
+https://docs.ironflow.run/reference/sdk-comparison/
+                       the tier model
 ```
 
 ## Run it

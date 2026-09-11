@@ -28,15 +28,18 @@ picks) and `--port-file` control the bind; stdio ignores all three.
   "mcpServers": {
     "ironflow": {
       "command": "ironflow",
-      "args": ["mcp", "--allow-writes"],
+      "args": ["mcp", "--allow-writes", "--server-url", "http://localhost:9123"],
       "env": {
-        "IRONFLOW_SERVER_URL": "http://localhost:9123",
         "IRONFLOW_API_KEY": "ifkey_..."
       }
     }
   }
 }
 ```
+
+`ironflow mcp` reads `IRONFLOW_API_KEY` but **not** `IRONFLOW_SERVER_URL` — unlike the
+rest of the CLI. Setting it in `env` is inert and the server silently talks to
+`http://localhost:9123`. Point at a non-default engine with `--server-url`.
 
 ## Tools (read-only) — 23, always registered
 

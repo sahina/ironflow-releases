@@ -22,7 +22,7 @@ This is the runnable companion to the [Survive a Crash](../../../docs/tutorials/
              └─────────────────────────────────────────────┘
 ```
 
-Every box is a memoized step. Crash inside the kill window, restart, and only the OCR call re-runs — `classify` and `publish` run fresh against the cached OCR output.
+Every box is a memoized step. Crash inside the kill window, restart, and OCR re-runs from scratch — it never completed, so there is no cached row — then `classify` and `publish` run fresh against its output. Crash *after* OCR and it replays from cache instead.
 
 ## Quick start
 

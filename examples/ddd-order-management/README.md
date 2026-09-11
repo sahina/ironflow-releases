@@ -68,7 +68,8 @@ pnpm install
 ```
 
 `pnpm worker` loads `.env.local` with `--env-file` (not `--env-file-if-exists`), so
-the file must exist. It is gitignored — create it if your clone has none:
+the file must exist. It is committed (`.gitignore` un-ignores it with `!.env.local`),
+so a fresh clone has it. Recreate it if yours is missing:
 
 ```bash
 printf 'NEXT_PUBLIC_IRONFLOW_SERVER_URL=http://localhost:9123\nIRONFLOW_SERVER_URL=http://localhost:9123\n' > .env.local

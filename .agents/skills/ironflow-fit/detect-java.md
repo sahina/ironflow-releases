@@ -25,6 +25,6 @@ The script owns the regexes; never re-derive them here.
 ## Adoption note
 
 Java is Tier 2. Their side stays Java — see `adoption-paths.md`, and link the team
-to `docs/how-to-guides/integration/other-languages.md`, which walks client
+to <https://docs.ironflow.run/how-to-guides/integration/other-languages/>, which walks client
 generation, `RegisterFunction`, and a push handler end to end. Do not show a Java
 team a TypeScript workflow without the Java half beside it.

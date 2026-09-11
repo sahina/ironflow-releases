@@ -1,12 +1,13 @@
 ---
 name: ironflow
-version: 0.36.1
+version: 0.37.0
 description: |
   Universal entry point for Ironflow AI assistance. Classifies user intent and dispatches
   to the right specialized skill. Use when the user mentions "ironflow", "help with ironflow",
   "my ironflow project", or any Ironflow-related request that doesn't have a sharper trigger.
-  This router uses ONLY universal primitives (text output, Read, Grep, Bash) — no
-  Claude-specific tools — so it works across Claude Code, Codex CLI, and Gemini CLI.
+  This router uses ONLY universal primitives (text output, Read, Grep, Bash, plus
+  optional WebFetch that degrades gracefully) — no Claude-specific tools — so it works
+  across Claude Code, Codex CLI, and Gemini CLI.
 user-invocable: true
 argument-hint: "[your request] — e.g., 'set up ironflow' or 'my run failed'"
 allowed-tools:

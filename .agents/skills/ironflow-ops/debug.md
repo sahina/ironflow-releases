@@ -199,8 +199,10 @@ ironflow sql "SELECT id, name, source, timestamp FROM events WHERE name='<event-
 ironflow function list --json
 ironflow function get <function-id> --json
 ironflow emit test.event --data '{"test": true}'             # smoke test
-ironflow outbox dlq list --json                              # delivery failures land here
+ironflow outbox dlq list --env <env> --json                   # delivery failures land here
 ```
+
+Every `outbox dlq` subcommand requires `--env` unless `IRONFLOW_ENV` is set.
 
 MCP: `ironflow_list_events` takes `names`, `since`, `source` and `search`, so the SQL and
 `curl` above are usually unnecessary. `ironflow_outbox_dlq_list` needs an explicit `env`
@@ -255,15 +257,15 @@ ironflow projection list --json                              # all projections
 - **`last_event_seq=0` but the stream has events?** Check the **outbox**, not the append
   site:
   ```bash
-  ironflow outbox dlq list --json
+  ironflow outbox dlq list --env <env> --json
   ironflow projection rebuild <name> --dry-run    # text mode prints "Total Events:"
   ```
   `streams.append` enqueues **two** outbox rows — one to the entity namespace and one to
   the events namespace that projections consume. If the outbox drain fails, the second
   publish never lands, so the stream holds events while `last_event_seq` stays 0. That is
-  this symptom's actual cause. Requeue with `ironflow outbox dlq requeue <event-id>`, or
-  MCP `ironflow_outbox_dlq_requeue` (`event_id` + `env`). Fix the drain failure first, or
-  the entry dead-letters again.
+  this symptom's actual cause. Requeue with `ironflow outbox dlq requeue <event-id>
+  --env <env>`, or MCP `ironflow_outbox_dlq_requeue` (`event_id` + `env`). Fix the drain
+  failure first, or the entry dead-letters again.
 
   **`--dry-run` works.** The guard sits above every mutation
   (`internal/projection/rebuild.go:307`), so a dry run is a pure query: it reports the

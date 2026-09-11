@@ -8,11 +8,12 @@
     "dev": "tsx watch src/worker.ts",
     "start": "tsx src/worker.ts",
     "trigger": "tsx scripts/trigger.ts",
-    "approve": "tsx scripts/approve.ts"
+    "approve": "tsx scripts/approve.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@ironflow/node": "workspace:*",
-    "zod": "^4.3.5"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "tsx": "^4.19.0",

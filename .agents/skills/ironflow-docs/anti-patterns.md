@@ -79,7 +79,7 @@ Go equivalents to ban inside managed handlers: `time.Now()`, `rand.Int*`,
 `uuid.New()`, `os.Getenv`, file reads. Derive timestamps from
 `event.Timestamp` and IDs from `event.Data`.
 
-See `docs/explanation/projections.md#reducer-contract-managed-mode` for the
+See <https://docs.ironflow.run/explanation/projections/#reducer-contract-managed-mode> for the
 full four-rule contract.
 
 ### 3b. Mutating the state argument then returning it
@@ -136,13 +136,13 @@ ironflow.subscribeToProjection("name", { onUpdate: (state) => setState(state) })
 A timeout is **not** observable from the handler at all — not as `null`, not as a
 rejection. The return type is `Promise<IronflowEvent<T>>`; on expiry the scheduler
 marks the step `timed_out` and fails the whole run
-(`internal/engine/scheduler.go:419,442`). The handler is never resumed, so no line
+(`internal/engine/scheduler.go:428,451`). The handler is never resumed, so no line
 after the wait ever executes.
 
 Catching is worse than useless here — `try/catch` or a chained `.catch()`, same
 result. `waitForEvent` suspends the run by throwing an
 internal `YieldSignal` that the SDK catches at the handler boundary
-(`sdk/js/node/src/serve.ts:391`). A user `catch` swallows that signal, so the run does
+(`sdk/js/node/src/serve.ts:398`). A user `catch` swallows that signal, so the run does
 not suspend — it returns as if it had finished, and the wait silently never happens.
 
 ```typescript

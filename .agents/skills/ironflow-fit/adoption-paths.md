@@ -6,13 +6,13 @@ week one, so all of it is checkable — and all of it now links to published doc
 
 Sources, in order of usefulness for a non-Go/TS team:
 
-- `docs/how-to-guides/integration/other-languages.md` — the end-to-end guide:
-  generating a client, registering a function, push mode at two levels, and the
-  known gaps. Read it before writing this section of a report.
-- `docs/reference/api/push-protocol.md` — the full push wire contract: request and
-  response shapes, signature verification, step IDs and the escape function,
-  memoization rules, yields and resume.
-- `docs/reference/sdk-comparison.md` — the tier model.
+- <https://docs.ironflow.run/how-to-guides/integration/other-languages/> — the
+  end-to-end guide: generating a client, registering a function, push mode at two
+  levels, and the known gaps. Read it before writing this section of a report.
+- <https://docs.ironflow.run/reference/api/push-protocol/> — the full push wire
+  contract: request and response shapes, signature verification, step IDs and the
+  escape function, memoization rules, yields and resume.
+- <https://docs.ironflow.run/reference/sdk-comparison/> — the tier model.
 
 **Do not restate these in the report.** Summarize in two or three sentences and
 link. A report that reproduces a reference page goes stale the week it is written,

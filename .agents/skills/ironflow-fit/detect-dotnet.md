@@ -26,7 +26,7 @@ Signal IDs are emitted by `scripts/scan.sh`. This file is the interpretation.
 
 ## Adoption note
 
-C# is Tier 2. `docs/how-to-guides/integration/other-languages.md` carries a worked
+C# is Tier 2. <https://docs.ironflow.run/how-to-guides/integration/other-languages/> carries a worked
 Kiota example, which is the .NET-nearest path in the docs. Issue #172 (a first-party C# SDK) was closed `NOT_PLANNED` —
 "speculative, no demand signal. Reopen if a .NET user materializes." If the room
 is a .NET shop, that is worth saying out loud; it is a demand signal and they are

@@ -309,12 +309,91 @@ ironflow circuit-breaker reset <function-id-or-key>
 
 ```bash
 ironflow org list --json
+ironflow org create my-org
+ironflow org get org_abc123 --json
+ironflow org delete org_abc123                # takes the org ID, not the name
+
 ironflow tenant list --json
-ironflow role list --json
-ironflow policy list --json
-ironflow audit trail <run-id> --json          # run event trail
+# One call creates org + built-in roles + environment + admin API key.
+ironflow tenant provision --name "Acme Corp"
+ironflow tenant provision --name "Acme Corp" --env staging   # default: production
+
+ironflow audit trail <run-id> --json                 # run event trail
 ironflow audit auth-trail --org org_default --json   # auth decision trail
 ```
+
+### Roles (Layer 1 RBAC)
+
+```bash
+ironflow role list --json
+ironflow role create admin --org org_abc123      # --org is required
+ironflow role get role_abc123 --json
+ironflow role assign-policy role_abc123 pol_xyz789
+ironflow role remove-policy role_abc123 pol_xyz789
+ironflow role delete role_abc123
+```
+
+### Policies (Layer 2 CEL)
+
+**CEL policies are subtractive only.** Roles grant; policies can only narrow, deny-wins.
+`--effect allow` is rejected at write (#943, ADR 0016 T2) — grant with a role, then add
+conditional denies here.
+
+```bash
+ironflow policy list --json
+ironflow policy get pol_abc123 --json
+ironflow policy create --name deny-prod-delete --effect deny \
+  --actions "delete" --resources "irn:org:acme:*" \
+  --condition 'request.environment == "production"'
+
+# Compile + evaluate without persisting. Use before create/update.
+ironflow policy test --condition 'subject.org == "acme"' \
+  --request '{"action":"read"}' --subject '{"id":"u1","roles":["admin"]}'
+ironflow policy test --policy-id pol_abc123 --request-file req.json --subject-file sub.json
+
+ironflow policy update pol_abc123 --condition "subject.org == 'acme'"
+ironflow policy update pol_abc123 --clear-condition     # removes the condition
+ironflow policy delete pol_abc123
+
+# History is append-only: rollback forward-saves the old snapshot as a new version.
+ironflow policy versions list pol_abc123 --json
+ironflow policy rollback pol_abc123 2
+
+# Bundles. A single bad condition or name collision rejects the whole install.
+ironflow policy template list --json
+ironflow policy template install tpl_admin_basics
+```
+
+### Platform operator surface
+
+`ironflow platform ...` administers a self-hosted multi-tenant server. It needs an
+`ifplatform_` key, or a JWT from `platform login` — which writes
+`~/.config/ironflow/credentials.json`. Everything else here fails without one of those.
+
+```bash
+# Bootstrap: create-admin authenticates with IRONFLOW_API_KEY because it runs
+# BEFORE login is possible. It refuses if any platform user already exists.
+ironflow platform create-admin --email admin@example.com --name "Admin"
+ironflow platform login --email admin@example.com
+
+ironflow platform users list --json
+ironflow platform users create --email user@example.com --name "User" --role-ids role_abc
+ironflow platform users delete user_abc123
+
+ironflow platform roles list --json
+ironflow platform roles create my-role --policy-ids pol_abc
+ironflow platform roles delete role_abc123
+
+ironflow platform tenants list --json
+ironflow platform tenants provision --name my-tenant
+ironflow platform tenants delete tenant_abc123
+
+ironflow platform audit --event-type user.created --limit 50
+ironflow platform audit --from 2026-01-01 --to 2026-12-31 --json
+```
+
+`ironflow cloud ...` is Ironflow Cloud's own meta-cluster operator surface, not for
+self-hosters.
 
 ---
 

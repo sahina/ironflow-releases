@@ -1,0 +1,999 @@
+{
+  "periodStart": "2026-09-01",
+  "transactions": [
+    {
+      "id": "TXN-0001",
+      "counterparty": "Vendor C",
+      "amountCents": 2574,
+      "currency": "USD",
+      "dayOffset": 22,
+      "label": "INV-0000",
+      "cause": null
+    },
+    {
+      "id": "TXN-0002",
+      "counterparty": "Vendor E",
+      "amountCents": 88642,
+      "currency": "USD",
+      "dayOffset": 12,
+      "label": "INV-0001",
+      "cause": null
+    },
+    {
+      "id": "TXN-0003",
+      "counterparty": "Vendor C",
+      "amountCents": 65326,
+      "currency": "USD",
+      "dayOffset": 14,
+      "label": "INV-0002",
+      "cause": null
+    },
+    {
+      "id": "TXN-0004",
+      "counterparty": "Vendor B",
+      "amountCents": 131322,
+      "currency": "USD",
+      "dayOffset": 22,
+      "label": "INV-0003",
+      "cause": null
+    },
+    {
+      "id": "TXN-0005",
+      "counterparty": "Vendor B",
+      "amountCents": 19306,
+      "currency": "USD",
+      "dayOffset": 2,
+      "label": "INV-0004",
+      "cause": null
+    },
+    {
+      "id": "TXN-0006",
+      "counterparty": "Vendor C",
+      "amountCents": 40864,
+      "currency": "USD",
+      "dayOffset": 12,
+      "label": "INV-0005",
+      "cause": null
+    },
+    {
+      "id": "TXN-0007",
+      "counterparty": "Vendor E",
+      "amountCents": 42304,
+      "currency": "USD",
+      "dayOffset": 0,
+      "label": "INV-0006",
+      "cause": null
+    },
+    {
+      "id": "TXN-0008",
+      "counterparty": "Vendor B",
+      "amountCents": 148368,
+      "currency": "USD",
+      "dayOffset": 6,
+      "label": "INV-0007",
+      "cause": null
+    },
+    {
+      "id": "TXN-0009",
+      "counterparty": "Vendor C",
+      "amountCents": 74672,
+      "currency": "USD",
+      "dayOffset": 19,
+      "label": "INV-0008",
+      "cause": null
+    },
+    {
+      "id": "TXN-0010",
+      "counterparty": "Vendor E",
+      "amountCents": 5253,
+      "currency": "USD",
+      "dayOffset": 11,
+      "label": "INV-0009",
+      "cause": null
+    },
+    {
+      "id": "TXN-0011",
+      "counterparty": "Vendor D",
+      "amountCents": 5813,
+      "currency": "USD",
+      "dayOffset": 18,
+      "label": "INV-0010",
+      "cause": null
+    },
+    {
+      "id": "TXN-0012",
+      "counterparty": "Vendor D",
+      "amountCents": 4451,
+      "currency": "USD",
+      "dayOffset": 2,
+      "label": "INV-0011",
+      "cause": null
+    },
+    {
+      "id": "TXN-0013",
+      "counterparty": "Vendor B",
+      "amountCents": 144410,
+      "currency": "USD",
+      "dayOffset": 18,
+      "label": "INV-0012",
+      "cause": null
+    },
+    {
+      "id": "TXN-0014",
+      "counterparty": "Vendor C",
+      "amountCents": 60095,
+      "currency": "USD",
+      "dayOffset": 7,
+      "label": "INV-0013",
+      "cause": null
+    },
+    {
+      "id": "TXN-0015",
+      "counterparty": "Vendor B",
+      "amountCents": 102501,
+      "currency": "USD",
+      "dayOffset": 12,
+      "label": "INV-0014",
+      "cause": null
+    },
+    {
+      "id": "TXN-0016",
+      "counterparty": "Vendor C",
+      "amountCents": 110018,
+      "currency": "USD",
+      "dayOffset": 19,
+      "label": "INV-0015",
+      "cause": null
+    },
+    {
+      "id": "TXN-0017",
+      "counterparty": "Vendor D",
+      "amountCents": 66639,
+      "currency": "USD",
+      "dayOffset": 4,
+      "label": "INV-0016",
+      "cause": null
+    },
+    {
+      "id": "TXN-0018",
+      "counterparty": "Vendor D",
+      "amountCents": 104539,
+      "currency": "USD",
+      "dayOffset": 6,
+      "label": "INV-0017",
+      "cause": null
+    },
+    {
+      "id": "TXN-0019",
+      "counterparty": "Vendor A",
+      "amountCents": 30658,
+      "currency": "USD",
+      "dayOffset": 26,
+      "label": "INV-0018",
+      "cause": null
+    },
+    {
+      "id": "TXN-0020",
+      "counterparty": "Vendor A",
+      "amountCents": 116461,
+      "currency": "USD",
+      "dayOffset": 7,
+      "label": "INV-0019",
+      "cause": null
+    },
+    {
+      "id": "TXN-0021",
+      "counterparty": "Vendor B",
+      "amountCents": 83508,
+      "currency": "USD",
+      "dayOffset": 14,
+      "label": "INV-0020",
+      "cause": null
+    },
+    {
+      "id": "TXN-0022",
+      "counterparty": "Vendor C",
+      "amountCents": 47771,
+      "currency": "USD",
+      "dayOffset": 24,
+      "label": "INV-0021",
+      "cause": null
+    },
+    {
+      "id": "TXN-0023",
+      "counterparty": "Vendor E",
+      "amountCents": 16418,
+      "currency": "USD",
+      "dayOffset": 20,
+      "label": "INV-0022",
+      "cause": null
+    },
+    {
+      "id": "TXN-0024",
+      "counterparty": "Vendor E",
+      "amountCents": 140130,
+      "currency": "USD",
+      "dayOffset": 15,
+      "label": "INV-0023",
+      "cause": null
+    },
+    {
+      "id": "TXN-0025",
+      "counterparty": "Vendor B",
+      "amountCents": 45889,
+      "currency": "USD",
+      "dayOffset": 21,
+      "label": "INV-0024",
+      "cause": null
+    },
+    {
+      "id": "TXN-0026",
+      "counterparty": "Vendor D",
+      "amountCents": 65719,
+      "currency": "USD",
+      "dayOffset": 15,
+      "label": "INV-0025",
+      "cause": null
+    },
+    {
+      "id": "TXN-0027",
+      "counterparty": "Vendor A",
+      "amountCents": 76823,
+      "currency": "USD",
+      "dayOffset": 19,
+      "label": "INV-0026",
+      "cause": null
+    },
+    {
+      "id": "TXN-0028",
+      "counterparty": "Vendor D",
+      "amountCents": 4266,
+      "currency": "USD",
+      "dayOffset": 22,
+      "label": "INV-0027",
+      "cause": null
+    },
+    {
+      "id": "TXN-0029",
+      "counterparty": "Vendor B",
+      "amountCents": 63135,
+      "currency": "USD",
+      "dayOffset": 3,
+      "label": "INV-0028",
+      "cause": null
+    },
+    {
+      "id": "TXN-0030",
+      "counterparty": "Vendor E",
+      "amountCents": 97943,
+      "currency": "USD",
+      "dayOffset": 11,
+      "label": "INV-0029",
+      "cause": null
+    },
+    {
+      "id": "TXN-0031",
+      "counterparty": "Vendor E",
+      "amountCents": 145533,
+      "currency": "USD",
+      "dayOffset": 21,
+      "label": "INV-0030",
+      "cause": null
+    },
+    {
+      "id": "TXN-0032",
+      "counterparty": "Vendor A",
+      "amountCents": 40263,
+      "currency": "USD",
+      "dayOffset": 24,
+      "label": "INV-0031",
+      "cause": null
+    },
+    {
+      "id": "TXN-0033",
+      "counterparty": "Vendor C",
+      "amountCents": 17441,
+      "currency": "USD",
+      "dayOffset": 6,
+      "label": "INV-0032",
+      "cause": null
+    },
+    {
+      "id": "TXN-0034",
+      "counterparty": "Vendor E",
+      "amountCents": 44866,
+      "currency": "USD",
+      "dayOffset": 20,
+      "label": "INV-0033",
+      "cause": null
+    },
+    {
+      "id": "TXN-0035",
+      "counterparty": "Vendor B",
+      "amountCents": 74467,
+      "currency": "USD",
+      "dayOffset": 11,
+      "label": "INV-0034",
+      "cause": null
+    },
+    {
+      "id": "TXN-0036",
+      "counterparty": "Vendor E",
+      "amountCents": 127162,
+      "currency": "USD",
+      "dayOffset": 19,
+      "label": "INV-0035",
+      "cause": null
+    },
+    {
+      "id": "TXN-0037",
+      "counterparty": "Vendor E",
+      "amountCents": 49829,
+      "currency": "USD",
+      "dayOffset": 15,
+      "label": "INV-0036",
+      "cause": null
+    },
+    {
+      "id": "TXN-0038",
+      "counterparty": "Vendor D",
+      "amountCents": 63006,
+      "currency": "USD",
+      "dayOffset": 1,
+      "label": "INV-0037",
+      "cause": null
+    },
+    {
+      "id": "TXN-0039",
+      "counterparty": "Vendor B",
+      "amountCents": 62149,
+      "currency": "USD",
+      "dayOffset": 11,
+      "label": "INV-0038",
+      "cause": null
+    },
+    {
+      "id": "TXN-0040",
+      "counterparty": "Vendor D",
+      "amountCents": 135778,
+      "currency": "USD",
+      "dayOffset": 10,
+      "label": "INV-0039",
+      "cause": null
+    },
+    {
+      "id": "TXN-0041",
+      "counterparty": "Vendor D",
+      "amountCents": 112303,
+      "currency": "USD",
+      "dayOffset": 23,
+      "label": "INV-0040",
+      "cause": null
+    },
+    {
+      "id": "TXN-0042",
+      "counterparty": "Vendor E",
+      "amountCents": 93360,
+      "currency": "USD",
+      "dayOffset": 16,
+      "label": "INV-0041",
+      "cause": null
+    },
+    {
+      "id": "TXN-0043",
+      "counterparty": "Vendor E",
+      "amountCents": 147046,
+      "currency": "USD",
+      "dayOffset": 8,
+      "label": "INV-0042",
+      "cause": null
+    },
+    {
+      "id": "TXN-0044",
+      "counterparty": "Vendor A",
+      "amountCents": 31381,
+      "currency": "USD",
+      "dayOffset": 19,
+      "label": "INV-0043",
+      "cause": null
+    },
+    {
+      "id": "TXN-0045",
+      "counterparty": "Vendor E",
+      "amountCents": 18191,
+      "currency": "USD",
+      "dayOffset": 19,
+      "label": "INV-0044",
+      "cause": null
+    },
+    {
+      "id": "TXN-0046",
+      "counterparty": "Vendor C",
+      "amountCents": 45598,
+      "currency": "USD",
+      "dayOffset": 19,
+      "label": "INV-0045",
+      "cause": null
+    },
+    {
+      "id": "TXN-0047",
+      "counterparty": "Vendor E",
+      "amountCents": 141679,
+      "currency": "USD",
+      "dayOffset": 12,
+      "label": "INV-0046",
+      "cause": null
+    },
+    {
+      "id": "TXN-0048",
+      "counterparty": "Vendor E",
+      "amountCents": 26322,
+      "currency": "USD",
+      "dayOffset": 2,
+      "label": "INV-0047",
+      "cause": null
+    },
+    {
+      "id": "TXN-0049",
+      "counterparty": "Vendor D",
+      "amountCents": 110219,
+      "currency": "USD",
+      "dayOffset": 26,
+      "label": "INV-0048",
+      "cause": null
+    },
+    {
+      "id": "TXN-0050",
+      "counterparty": "Vendor A",
+      "amountCents": 148224,
+      "currency": "USD",
+      "dayOffset": 13,
+      "label": "INV-0049",
+      "cause": null
+    },
+    {
+      "id": "TXN-0051",
+      "counterparty": "Vendor E",
+      "amountCents": 70783,
+      "currency": "USD",
+      "dayOffset": 7,
+      "label": "INV-0050",
+      "cause": null
+    },
+    {
+      "id": "TXN-0052",
+      "counterparty": "Vendor A",
+      "amountCents": 11517,
+      "currency": "USD",
+      "dayOffset": 1,
+      "label": "INV-0051",
+      "cause": null
+    },
+    {
+      "id": "TXN-0053",
+      "counterparty": "Vendor D",
+      "amountCents": 3331,
+      "currency": "USD",
+      "dayOffset": 19,
+      "label": "INV-0052",
+      "cause": null
+    },
+    {
+      "id": "TXN-0054",
+      "counterparty": "Vendor C",
+      "amountCents": 112366,
+      "currency": "USD",
+      "dayOffset": 0,
+      "label": "INV-0053",
+      "cause": null
+    },
+    {
+      "id": "TXN-0055",
+      "counterparty": "Vendor C",
+      "amountCents": 14305,
+      "currency": "USD",
+      "dayOffset": 11,
+      "label": "INV-0054",
+      "cause": null
+    },
+    {
+      "id": "TXN-0056",
+      "counterparty": "Vendor C",
+      "amountCents": 83197,
+      "currency": "USD",
+      "dayOffset": 5,
+      "label": "INV-0055",
+      "cause": null
+    },
+    {
+      "id": "TXN-0057",
+      "counterparty": "Vendor E",
+      "amountCents": 96804,
+      "currency": "USD",
+      "dayOffset": 1,
+      "label": "INV-0056",
+      "cause": null
+    },
+    {
+      "id": "TXN-0058",
+      "counterparty": "Vendor E",
+      "amountCents": 144331,
+      "currency": "USD",
+      "dayOffset": 2,
+      "label": "INV-0057",
+      "cause": null
+    },
+    {
+      "id": "TXN-0059",
+      "counterparty": "Vendor C",
+      "amountCents": 93515,
+      "currency": "USD",
+      "dayOffset": 24,
+      "label": "INV-0058",
+      "cause": null
+    },
+    {
+      "id": "TXN-0060",
+      "counterparty": "Vendor A",
+      "amountCents": 118826,
+      "currency": "USD",
+      "dayOffset": 15,
+      "label": "INV-0059",
+      "cause": null
+    },
+    {
+      "id": "TXN-0061",
+      "counterparty": "Vendor D",
+      "amountCents": 87680,
+      "currency": "USD",
+      "dayOffset": 0,
+      "label": "INV-0060",
+      "cause": null
+    },
+    {
+      "id": "TXN-0062",
+      "counterparty": "Vendor B",
+      "amountCents": 129613,
+      "currency": "USD",
+      "dayOffset": 9,
+      "label": "INV-0061",
+      "cause": null
+    },
+    {
+      "id": "TXN-0063",
+      "counterparty": "Vendor A",
+      "amountCents": 26015,
+      "currency": "USD",
+      "dayOffset": 4,
+      "label": "INV-0062",
+      "cause": null
+    },
+    {
+      "id": "TXN-0064",
+      "counterparty": "Vendor A",
+      "amountCents": 143595,
+      "currency": "USD",
+      "dayOffset": 18,
+      "label": "INV-0063",
+      "cause": null
+    },
+    {
+      "id": "TXN-0065",
+      "counterparty": "Vendor D",
+      "amountCents": 5044,
+      "currency": "USD",
+      "dayOffset": 0,
+      "label": "INV-0064",
+      "cause": null
+    },
+    {
+      "id": "TXN-0066",
+      "counterparty": "Vendor E",
+      "amountCents": 98481,
+      "currency": "USD",
+      "dayOffset": 16,
+      "label": "INV-0065",
+      "cause": null
+    },
+    {
+      "id": "TXN-0067",
+      "counterparty": "Vendor A",
+      "amountCents": 112922,
+      "currency": "USD",
+      "dayOffset": 6,
+      "label": "INV-0066",
+      "cause": null
+    },
+    {
+      "id": "TXN-0068",
+      "counterparty": "Vendor D",
+      "amountCents": 116401,
+      "currency": "USD",
+      "dayOffset": 25,
+      "label": "INV-0067",
+      "cause": null
+    },
+    {
+      "id": "TXN-0069",
+      "counterparty": "Vendor B",
+      "amountCents": 22186,
+      "currency": "USD",
+      "dayOffset": 10,
+      "label": "INV-0068",
+      "cause": null
+    },
+    {
+      "id": "TXN-0070",
+      "counterparty": "Vendor A",
+      "amountCents": 20818,
+      "currency": "USD",
+      "dayOffset": 24,
+      "label": "INV-0069",
+      "cause": null
+    },
+    {
+      "id": "TXN-0071",
+      "counterparty": "Vendor E",
+      "amountCents": 9013,
+      "currency": "USD",
+      "dayOffset": 14,
+      "label": "INV-0070",
+      "cause": null
+    },
+    {
+      "id": "TXN-0072",
+      "counterparty": "Vendor B",
+      "amountCents": 51711,
+      "currency": "USD",
+      "dayOffset": 12,
+      "label": "INV-0071",
+      "cause": null
+    },
+    {
+      "id": "TXN-0073",
+      "counterparty": "Vendor A",
+      "amountCents": 141176,
+      "currency": "USD",
+      "dayOffset": 19,
+      "label": "INV-0072",
+      "cause": null
+    },
+    {
+      "id": "TXN-0074",
+      "counterparty": "Vendor A",
+      "amountCents": 15365,
+      "currency": "USD",
+      "dayOffset": 16,
+      "label": "INV-0073",
+      "cause": null
+    },
+    {
+      "id": "TXN-0075",
+      "counterparty": "Vendor B",
+      "amountCents": 64114,
+      "currency": "USD",
+      "dayOffset": 15,
+      "label": "INV-0074",
+      "cause": null
+    },
+    {
+      "id": "TXN-0076",
+      "counterparty": "Vendor D",
+      "amountCents": 81223,
+      "currency": "USD",
+      "dayOffset": 17,
+      "label": "INV-0075",
+      "cause": null
+    },
+    {
+      "id": "TXN-0077",
+      "counterparty": "Vendor C",
+      "amountCents": 131879,
+      "currency": "USD",
+      "dayOffset": 11,
+      "label": "INV-0076",
+      "cause": null
+    },
+    {
+      "id": "TXN-0078",
+      "counterparty": "Vendor E",
+      "amountCents": 146026,
+      "currency": "USD",
+      "dayOffset": 18,
+      "label": "INV-0077",
+      "cause": null
+    },
+    {
+      "id": "TXN-0079",
+      "counterparty": "Vendor B",
+      "amountCents": 11502,
+      "currency": "USD",
+      "dayOffset": 5,
+      "label": "INV-0078",
+      "cause": null
+    },
+    {
+      "id": "TXN-0080",
+      "counterparty": "Vendor A",
+      "amountCents": 96731,
+      "currency": "USD",
+      "dayOffset": 5,
+      "label": "INV-0079",
+      "cause": null
+    },
+    {
+      "id": "TXN-0081",
+      "counterparty": "Vendor B",
+      "amountCents": 144945,
+      "currency": "USD",
+      "dayOffset": 18,
+      "label": "INV-0080",
+      "cause": null
+    },
+    {
+      "id": "TXN-0082",
+      "counterparty": "Vendor E",
+      "amountCents": 65390,
+      "currency": "USD",
+      "dayOffset": 16,
+      "label": "INV-0081",
+      "cause": null
+    },
+    {
+      "id": "TXN-0083",
+      "counterparty": "Vendor B",
+      "amountCents": 16614,
+      "currency": "USD",
+      "dayOffset": 15,
+      "label": "INV-0082",
+      "cause": null
+    },
+    {
+      "id": "TXN-0084",
+      "counterparty": "Vendor B",
+      "amountCents": 3089,
+      "currency": "USD",
+      "dayOffset": 11,
+      "label": "INV-0083",
+      "cause": null
+    },
+    {
+      "id": "TXN-0085",
+      "counterparty": "Vendor D",
+      "amountCents": 55810,
+      "currency": "USD",
+      "dayOffset": 9,
+      "label": "INV-0084",
+      "cause": null
+    },
+    {
+      "id": "TXN-0086",
+      "counterparty": "Vendor B",
+      "amountCents": 3124,
+      "currency": "USD",
+      "dayOffset": 27,
+      "label": "INV-0085",
+      "cause": null
+    },
+    {
+      "id": "TXN-0087",
+      "counterparty": "Vendor E",
+      "amountCents": 136845,
+      "currency": "USD",
+      "dayOffset": 4,
+      "label": "INV-0086",
+      "cause": null
+    },
+    {
+      "id": "TXN-0088",
+      "counterparty": "Vendor B",
+      "amountCents": 147699,
+      "currency": "USD",
+      "dayOffset": 11,
+      "label": "INV-0087",
+      "cause": null
+    },
+    {
+      "id": "TXN-0089",
+      "counterparty": "Vendor D",
+      "amountCents": 134228,
+      "currency": "USD",
+      "dayOffset": 17,
+      "label": "INV-0088",
+      "cause": null
+    },
+    {
+      "id": "TXN-0090",
+      "counterparty": "Vendor B",
+      "amountCents": 134394,
+      "currency": "USD",
+      "dayOffset": 23,
+      "label": "INV-0089",
+      "cause": null
+    },
+    {
+      "id": "TXN-0091",
+      "counterparty": "Vendor C",
+      "amountCents": 130700,
+      "currency": "USD",
+      "dayOffset": 17,
+      "label": "ADJ-0090",
+      "cause": "posted-to-sibling-account"
+    },
+    {
+      "id": "TXN-0092",
+      "counterparty": "Vendor D",
+      "amountCents": 30410,
+      "currency": "USD",
+      "dayOffset": 12,
+      "label": "ADJ-0091",
+      "cause": "timing-next-period"
+    },
+    {
+      "id": "TXN-0093",
+      "counterparty": "Vendor D",
+      "amountCents": 121371,
+      "currency": "USD",
+      "dayOffset": 4,
+      "label": "ADJ-0092",
+      "cause": "partial-payment"
+    },
+    {
+      "id": "TXN-0094",
+      "counterparty": "Vendor E",
+      "amountCents": 50980,
+      "currency": "USD",
+      "dayOffset": 11,
+      "label": "ADJ-0093",
+      "cause": "fee-deducted-at-source"
+    },
+    {
+      "id": "TXN-0095",
+      "counterparty": "Vendor C",
+      "amountCents": 92103,
+      "currency": "USD",
+      "dayOffset": 9,
+      "label": "ADJ-0094",
+      "cause": "duplicate-posting"
+    },
+    {
+      "id": "TXN-0096",
+      "counterparty": "Vendor B",
+      "amountCents": 35251,
+      "currency": "USD",
+      "dayOffset": 10,
+      "label": "ADJ-0095",
+      "cause": "posted-to-sibling-account"
+    },
+    {
+      "id": "TXN-0097",
+      "counterparty": "Vendor A",
+      "amountCents": 134039,
+      "currency": "USD",
+      "dayOffset": 22,
+      "label": "ADJ-0096",
+      "cause": "timing-next-period"
+    },
+    {
+      "id": "TXN-0098",
+      "counterparty": "Vendor A",
+      "amountCents": 95221,
+      "currency": "USD",
+      "dayOffset": 27,
+      "label": "ADJ-0097",
+      "cause": "partial-payment"
+    },
+    {
+      "id": "TXN-0099",
+      "counterparty": "Vendor B",
+      "amountCents": 23127,
+      "currency": "USD",
+      "dayOffset": 24,
+      "label": "ADJ-0098",
+      "cause": "fee-deducted-at-source"
+    },
+    {
+      "id": "TXN-0100",
+      "counterparty": "Vendor D",
+      "amountCents": 12889,
+      "currency": "USD",
+      "dayOffset": 20,
+      "label": "ADJ-0099",
+      "cause": "duplicate-posting"
+    }
+  ],
+  "applicationLines": [
+    "TXN-0001",
+    "TXN-0002",
+    "TXN-0003",
+    "TXN-0004",
+    "TXN-0005",
+    "TXN-0006",
+    "TXN-0007",
+    "TXN-0008",
+    "TXN-0009",
+    "TXN-0010",
+    "TXN-0011",
+    "TXN-0012",
+    "TXN-0013",
+    "TXN-0014",
+    "TXN-0015",
+    "TXN-0016",
+    "TXN-0017",
+    "TXN-0018",
+    "TXN-0019",
+    "TXN-0020",
+    "TXN-0021",
+    "TXN-0022",
+    "TXN-0023",
+    "TXN-0024",
+    "TXN-0025",
+    "TXN-0026",
+    "TXN-0027",
+    "TXN-0028",
+    "TXN-0029",
+    "TXN-0030",
+    "TXN-0031",
+    "TXN-0032",
+    "TXN-0033",
+    "TXN-0034",
+    "TXN-0035",
+    "TXN-0036",
+    "TXN-0037",
+    "TXN-0038",
+    "TXN-0039",
+    "TXN-0040",
+    "TXN-0041",
+    "TXN-0042",
+    "TXN-0043",
+    "TXN-0044",
+    "TXN-0045",
+    "TXN-0046",
+    "TXN-0047",
+    "TXN-0048",
+    "TXN-0049",
+    "TXN-0050",
+    "TXN-0051",
+    "TXN-0052",
+    "TXN-0053",
+    "TXN-0054",
+    "TXN-0055",
+    "TXN-0056",
+    "TXN-0057",
+    "TXN-0058",
+    "TXN-0059",
+    "TXN-0060",
+    "TXN-0061",
+    "TXN-0062",
+    "TXN-0063",
+    "TXN-0064",
+    "TXN-0065",
+    "TXN-0066",
+    "TXN-0067",
+    "TXN-0068",
+    "TXN-0069",
+    "TXN-0070",
+    "TXN-0071",
+    "TXN-0072",
+    "TXN-0073",
+    "TXN-0074",
+    "TXN-0075",
+    "TXN-0076",
+    "TXN-0077",
+    "TXN-0078",
+    "TXN-0079",
+    "TXN-0080",
+    "TXN-0081",
+    "TXN-0082",
+    "TXN-0083",
+    "TXN-0084",
+    "TXN-0085",
+    "TXN-0086",
+    "TXN-0087",
+    "TXN-0088",
+    "TXN-0089",
+    "TXN-0090"
+  ],
+  "applicationTotalCents": 6743243,
+  "statementTotalCents": 7469334
+}

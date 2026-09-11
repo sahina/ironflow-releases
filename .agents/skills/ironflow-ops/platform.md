@@ -68,7 +68,7 @@ unauthenticated). Everything under `/api/` needs `IRONFLOW_API_KEY` unless the c
 runs with `--dev`.
 
 For the full walkthrough (env vars, volume permissions, NATS persistence, PG profile),
-see `docs/how-to-guides/deployment/self-hosting.mdx`.
+see <https://docs.ironflow.run/how-to-guides/deployment/self-hosting/>.
 
 ---
 

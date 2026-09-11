@@ -47,6 +47,41 @@ var ProcessOrder = ironflow.CreateFunction(ironflow.FunctionConfig{
 })
 ```
 
+## Emitting Events
+
+`Emit` is how anything outside a function starts a workflow. It is fire-and-forget: it
+returns as soon as the event is stored and the runs are created.
+
+```go
+import "github.com/sahina/ironflow-go/ironflow"
+
+// Empty fields fall back to IRONFLOW_SERVER_URL / IRONFLOW_API_KEY.
+client := ironflow.NewClient(ironflow.ClientConfig{})
+
+res, err := client.Emit(ctx, events.OrderPlaced, map[string]any{
+    "orderId": "ord_123",
+    "total":   99.99,
+},
+    ironflow.WithEmitIdempotencyKey("order-ord_123"),  // dedupes repeat emits
+    ironflow.WithEmitVersion(1),                       // schema version, default 1
+    ironflow.WithEmitMetadata(map[string]any{"source": "checkout"}),
+    ironflow.WithEmitNamespace("default"),
+)
+// res.EventID, res.RunIDs
+
+// Block until EVERY run the event triggers finishes. The timeout is a POSITIONAL
+// argument, not an option. Returns []EmitSyncResult (empty if nothing matched) and
+// never reports a run outcome as err — read Status, Error and WaitTimedOut per element.
+results, err := client.EmitSync(ctx, events.OrderPlaced, data, 30*time.Second,
+    ironflow.WithSyncIdempotencyKey("order-ord_123"))
+
+// One function by ID, one result. Same positional timeout.
+out, err := client.InvokeSync(ctx, "process-order", data, 30*time.Second)
+```
+
+Inside a function handler there is no client on `ironflow.Context` — build one yourself,
+and emit inside an `ironflow.Run` step so it is memoized.
+
 ## Step Methods
 
 ```go
@@ -73,15 +108,24 @@ event, err := ironflow.WaitForEvent[any](ctx, "wait-approval", ironflow.EventFil
     Timeout: 24 * time.Hour,   // default 7 days
 })
 
-// Parallel branches
+// Parallel branches. Inside a branch use the *WithBranch forms — they take the
+// *BranchContext, not ctx, and generate branch-scoped step IDs. Calling
+// ironflow.Run(ctx, ...) from inside a branch keys the step off the parent, so
+// sibling branches collide on one memoized result.
 results, err := ironflow.Parallel(ctx, "fetch-all", []func(*ironflow.BranchContext) (any, error){
-    func(b *ironflow.BranchContext) (any, error) { return fetchA() },
-    func(b *ironflow.BranchContext) (any, error) { return fetchB() },
+    func(b *ironflow.BranchContext) (any, error) { return ironflow.RunWithBranch(b, "fetch-a", fetchA) },
+    func(b *ironflow.BranchContext) (any, error) { return ironflow.RunWithBranch(b, "fetch-b", fetchB) },
 })
+
+// Branch-scoped equivalents: RunWithBranch, SleepWithBranch, SleepUntilWithBranch,
+// WaitForEventWithBranch, ParallelWithBranch, MapWithBranch, InvokeWithBranch,
+// InvokeAsyncWithBranch, PublishWithBranch, CompensateInBranch.
 
 // Parallel map with concurrency
 results, err := ironflow.Map(ctx, "items", items, func(item Item, b *ironflow.BranchContext, i int) (Result, error) {
-    return processItem(item)
+    return ironflow.RunWithBranch(b, fmt.Sprintf("process-%d", i), func() (Result, error) {
+        return processItem(item)
+    })
 }, ironflow.ParallelOptions{Concurrency: 5})
 
 // Saga compensation
@@ -143,6 +187,158 @@ handler := ironflow.Serve(ironflow.ServeConfig{
 http.ListenAndServe(":3001", handler)
 ```
 
+## Entity Streams
+
+Entity IDs must be URL-safe: letters, digits, `-`, `_`, `.`, `:`, `~`. `/`, `?`, `#`, `%`,
+`&`, and whitespace are rejected at write time. To namespace by tenant, flatten into one
+segment (`tenant1-issue-42`) or filter by `EntityType` instead.
+
+```go
+client := ironflow.NewClient(ironflow.ClientConfig{})
+
+// *StreamInfo: EntityID, EntityType, Version, EventCount, CreatedAt, UpdatedAt.
+// NOT the TS shape: `streams.getInfo` swallows "stream not found" and returns null,
+// so `info ? info.version : 0` is idiomatic there. Go propagates that error instead —
+// for a first append skip the probe and pass WithExpectedVersion(0).
+info, err := client.GetStreamInfo(ctx, "order-123")
+
+res, err := client.AppendStreamEvent(ctx, "order-123", ironflow.AppendEventInput{
+    Name:       events.OrderPlaced,
+    Data:       map[string]any{"total": 99.99},
+    EntityType: "order",
+}, ironflow.WithExpectedVersion(int64(info.Version)))   // pass 0 for the first append
+
+// ReadStream returns a BARE SLICE, not a {events, totalCount} envelope like the TS SDK.
+evts, err := client.ReadStream(ctx, "order-123")
+```
+
+`AppendStreamEvent` takes **exactly one** event per call, not a slice. Unlike the TS SDK,
+`AppendResult` carries a `Sequence` alongside `EntityVersion` and `EventID` — the
+JetStream sequence to hand to a projection wait for read-your-writes. `Sequence` is 0 when
+the publish failed or the NATS bridge is disabled.
+
+Other append options: `WithAppendIdempotencyKey`, `WithAppendMetadata`.
+
+## KV Store
+
+**Values are `[]byte`, not objects.** Unlike the TS SDK, the Go KV client does no
+marshaling — you pass and receive raw bytes and do the JSON yourself.
+
+```go
+kv := client.KV()                    // KV() is a METHOD on *Client
+_, err := kv.CreateBucket(ctx, ironflow.BucketConfig{Name: "user-settings"})
+                                     // stored as APP_user-settings
+
+b := kv.Bucket("user-settings")
+
+value, _ := json.Marshal(map[string]any{"theme": "dark"})
+rev, err := b.Put(ctx, "user-123", value)          // returns the new revision
+entry, err := b.Get(ctx, "user-123")               // *KVEntry: Key, Value []byte, Revision, Operation
+
+var settings map[string]any
+_ = json.Unmarshal(entry.Value, &settings)
+
+_, err = b.Create(ctx, "user-456", value)                  // create-if-not-exists
+_, err = b.Update(ctx, "user-123", value, entry.Revision)  // CAS on revision
+keys, err := b.ListKeys(ctx, "")    // filter is POSITIONAL and required; "" means all
+err = b.Delete(ctx, "user-123")
+err = b.Purge(ctx, "user-123")      // drops history too
+```
+
+Watching a bucket goes over a WebSocket (the same surface `@ironflow/node` and
+`@ironflow/browser` expose):
+
+```go
+w, err := kv.Bucket("user-settings").Watch(ctx, ironflow.KVWatchCallbacks{
+    OnUpdate: func(e ironflow.KVWatchEvent) {
+        // e.Key, e.Value ([]byte, nil on delete), e.Operation ("put"/"delete"), e.Revision
+    },
+    OnError: func(err error) {},
+    OnClose: func() {},
+}, ironflow.WithWatchKey("user.*"))   // optional key pattern
+defer w.Stop()                        // ALWAYS clean up
+```
+
+## Config Client
+
+```go
+cfg := client.Config()               // Config() is a METHOD on *Client
+
+_, err := cfg.Set(ctx, "flags", map[string]any{"darkMode": true})
+resp, err := cfg.Get(ctx, "flags")   // *ConfigResponse: Name, Data map[string]any, Revision, UpdatedAt
+_, err = cfg.Patch(ctx, "flags", map[string]any{"betaFeatures": true})
+entries, err := cfg.List(ctx)
+err = cfg.Delete(ctx, "flags")
+
+w, err := cfg.Watch(ctx, "flags", ironflow.ConfigWatchCallbacks{
+    OnUpdate: func(e ironflow.ConfigWatchEvent) { /* e.Data, e.Revision */ },
+    OnError:  func(err error) {},
+})
+defer w.Stop()
+```
+
+Config is stored in `SYS_config_*` buckets and is hidden from the KV dashboard; `APP_*`
+buckets from `KV()` are visible. See patterns.md.
+
+## Webhooks
+
+The Go webhook callbacks have different shapes from the TS ones: `Verify` returns only an
+`error` (it does **not** return the parsed payload), and `Transform` receives the raw body
+as `[]byte`.
+
+```go
+stripe := ironflow.CreateWebhook(ironflow.WebhookConfig{
+    ID: "stripe",
+    Verify: func(req *ironflow.WebhookRequest) error {
+        // req.Body []byte, req.Header http.Header, req.Method, req.URL
+        return ironflow.VerifySignature(
+            string(req.Body),
+            req.Header.Get("X-Signature"),
+            os.Getenv("STRIPE_SECRET"),
+            5*time.Minute,   // timestamp tolerance
+        )
+    },
+    Transform: func(payload []byte) (*ironflow.WebhookEvent, error) {
+        var p struct {
+            Type string          `json:"type"`
+            Data json.RawMessage `json:"data"`
+        }
+        if err := json.Unmarshal(payload, &p); err != nil {
+            return nil, err
+        }
+        return &ironflow.WebhookEvent{Name: "webhook/stripe." + p.Type, Data: p.Data}, nil
+    },
+})
+
+handler := ironflow.Serve(ironflow.ServeConfig{
+    Functions: []ironflow.Function{ProcessOrder},
+    Webhooks:  []ironflow.Webhook{stripe},
+    ServerURL: os.Getenv("IRONFLOW_SERVER_URL"),   // REQUIRED. serve.go:285 guards the
+                                                   // emit on `serverURL != ""` and there
+                                                   // is NO env fallback — leave it empty
+                                                   // and the transformed event is
+                                                   // silently dropped.
+})
+// Endpoint: POST /webhooks/stripe
+```
+
+`ironflow.ComputeSignature(payload, secret, timestamp)` produces the outbound form.
+
+## Errors
+
+```go
+// Fails the step immediately — no retries.
+return nil, ironflow.NewNonRetryableError("Invalid email")
+
+// Same, wrapping an existing error.
+if err := validate(input); err != nil {
+    return nil, ironflow.WrapNonRetryable(err)
+}
+
+// Any ordinary error is retried per the function's retry config.
+return nil, fmt.Errorf("gateway timeout: %w", err)
+```
+
 ## Upcasters
 
 `UpcasterFunc` is `func(json.RawMessage) (json.RawMessage, error)` — raw JSON in, raw
@@ -169,6 +365,7 @@ registry.Register("user.created", 1, 2, func(data json.RawMessage) (json.RawMess
 
 ## Full Reference
 
-- Go SDK reference: https://docs.ironflow.run/reference/sdk-comparison/
+- Go SDK reference: https://docs.ironflow.run/reference/api/go-sdk/
+- SDK tier model: https://docs.ironflow.run/reference/sdk-comparison/
 - Workflows guide: https://docs.ironflow.run/explanation/workflows/
 - Event sourcing: https://docs.ironflow.run/explanation/event-sourcing/

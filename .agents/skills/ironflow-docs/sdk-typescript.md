@@ -119,7 +119,7 @@ await step.sleepUntil("wait-open", "2026-03-16T09:30:00Z");
 
 // Wait for an external event. Returns the matching event — NOT null, and
 // NOT a rejection you can catch. On expiry the scheduler marks the step
-// timed_out and fails the run (internal/engine/scheduler.go:419,442); your
+// timed_out and fails the run (internal/engine/scheduler.go:428,451); your
 // handler is never resumed, so no code after this line runs.
 const approval = await step.waitForEvent("wait-approval", {
   event: OrderEvents.APPROVED,
@@ -157,7 +157,7 @@ const stripeKey = ctx.secrets.get("stripe-key");
 
 `sleep`, `sleepUntil`, `waitForEvent`, `invoke` and `invokeAsync` suspend the run by
 **throwing an internal `YieldSignal`** (`sdk/js/node/src/step.ts`). The SDK catches it at
-the handler boundary and reports `status: "yielded"` (`sdk/js/node/src/serve.ts:391`).
+the handler boundary and reports `status: "yielded"` (`sdk/js/node/src/serve.ts:398`).
 
 ```typescript
 // WRONG — the catch swallows the YieldSignal. The run never suspends;
@@ -345,12 +345,11 @@ const keys = await bucket.listKeys();                        // string[]; option
 await bucket.delete("user-123");
 ```
 
-**KV watch is browser-only.** `@ironflow/node`'s bucket handle has no `watch` — it is a
-REST client. The browser handle watches over a WebSocket and the callback takes one
-event object, not `(key, value)`:
+**Watch is available in both `@ironflow/node` and `@ironflow/browser`** — the reads and
+writes above are REST, but `watch` upgrades to a WebSocket. The callback takes one event
+object, not `(key, value)`:
 
 ```typescript
-// @ironflow/browser only
 const watcher = bucket.watch(
   { onUpdate: (e) => console.log(e.key, e.value, e.operation), onError: (err) => {} },
   { key: "user.*" },                    // optional key pattern
@@ -405,21 +404,41 @@ throw new Error("Gateway timeout");              // retried per retry config
 
 ## Upcasters (Event Schema Versioning)
 
+Upcasters reach the runtime through `eventDefinitions` — one `defineEvent` per version.
+The registry wires each version's `upcast` as `version-1 → version` automatically (and
+ignores `upcast` on version 1).
+
 ```typescript
-import { createUpcasterRegistry } from "@ironflow/core";   // the class is NOT exported
+import { defineEvent, createEventDefinitionRegistry } from "@ironflow/core";
+import { createWorker } from "@ironflow/node";
 
-const registry = createUpcasterRegistry();
+const events = createEventDefinitionRegistry();
+events.register(defineEvent({ name: "user.created", version: 1 }));
+events.register(defineEvent({
+  name: "user.created",
+  version: 2,
+  upcast: (data) => {
+    const { firstName, lastName, ...rest } = data as Record<string, unknown>;
+    return { ...rest, fullName: `${firstName} ${lastName}` };  // ALWAYS spread rest
+  },
+}));
 
-registry.register("user.created", 1, 2, (data) => {
-  const { firstName, lastName, ...rest } = data as Record<string, unknown>;
-  return { ...rest, fullName: `${firstName} ${lastName}` };  // ALWAYS spread rest
-});
+const worker = createWorker({ functions: [...], eventDefinitions: events });
+```
 
-// Nothing calls the registry for you — apply it where you read events.
+`serve({ functions, eventDefinitions })` takes the same option for push mode.
+
+There is also a lower-level `createUpcasterRegistry()` in `@ironflow/core` (the
+`UpcasterRegistry` class itself is NOT exported), but **nothing accepts it as config** —
+it only supports manual `.upcast(...)` calls where you read events:
+
+```typescript
 const current = registry.upcast("user.created", event.data, event.version, 2);
 ```
 
 Chain sequentially (v1→v2→v3, never skip). Always spread `...rest` to preserve fields.
+Projections do **not** upcast — `eventDefinitions` is never plumbed into the projection
+runner, so handlers see raw stored data at whatever version it was written.
 
 ---
 

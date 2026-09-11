@@ -1,0 +1,27 @@
+{
+  "name": "ironflow-reconciliation-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Durable exception resolution. Deterministic matching first, LLM triage on the residue, approved idempotent contact, durable reply wait, curated memory.",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/worker.ts",
+    "start": "tsx src/worker.ts",
+    "trigger": "tsx scripts/trigger.ts",
+    "reply": "tsx scripts/reply.ts",
+    "approve": "tsx scripts/approve.ts",
+    "generate-fixtures": "tsx scripts/generate-fixtures.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ironflow/node": "workspace:*",
+    "zod": "^4.3.5"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^3.2.0",
+    "@types/node": "^22.0.0"
+  }
+}

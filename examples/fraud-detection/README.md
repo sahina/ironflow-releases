@@ -51,7 +51,7 @@ change is captured automatically because the system is built on event sourcing.
   │ Event 2: model_scored                                   │
   │   model: "fraud_v4.2", score: 0.55,                     │
   │   breakdown: { geo: 0.30, device: 0.25,                 │
-  │                velocity: 0.00, merchant: 0.00 }         │
+  │                velocity: 0.00, merchant_risk: 0.00 }    │
   ├─────────────────────────────────────────────────────────┤
   │ Event 3: decision_made                                  │
   │   action: "decline", reason: "score 0.55 exceeds        │

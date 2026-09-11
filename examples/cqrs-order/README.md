@@ -24,13 +24,15 @@ Every step in the tutorial maps to a file here so you can read the doc with the 
 | Step 4 — Aggregate pattern     | [`lib/aggregate.ts`](./lib/aggregate.ts)                                                                                         |
 | Step 5 — Event metadata        | `EventMeta` in [`lib/types.ts`](./lib/types.ts), added in handler                                                                |
 | Step 6 — Append                | `streams.append` call in [`lib/place-order-handler.ts`](./lib/place-order-handler.ts)                                            |
-| Step 7 — No outbox             | (none — NATS JetStream handles publish automatically)                                                                            |
+| Step 7 — Ironflow publication outbox             | (Ironflow atomically stores each event and its publication-outbox row)                                                                            |
 | Step 8 — Projections           | [`worker.ts`](./worker.ts)                                                                                                       |
 | Step 9 — Queries               | [`app/page.tsx`](./app/page.tsx), [`app/orders/[orderId]/page.tsx`](./app/orders/[orderId]/page.tsx)                             |
 | Step 10 — Eventual consistency | Optimistic subscription in [`app/orders/[orderId]/page.tsx`](./app/orders/[orderId]/page.tsx)                                    |
 | Step 11 — Rebuild              | `POST /ironflow.v1.ProjectionService/RebuildProjection` (run from CLI)                                                              |
 | Command idempotency            | [`lib/command-dedup.ts`](./lib/command-dedup.ts)                                                                                 |
 | Enrichment (customer/product)  | [`lib/enrichment.ts`](./lib/enrichment.ts) (in-memory demo data)                                                                 |
+
+This example uses Ironflow entity streams as authoritative state. Ironflow's publication outbox does not cover a separate application database mutation. For application-owned state, write an application outbox in the same local transaction and relay with stable idempotency keys, acknowledging only confirmed Ironflow acceptance. Idempotency is not cross-database atomicity; compensation is not ACID rollback. See the [transaction boundaries and integration choices](../../docs/explanation/outbox.md#application-database-transaction-boundary).
 
 ### Why the route emits instead of calling the handler directly
 
@@ -69,7 +71,8 @@ pnpm install
 ```
 
 `pnpm worker` loads `.env.local` with `--env-file` (not `--env-file-if-exists`), so
-the file must exist. It is gitignored — create it if your clone has none:
+the file must exist. It is committed (`.gitignore` un-ignores it with `!.env.local`),
+so a fresh clone has it. Recreate it if yours is missing:
 
 ```bash
 printf 'NEXT_PUBLIC_IRONFLOW_SERVER_URL=http://localhost:9123\nIRONFLOW_SERVER_URL=http://localhost:9123\n' > .env.local

@@ -21,7 +21,7 @@ Signal IDs are emitted by `scripts/scan.sh`. This file is the interpretation.
 
 ## Adoption note
 
-Rust is named as a future Tier-2 target in `docs/reference/sdk-comparison.md`
+Rust is named as a future Tier-2 target in <https://docs.ironflow.run/reference/sdk-comparison/>
 ("Python today; Rust, C#, Java later") and nowhere else — no roadmap entry, no
 owner, no date. Label it planned, per `PRODUCT.md`. Today a Rust shop generates
 from the OpenAPI and proto artifacts.
