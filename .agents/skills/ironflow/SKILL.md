@@ -1,6 +1,6 @@
 ---
 name: ironflow
-version: 0.37.0
+version: 0.37.1
 description: |
   Universal entry point for Ironflow AI assistance. Classifies user intent and dispatches
   to the right specialized skill. Use when the user mentions "ironflow", "help with ironflow",
