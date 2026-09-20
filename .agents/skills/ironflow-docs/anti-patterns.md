@@ -136,7 +136,7 @@ ironflow.subscribeToProjection("name", { onUpdate: (state) => setState(state) })
 A timeout is **not** observable from the handler at all — not as `null`, not as a
 rejection. The return type is `Promise<IronflowEvent<T>>`; on expiry the scheduler
 marks the step `timed_out` and fails the whole run
-(`internal/engine/scheduler.go:428,451`). The handler is never resumed, so no line
+(`internal/engine/scheduler.go:427,450`). The handler is never resumed, so no line
 after the wait ever executes.
 
 Catching is worse than useless here — `try/catch` or a chained `.catch()`, same

@@ -57,6 +57,8 @@ if [ ! -d "$DIR" ]; then
 fi
 
 # Collect TS and Go files (skip node_modules, vendor, build artifacts).
+# .ironflow/ is engine runtime state (gitignored): a desktop agent workspace
+# there holds third-party skill sources that are not the example's code.
 # Use null-delimited output so paths with spaces are handled correctly.
 TS_FILES_LIST=$(mktemp)
 GO_FILES_LIST=$(mktemp)
@@ -64,6 +66,7 @@ trap 'rm -f "$TS_FILES_LIST" "$GO_FILES_LIST"' EXIT
 
 find "$DIR" -type f \( -name "*.ts" -o -name "*.tsx" \) \
   -not -path "*/node_modules/*" -not -path "*/dist/*" -not -path "*/build/*" \
+  -not -path "*/.ironflow/*" \
   -print0 2>/dev/null \
   | while IFS= read -r -d '' p; do
       # Skip files that are not function handlers — the rules below (chiefly
@@ -108,7 +111,7 @@ find "$DIR" -type f \( -name "*.ts" -o -name "*.tsx" \) \
       printf '%s\0' "$p"
     done > "$TS_FILES_LIST" || true
 find "$DIR" -type f -name "*.go" \
-  -not -path "*/vendor/*" \
+  -not -path "*/vendor/*" -not -path "*/.ironflow/*" \
   -print0 2>/dev/null > "$GO_FILES_LIST" || true
 
 emit() {
@@ -251,10 +254,10 @@ scan_ts() {
   # CRITICAL: a yielding step whose rejection is swallowed. sleep, sleepUntil,
   # waitForEvent, invoke and invokeAsync suspend the run by THROWING an internal
   # YieldSignal that the SDK catches at the handler boundary
-  # (sdk/js/node/src/serve.ts:388). Any user-level catch eats it: the run never
+  # (sdk/js/node/src/serve.ts:396). Any user-level catch eats it: the run never
   # suspends, it returns as if finished, and the wait silently never happens. A
   # waitForEvent timeout is not catchable anyway — the scheduler fails the run out
-  # from under the handler (internal/engine/scheduler.go:422,440). step.run is
+  # from under the handler (internal/engine/scheduler.go:427,450). step.run is
   # exempt: it invokes the callback inline, so its errors are ordinary catchable
   # errors.
   #

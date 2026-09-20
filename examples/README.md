@@ -31,6 +31,7 @@ Every Ironflow application follows four pillars:
 | [ai-agent/](./ai-agent/)                         | Durable AI research agent | AI engineers          | `agent()`, `tool()`, `llm()`, event-sourced memory |
 | [agents/doc-processor-agent/](./agents/doc-processor-agent/) | Crash-resume proof | AI engineers      | `kill -9` mid-pipeline and resume; browser demo in [`web/`](./agents/doc-processor-agent/web/) |
 | [agents/code-review-agent/](./agents/code-review-agent/) | Human-in-the-loop gate | AI engineers    | `approve()` pausing a run for up to 24h     |
+| [agents/reconciliation-agent/](./agents/reconciliation-agent/) | Durable exception resolution | AI engineers | A deterministic pass before the model, a reply from outside the org, idempotent outbound contact |
 | [financial-rag/](./financial-rag/)               | RAG with an eval gate     | AI engineers          | Shadow index, golden-set eval, promote-or-rollback saga |
 | [rag-core/](./rag-core/)                         | RAG part 1: event-sourced index | AI engineers    | Zero-Docker RAG: durable ingest, embeddings in events, sqlite-vec projection |
 | [yaml-config/](./yaml-config/)                   | Config file examples      | Operators             | Server, cluster, and platform `ironflow.yaml` |
@@ -42,6 +43,13 @@ Every Ironflow application follows four pillars:
 - Python 3.10+ (for `reference-app/`'s notification service only)
 
 ## Quick Reference
+
+> Every example is its own pnpm workspace that includes `../../sdk/js/*`, so the
+> `pnpm install` lines below re-point the **shared** SDK packages at that
+> example's store. Never `rm -rf node_modules` inside an example without
+> repairing the SDK afterwards — `rm -rf sdk/js/*/node_modules && pnpm install`
+> from the repo root. [`travel-booking/README.md`](./travel-booking/README.md#run)
+> has the full note.
 
 ```bash
 # Build the binary and the embedded dashboard (does NOT build the JS SDK)
@@ -96,6 +104,11 @@ cd examples/agents/doc-processor-agent && pnpm install && pnpm dev
 cd examples/agents/code-review-agent && pnpm install && pnpm dev
 # In another terminal: pnpm trigger -- octocat/hello 42
 # Then approve the runId it prints: pnpm approve -- <runId>
+
+cd examples/agents/reconciliation-agent && pnpm install && pnpm dev
+# In another terminal: pnpm trigger, then pnpm exec tsx scripts/find-pending.ts
+# Approve a case: pnpm approve -- <runId> true
+# Then signal the counterparty's reply: pnpm reply -- <caseId> "..."
 
 # Run the RAG part 1 example (no Docker; needs a bootstrap API key in .env)
 cd examples/rag-core && pnpm install && pnpm setup && pnpm start

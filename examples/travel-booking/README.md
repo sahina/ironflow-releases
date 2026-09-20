@@ -200,11 +200,6 @@ process and one screen.
 - **Crash-resume takes ~2 minutes, not seconds.** See the beat 3 section above
   for the measured breakdown. The capacity lease (90s, not configurable from
   outside the binary) is the gate.
-- **The engine logs an audit error during crash-resume** — [#1601](https://github.com/sahina/ironflow/issues/1601).
-  The four `capacity.*` audit event types aren't in the `audit_events.event_type`
-  CHECK constraint, so the server logs `audit: failed to write event` when a
-  lease lapses. Recovery still works; the audit rows are lost. Not caused by this
-  example — you'll see it in the server log during beat 3.
 
 ## Check it still works
 

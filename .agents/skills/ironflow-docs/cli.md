@@ -302,7 +302,7 @@ ironflow mcp --allow-writes                        # read + write
 
 ```bash
 ironflow circuit-breaker list
-ironflow circuit-breaker reset <function-id-or-key>
+ironflow circuit-breaker reset <endpoint-url | function-id>
 ```
 
 ## Multi-tenant (orgs, roles, policies, audit)
@@ -343,7 +343,7 @@ conditional denies here.
 ironflow policy list --json
 ironflow policy get pol_abc123 --json
 ironflow policy create --name deny-prod-delete --effect deny \
-  --actions "delete" --resources "irn:org:acme:*" \
+  --actions "delete" --resources "irn:ironflow:org_acme:*:*:*:*" \
   --condition 'request.environment == "production"'
 
 # Compile + evaluate without persisting. Use before create/update.

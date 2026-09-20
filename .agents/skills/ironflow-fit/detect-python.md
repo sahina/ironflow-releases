@@ -26,9 +26,9 @@ Signal IDs are emitted by `scripts/scan.sh`. This file is the interpretation.
 ## Adoption note
 
 Python is Tier 2 and is the *only* Tier-2 SDK that exists. It installs from PyPI as
-`pip install ironflow-py` (import name `ironflow`) **from v0.33.0** — #1855 landed the
-publishing machinery, but nothing is on PyPI until that release cuts. Check before
-promising it. Never say `pip install ironflow`: that bare name belongs to an unrelated
+`pip install ironflow-py` (import name `ironflow`) **from v0.33.1** — #1913 landed the
+publishing machinery; v0.33.0 was tagged but no wheel reached PyPI, so v0.33.1 is the
+first release on PyPI. Never say `pip install ironflow`: that bare name belongs to an unrelated
 materials-science package from the pyiron group, and it also installs a top-level
 `ironflow` module, so the two cannot share a virtualenv.
 

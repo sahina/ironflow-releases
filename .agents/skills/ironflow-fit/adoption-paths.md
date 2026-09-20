@@ -125,9 +125,8 @@ Keep this short and link out; `other-languages.md` has the full table.
   `default` response of shape `{error, code, details}`. Handle that plus the status
   code.
 - **Python installs as `ironflow-py`, not `ironflow`.** `pip install ironflow-py`
-  from v0.33.0 (#1855); the import name stays `ironflow`. The bare name on PyPI is an
-  unrelated materials-science package. Verify the release has cut before promising it,
-  and note the SDK is client-only — no worker runtime.
+  from v0.33.1 (#1913); the import name stays `ironflow`. The bare name on PyPI is an
+  unrelated materials-science package. Note the SDK is client-only — no worker runtime.
 - **A first-party C# SDK was designed and closed.** Issue #172, `NOT_PLANNED`:
   "speculative, no demand signal. Reopen if a .NET user materializes." If the reader
   is a .NET shop, they are the demand signal. Say so.

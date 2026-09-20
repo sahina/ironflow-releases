@@ -204,6 +204,8 @@ reader to discover.
 - `src/agent.ts` — the case agent: triage, approved contact, durable reply wait, curated
   resolution
 - `src/reconcile.ts` — the matcher, the closed predicate grammar, and learned-rule shape
+- `src/causes.ts` — the closed set of residue causes, shared by the fixture generator,
+  the fake classifier and the action allowlist
 - `src/redact.ts` — the model boundary: what the model sees and does not
 - `src/config.ts` — shared server URL for the worker, scripts, and agent memory
 - `src/llm.ts` — the fake triage classifier (real-provider reference in a comment) and
@@ -219,8 +221,14 @@ reader to discover.
 - `scripts/reply.ts` — classify a reply locally and signal it for a `caseId`
 - `scripts/find-pending.ts` — find a case run waiting at the approval gate
 - `scripts/demo-crash-resume.sh` — the mid-send kill -9 demo
+- `scripts/verify-case-reuse.ts` — the crash demo's case-reuse check against a live server
+- `scripts/wait-for-send.ts` — poll one run until its send-contact step completes
+- `scripts/build-statement.ts` — the seeded fixture generator
+- `scripts/generate-fixtures.ts` — `pnpm generate-fixtures`, writes `fixtures/statement.json`
 - `fixtures/statement.json` — ~100 transactions, ~90 matched, ~10 escalated, generated
   by `scripts/build-statement.ts` and checked against it in `tests/fixtures.test.ts`
+- `fixtures/injected.json` — the deliberate prompt-injection sample `tests/llm.test.ts`
+  drives the allowlist with
 
 ## Next steps
 

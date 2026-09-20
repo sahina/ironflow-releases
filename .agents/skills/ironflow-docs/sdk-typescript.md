@@ -119,7 +119,7 @@ await step.sleepUntil("wait-open", "2026-03-16T09:30:00Z");
 
 // Wait for an external event. Returns the matching event — NOT null, and
 // NOT a rejection you can catch. On expiry the scheduler marks the step
-// timed_out and fails the run (internal/engine/scheduler.go:428,451); your
+// timed_out and fails the run (internal/engine/scheduler.go:427,450); your
 // handler is never resumed, so no code after this line runs.
 const approval = await step.waitForEvent("wait-approval", {
   event: OrderEvents.APPROVED,

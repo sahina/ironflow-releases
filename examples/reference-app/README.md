@@ -128,6 +128,8 @@ and no `.env` to write.
 
 ## Commands
 
+### From the repository root
+
 Run these from the **repository root**; the two that start a server build the
 engine first.
 
@@ -153,8 +155,42 @@ at any scale rather than on any timing. Read the header of
 unpartitioned document by design, so its lane degrades first and is reported
 separately for that reason.
 
-Run `make` **in this directory** for the workspace-only checks (`make contracts`,
-`make supervisor`, `make check`).
+### From this directory
+
+The local `Makefile` covers this workspace only, so it cannot build the engine.
+Build that once at the repository root:
+
+```bash
+make -C ../.. embed build sdk-js-build   # the engine binary, and @ironflow/browser for the web app
+```
+
+`embed build` and not a plain `build`: the server refuses to start without the
+embedded dashboard.
+
+Everything after that runs from here:
+
+```bash
+pnpm install                                            # once, after a checkout
+make orders-build payments-build notifications-install  # the three service builds
+pnpm run dev                                            # start the whole system; Ctrl-C stops it
+```
+
+```bash
+pnpm run crash:payments   # from a second terminal: crash and restart the payment worker
+pnpm run reset            # delete .data and nothing else
+pnpm run test             # contracts, launcher tests and the workspace suites
+make check                # every workspace-only check: the above plus Go, Python, lint, typecheck, build
+pnpm run test:live        # the live gate, the crash proof and the Chromium walkthrough
+pnpm run test:load        # the load gate; `pnpm run test:load -- --orders 500 --rate 50` to push it
+```
+
+`make reference-app` at the root is these same steps in one command. The
+difference is that it rebuilds the engine every time; working from here uses the
+engine you built last, so rerun the root build after pulling a change to the Go
+engine or the JavaScript SDK.
+
+The narrower targets are there too — `make contracts`, `make supervisor`, `make
+orders-test`, `make notifications-test`. `make help` lists them all.
 
 The live gate is three scripts, each booting the same supervisor against its own
 fresh data directory:
