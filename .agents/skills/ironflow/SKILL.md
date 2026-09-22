@@ -1,6 +1,6 @@
 ---
 name: ironflow
-version: 0.38.0
+version: 0.39.0
 description: |
   Universal entry point for Ironflow AI assistance. Classifies user intent and dispatches
   to the right specialized skill. Use when the user mentions "ironflow", "help with ironflow",
@@ -47,7 +47,7 @@ and prints `OUTDATED:<version>` or `CURRENT` to stdout.
 
 If `OUTDATED:<version>`, surface this to the user once, then continue with classification:
 
-> "Heads up: Ironflow v<version> is available (you have v<current>). Upgrade the binary
+> "Heads up: Ironflow v<version> is available (run `ironflow version` for the installed one). Upgrade the binary
 > (`brew upgrade ironflow`, or pull the latest Docker image), then run
 > `ironflow skills sync` to update your skills."
 

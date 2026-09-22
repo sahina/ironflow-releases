@@ -46,6 +46,14 @@ Do not fire `run resume` twice in quick succession — a second in-flight resume
 HTTP 409 rather than queueing.
 
 ```bash
+# Delete and redact (terminal runs only; all prompt unless --yes)
+ironflow run delete <run-id> --yes                     # run + its steps, irreversible
+ironflow run prune --status completed --before 2025-01-01 --yes   # bulk; needs --function, --status or --before
+ironflow run redact <run-id> --yes                     # replace input/output + audit payloads with a placeholder
+ironflow run redact-step <step-id> --yes               # step row id from `run get`, not the step name
+```
+
+```bash
 
 # Time-travel debugger (requires recording: true)
 ironflow inspect <run-id>                             # TUI
@@ -55,7 +63,7 @@ ironflow inspect <run-id> --replay --all-events
 ironflow inspect <run-id> --dap                       # VS Code DAP
 ```
 
-TUI: arrow keys navigate, Enter expand, `q` quit.
+TUI: `j`/`k` or arrows navigate, `tab`/`h`/`l` switch panes, `n`/`p` step, `g`/`G` first/last, `q` quit.
 
 ## Functions & Projections
 
@@ -89,7 +97,7 @@ ironflow projection durables prune --delete
 ### SQL projections
 
 Projections defined in SQL live entirely in the CLI — there is no SDK equivalent. The
-name becomes the table name: lowercase, unquoted, ≤45 characters.
+name becomes the table name: `^[a-z_][a-z0-9_]*$` (lowercase, underscores only — hyphens are rejected with a 400, unlike every other name in this file), ≤45 characters.
 
 ```bash
 ironflow projection create board \
@@ -111,6 +119,8 @@ ironflow stream info order-123 --json
 ironflow stream append order-123 --type order --event order.placed \
   --data '{"total":99.99}' --expected-version 4 --idempotency-key ord-123-placed
 ironflow stream subscribe order-123 --replay 20 --metadata
+ironflow stream delete order-123 --yes            # tombstone: further appends refused, snapshots dropped
+ironflow stream delete order-123 --purge --yes    # also deletes every event below the tombstone
 ```
 
 `stream append` publishes to both the entity topic and the events topic projections
@@ -128,6 +138,7 @@ ironflow event schema get order.placed --version 2 --json
 ironflow event schema delete order.placed --version 1
 ironflow event schema check order.placed --json    # is enforcement actually enforcing?
 ironflow event upcast order.placed --from 1 --to 2 --data '{"name":"a b"}' --json
+ironflow event redact <event-id> --yes             # irreversible; does not reach the runs it triggered (use `run redact`)
 ```
 
 ## Pub/Sub Topics

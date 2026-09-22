@@ -6,8 +6,8 @@ Signal IDs are emitted by `scripts/scan.sh`. This file is the interpretation.
 |---|---|---|---|---|
 | `go.scheduled` | `time.NewTicker`, robfig/cron, gocron | In-process scheduling; state dies with the process, replicas double-fire | Cron-triggered function with durable steps | strong |
 | `go.fire-and-forget` | bare `go func()` | Killed on shutdown, no record, no retry. A panic inside takes the process with it | Emit an event; the run is persisted first | strong |
-| `go.broker-consumer` | watermill, NATS, kafka-go, sarama | Already doing EDA | Verdict becomes **already doing EDA** | reframe |
-| `go.retry` | `backoff.`, `retry.Do`, `MaxRetries` | In-process retry, lost on restart | Engine-side retry with backoff and DLQ | strong |
+| `go.broker-consumer` | watermill, NATS, kafka-go, sarama (IBM or Shopify path) | Already doing EDA | Verdict becomes **already doing EDA** | reframe |
+| `go.retry` | `backoff.`, `retry.Do`, `MaxRetries` | In-process retry, lost on restart | Engine-side retry with backoff, queryable failed-run history, resume from the last step | strong |
 | `go.remote-in-txn` | `db.Begin()` / `tx.Commit()` near an HTTP call | Dual write | Outbox for the emit; saga for cross-service writes | strong |
 
 ## Combination rules

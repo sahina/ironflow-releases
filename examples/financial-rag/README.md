@@ -69,7 +69,7 @@ pnpm seed-corpus    # writes two synthetic filings into corpus/
 
 `pnpm setup` prints:
 
-```
+```text
   ✓ documents (created)
   ✓ table_rows (created)
   ✓ eval_results (created)
@@ -102,7 +102,7 @@ pnpm poll
 
 Watch terminal 3. You should see, in order:
 
-```
+```text
 parsed filing   { docId: 'ACME_2024-Q3_2024-11-01', chunks: N, rows: M, tables: K }
 parsed filing   { docId: 'ACME_2024-Q3_2025-02-14', ... }
 batch closed    { batchId: '...', parsed: 2 }

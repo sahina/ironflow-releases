@@ -89,7 +89,7 @@ curl -s -H "Authorization: Bearer $IRONFLOW_API_KEY" \
 
 | Error | Cause | Fix |
 |---|---|---|
-| "context deadline exceeded" / timeout | External service slow | Add retry config and idempotency keys. `stepTimeout` only helps in **pull** mode — `registerFunction` drops it, so raising it on a push function is a no-op |
+| "context deadline exceeded" / timeout | External service slow | Add retry config and idempotency keys. `stepTimeout` is enforced client-side by the SDK in both modes; in push mode the whole request is still capped by the engine's `pushTimeout` (default 10s), so raising `stepTimeout` past that is a no-op |
 | Validation error retried 3x | Threw `Error` instead of `NonRetryableError` | Use `NonRetryableError` for permanent failures |
 | Duplicate emails / charges | I/O outside `step.run()` | Wrap all I/O inside `step.run()` |
 | "Cannot read properties of undefined" | Missing null check on event data or step output | Add null/undefined checks; verify event.data shape |
@@ -139,8 +139,9 @@ as "no stuck runs". The stuck states are:
 - **`step.waitForEvent()` waiting?**
   - Was the expected event emitted? There is no `ironflow event list`; use
     `ironflow sql "SELECT id, name, timestamp FROM events ORDER BY timestamp DESC LIMIT 20"`
-    (`ironflow event ...` only has `schema` and `upcast` subcommands).
-  - `match` field uses `data.<field>`? (Common bug: `match: "orderId"` won't work)
+    (`ironflow event ...` only has `schema`, `upcast` and `redact` subcommands).
+  - `match` names a key that is actually in `event.data`? (`match: "orderId"` and
+    `match: "data.orderId"` are equivalent — the engine strips the optional `data.` prefix)
   - Event name spelled exactly? Case-sensitive.
   - Timeout expired? Then the run is already **failed**, not stuck — the scheduler marks
     the step `timed_out` and fails the run. `waitForEvent` never returns `null` and never
@@ -268,8 +269,14 @@ ironflow projection list --json                              # all projections
   failure first, or the entry dead-letters again.
 
   **`--dry-run` works.** The guard sits above every mutation
-  (`internal/projection/rebuild.go:307`), so a dry run is a pure query: it reports the
+  (`internal/projection/rebuild.go:394`), so a dry run is a pure query: it reports the
   start cursor, the target and the event count, registers no job and deletes nothing.
+  It can still FAIL: with `IRONFLOW_EVENT_RETENTION_DAYS` set, a rebuild that would
+  replay from before the retention horizon is refused — by the dry run as well as the
+  real one — because replaying a pruned window produces a read model with a silently
+  missing prefix. Rebuild with `--from <event-id>`, naming an event created at or after
+  the horizon, to accept the shortened history. An environment younger than the window is
+  exempt — nothing in it can be old enough to have been pruned.
   `ironflow_rebuild_projection` exposes `dry_run` too. Always preview first — a real
   rebuild IS destructive: it deletes the read model and the projection serves nothing
   until the replay finishes.
@@ -357,7 +364,7 @@ the server has a NATS provider; without one they don't exist at all.
 |---|---|---|---|
 | Non-idempotent steps | Duplicate charges/emails on retry | No idempotency key | Add `idempotencyKey` to API calls |
 | Side effects outside steps | Op runs every replay | I/O not in `step.run()` | Wrap all I/O inside `step.run()` |
-| Wrong match | `waitForEvent` never resolves | Missing `data.` prefix | Use `match: "data.fieldName"` |
+| Wrong match | `waitForEvent` never resolves | `match` names a key not in `event.data`, or its value differs between events | Match on a key both events carry (`data.` prefix optional) |
 | Projection drift | State mismatch | Impure handler / missing event type | Pure handler; verify events array |
 | Concurrency conflict | Append fails | Stale `expectedVersion` | `getInfo()` first |
 | Stale memoized output | Retry uses old results | Step previously completed | Create new run instead of retrying |

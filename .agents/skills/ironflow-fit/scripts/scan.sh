@@ -80,6 +80,8 @@ sig java java.retry              '*.java' '@Retryable|RetryTemplate|io\.github\.
 sig java java.status-column      '*.java' '(private|public)[[:space:]]+[A-Za-z]*Status[[:space:]]+status|@Enumerated'
 sig java java.history-table      '*.sql' '(CREATE TABLE|create table)[[:space:]]+[a-z_]*(_history|_audit|_log|_events|outbox)'
 sig java java.long-timeout       '*.yml' 'request-timeout|read-timeout|connection-timeout'
+sig java java.long-timeout       '*.yaml' 'request-timeout|read-timeout|connection-timeout'
+sig java java.long-timeout       '*.properties' 'request-timeout|read-timeout|connection-timeout'
 sig java java.webhook            '*.java' '@PostMapping.*(webhook|hook|callback)|X-.*-Signature'
 sig java java.feign-edge         '*.java' '@FeignClient\('
 
@@ -97,7 +99,7 @@ sig dotnet dotnet.service-edge   '*.json' '"(BaseUrl|BaseAddress|ServiceUrl|ApiU
 # ---- Python --------------------------------------------------------------
 sig python python.scheduled      '*.py' '@shared_task|@app\.task|celery|APScheduler|BackgroundScheduler|django_q|dramatiq|from rq'
 sig python python.fire-and-forget '*.py' 'BackgroundTasks|asyncio\.create_task|\.delay\(|\.apply_async\('
-sig python python.signals        '*.py' '@receiver\(post_save|post_save\.connect|pre_save\.connect'
+sig python python.signals        '*.py' '@receiver\((post_save|pre_save)|(post_save|pre_save)\.connect'
 sig python python.remote-in-txn  '*.py' 'transaction\.atomic'
 sig python python.http-client    '*.py' 'requests\.(post|put|get)|httpx\.(post|put|get)|aiohttp'
 sig python python.retry          '*.py' 'from tenacity|@retry|backoff\.on_exception|max_retries'
@@ -117,15 +119,19 @@ sig rust rust.http-client        '*.rs' 'reqwest::'
 sig node node.scheduled          '*.ts' 'bullmq|pg-boss|node-cron|agenda|bree|@nestjs/schedule|@Cron'
 sig node node.scheduled          '*.js' 'bullmq|pg-boss|node-cron|agenda|bree'
 sig node node.fire-and-forget    '*.ts' 'void [a-zA-Z]+\(|setImmediate\(|\.catch\(\(\) => \{\}\)'
+sig node node.fire-and-forget    '*.js' 'setImmediate\(|\.catch\(\(\) => \{\}\)'
 sig node node.broker-consumer    '*.ts' 'amqplib|kafkajs|@aws-sdk/client-sqs|nats\.connect'
+sig node node.broker-consumer    '*.js' 'amqplib|kafkajs|@aws-sdk/client-sqs|nats\.connect'
 sig node node.retry              '*.ts' 'p-retry|async-retry|exponentialBackoff|maxRetries'
+sig node node.retry              '*.js' 'p-retry|async-retry|exponentialBackoff|maxRetries'
 sig node node.status-column      '*.ts' "status:[[:space:]]*['\"](pending|processing|failed|completed)"
+sig node node.status-column      '*.js' "status:[[:space:]]*['\"](pending|processing|failed|completed)"
 sig node node.read-model         '*.sql' 'JOIN.*JOIN.*JOIN'
 
 # ---- Go ------------------------------------------------------------------
 sig go go.scheduled              '*.go' 'time\.NewTicker|robfig/cron|gocron'
 sig go go.fire-and-forget        '*.go' 'go func\(\)'
-sig go go.broker-consumer        '*.go' 'watermill|nats-io|segmentio/kafka-go|Shopify/sarama'
+sig go go.broker-consumer        '*.go' 'watermill|nats-io|segmentio/kafka-go|(Shopify|IBM)/sarama'
 sig go go.retry                  '*.go' 'backoff\.|retry\.Do|MaxRetries'
 sig go go.remote-in-txn          '*.go' 'db\.Begin\(|tx\.Commit\('
 echo
@@ -140,7 +146,10 @@ done
 for f in $(find "$ROOT" \( -name node_modules -o -name .git -o -name vendor \) -prune -o \
      -type f \( -name 'application*.y*ml' -o -name 'appsettings*.json' -o -name '.env*' \) -print 2>/dev/null | head -8); do
   printf 'infra\tconfig\t%s\n' "$f"
+  # Mask credentials: `scheme://user:pass@host` -> `scheme://***@host`. The report is
+  # meant to be forwarded; a .env line must never carry a password into it.
   grep -nE 'https?://|_URL|_HOST|BaseUrl|base-url' "$f" 2>/dev/null | head -15 |
+    sed -E 's#(://)[^/@[:space:]]+@#\1***@#g' |
     while IFS= read -r l; do printf 'infra-line\t%s:%s\n' "$f" "$l"; done
 done
 grep -rlnE "${EXCL[@]}" --include='*.y*ml' 'kind:[[:space:]]*(Deployment|Service|CronJob)' "$ROOT" 2>/dev/null | head -5 |

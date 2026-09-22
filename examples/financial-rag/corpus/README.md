@@ -3,14 +3,14 @@
 **Generated, not committed.** Run `pnpm seed-corpus` and two synthetic 10-Q
 filings appear here.
 
-```
+```text
 ACME_2024-Q3_2024-11-01.pdf   original
 ACME_2024-Q3_2025-02-14.pdf   restated — revenue revised down
 ```
 
 Filenames encode scope, and the ingest workflow parses them:
 
-```
+```text
 ENTITY_PERIOD_ASOF.pdf
 ```
 

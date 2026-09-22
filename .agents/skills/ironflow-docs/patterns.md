@@ -143,11 +143,11 @@ export function decideOrder(state: OrderState, cmd: OrderCommand): DomainEvent[]
     case "Place":
       if (state.status !== "none") throw new NonRetryableError("already placed");
       if (cmd.items.length === 0) throw new NonRetryableError("empty order");
-      return [{ name: "OrderPlaced", data: { orderId: cmd.orderId, items: cmd.items } }];
+      return [{ name: "OrderPlaced", entityType: "order", data: { orderId: cmd.orderId, items: cmd.items } }];
 
     case "Cancel":
       if (state.status !== "placed") throw new NonRetryableError(`cannot cancel in ${state.status}`);
-      return [{ name: "OrderCancelled", data: { orderId: cmd.orderId, reason: cmd.reason } }];
+      return [{ name: "OrderCancelled", entityType: "order", data: { orderId: cmd.orderId, reason: cmd.reason } }];
   }
 }
 
@@ -211,7 +211,9 @@ const charge = await step.run("charge", () => payments.charge(amount, {
 }));
 step.compensate("charge", () => payments.refund(charge.id));
 
-await step.run("ship", () => shipping.create(...));   // if this fails, both compensations run
+await step.run("ship", () => shipping.create(...));   // if this throws NonRetryableError, both compensations run
+// A plain Error is retried instead; once retries are exhausted NOTHING compensates.
+// Wrap terminal failures in NonRetryableError (or WrapNonRetryable) to trigger the saga.
 ```
 
 ### Saga Pattern (across services)
@@ -257,7 +259,7 @@ Endpoint: `POST /webhooks/stripe`. Functions trigger on `webhook/stripe.<type>` 
 { concurrency: { limit: 5 } }
 
 // Per-key serialization (one at a time per customer)
-{ concurrency: { limit: 1, key: "data.customerId" } }
+{ concurrency: { limit: 1, key: "customerId" } }   // path inside event.data; a "data." prefix breaks resolution and fails the run
 
 // Strict serial queue
 { concurrency: { limit: 1 } }
@@ -312,7 +314,7 @@ await client.streams.createSnapshot(entityId, {
 });
 
 const snap = await client.streams.getSnapshot(entityId, { beforeVersion: version });
-const { events } = await client.streams.read(entityId, { fromVersion: snap.entityVersion });
+const { events } = await client.streams.read(entityId, { fromVersion: snap.entityVersion + 1 });  // fromVersion is inclusive
 const current = events.reduce(evolveOrder, snap.state);
 ```
 
@@ -324,7 +326,7 @@ const current = events.reduce(evolveOrder, snap.state);
 
 - Managed projections: `ironflow projection rebuild <name>` re-folds all events from zero
 - Design handlers to be **idempotent on replay** — no external side effects in managed
-  projections (enforced by Ironflow, see anti-pattern #3)
+  projections (NOT enforced at runtime — see anti-pattern #3)
 - For zero-downtime rebuild: deploy projection at new name, let it catch up, swap reads,
   delete old
 - External projections own their rebuild logic — typically "delete rows, replay events,
@@ -349,7 +351,7 @@ aggregate history > ~10k events. Don't pre-optimize.
 | Config | KV Store | Secrets |
 |---|---|---|
 | App settings | User-facing data | Credentials |
-| `SYS_config_*` (hidden from KV dash) | `APP_*` (visible in dash) | `SYS_secrets_*` (encrypted, CLI-only) |
+| `SYS_config_*` (hidden from KV dash) | `APP_*` (visible in dash) | `SYS_secrets_*` (encrypted; CLI or `client.secrets.*`) |
 | Watch supported | Watch supported | No watch |
 
 ## Browser Real-Time Pattern

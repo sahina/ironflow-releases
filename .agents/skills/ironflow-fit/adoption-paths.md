@@ -44,10 +44,11 @@ Generate from **both** published artifacts:
 - `api/openapi.json` — OpenAPI 3.1, also served at `GET /api/v1/openapi.json`
 - `api/proto/ironflow/v1/*.proto` — Buf, with first-class Java, C#, and Rust codegen
 
-That covers emitting events, querying runs and steps, cancel and resume, entity
-streams with real optimistic concurrency, projections, KV with compare-and-set,
-config, secrets, and the whole ops surface — DLQ, circuit breakers, capacity. On
-that ops surface the generated client is **wider than the Go and Node SDKs**.
+The OpenAPI artifact is **REST only** (ADR 0079; #1972 removed the REST twins of every
+Connect route). It reaches event *reads*, KV with compare-and-set, config, secrets,
+workers, and the whole ops/admin surface — DLQ, circuit breakers, capacity, API keys,
+users, tenants, policies. On that ops surface the generated client is **wider than the
+Go and Node SDKs**. Everything workflow-shaped is proto-only (next section).
 
 `other-languages.md` carries a worked Kiota example and a "Known gaps in generated
 clients" table — absent `servers`, under-declared `X-Ironflow-Environment`, no
@@ -71,19 +72,22 @@ does not replace them.
 
 ## Both generators, or the path dead-ends
 
-**`RegisterFunction` is ConnectRPC-only.** There is no `POST /api/v1/functions` —
-`other-languages.md` §"Register your function" is explicit that this is the one call
-codegen does not give you. A team that generates from OpenAPI alone ends up with a
-client that has nothing to invoke and nothing to poll for. And a cron is a *field on
-the function*, so no registration means no scheduled work either.
+**The workflow surface is ConnectRPC-only.** Emit, register/list/get/invoke functions,
+list/get/cancel/resume runs and read their steps, entity streams, projections, event
+schemas, publish, read-only SQL and webhook management have no REST route
+(`other-languages.md` §"What the generated client does NOT reach"). A team that
+generates from OpenAPI alone ends up with a client that can rotate API keys but cannot
+emit an event. And a cron is a *field on the function*, so no registration means no
+scheduled work either.
 
 Always instruct both toolchains.
 
 ## Needs the proto toolchain
 
-Register a function; register a projection **and** the external projection worker
-loop; `TriggerSync` and `TriggerBatch`; webhook mutation; time travel; pause and
-inject; agent tools.
+Emit; register a function; list/get/cancel/resume runs and read steps; register a
+projection **and** the external projection worker loop; entity streams; event schemas;
+publish; `ExecuteSQL`; `TriggerSync` and `TriggerBatch`; webhook mutation; `PauseRun`
+and `InjectStepOutput`; agent tools.
 
 ## Unreachable from generated code, at any price
 
@@ -118,16 +122,17 @@ Keep this short and link out; `other-languages.md` has the full table.
 - **`X-Ironflow-Environment` is under-declared in the spec.** Set it as a default
   header in the transport core or writes land in the default environment. Most
   likely first-week surprise.
-- **Authenticate with a long-lived `ifkey_` bearer token.** No tenant-login route in
-  the OpenAPI artifact, so a generated client cannot obtain a JWT.
-- **`metadata` is required on the emit payload**, even when empty.
+- **Authenticate with a long-lived `ifkey_` bearer token.** The only login route in the
+  spec is the platform-admin one (`/api/v1/platform/auth/login`); there is no tenant
+  login, so a generated tenant client works from an API key.
 - **No numbered `4xx`/`5xx` in the spec.** Every operation declares one typed
   `default` response of shape `{error, code, details}`. Handle that plus the status
   code.
 - **Python installs as `ironflow-py`, not `ironflow`.** `pip install ironflow-py`
   from v0.33.1 (#1913); the import name stays `ironflow`. The bare name on PyPI is an
   unrelated materials-science package. Note the SDK is client-only — no worker runtime.
-- **A first-party C# SDK was designed and closed.** Issue #172, `NOT_PLANNED`:
+- **A first-party C# SDK was designed and closed** (so "C# later" above means "not
+  planned", not "on the roadmap"). Issue #172, `NOT_PLANNED`:
   "speculative, no demand signal. Reopen if a .NET user materializes." If the reader
   is a .NET shop, they are the demand signal. Say so.
 - Anything described as planned must be **labeled planned** — `PRODUCT.md`.

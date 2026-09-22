@@ -142,7 +142,7 @@ after the wait ever executes.
 Catching is worse than useless here — `try/catch` or a chained `.catch()`, same
 result. `waitForEvent` suspends the run by throwing an
 internal `YieldSignal` that the SDK catches at the handler boundary
-(`sdk/js/node/src/serve.ts:398`). A user `catch` swallows that signal, so the run does
+(`sdk/js/node/src/serve.ts:396`). A user `catch` swallows that signal, so the run does
 not suspend — it returns as if it had finished, and the wait silently never happens.
 
 ```typescript
@@ -235,7 +235,7 @@ name is ignored and looks identical from the outside.
 
 ### 6. Missing `recording: true`
 
-No time-travel debugging. `ironflow inspect` won't work.
+No time-travel debugging. `ironflow inspect --at` and the timeline view refuse to run (the plain step list still works).
 
 ```typescript
 { id: "fn", triggers: [...], recording: true }   // add this
@@ -266,9 +266,9 @@ await step.run("charge", () => stripe.charges.create({
 }));
 ```
 
-### 9. `waitForEvent` `match` missing `data.` prefix
+### 9. `waitForEvent` `match` pointing at the wrong field
 
-Match field is full path. `match: "orderId"` never matches; must be `match: "data.orderId"`.
+`match` is a path inside `event.data`; the engine strips an optional `data.` prefix, so `match: "orderId"` and `match: "data.orderId"` are equivalent. What never matches is a key that is not in the payload (`match: "id"` when the event carries `orderId`), or a value that differs between the triggering event and the awaited one.
 
 ```typescript
 // RIGHT
@@ -302,7 +302,7 @@ await client.streams.append(`${venueId}/issue-${issueId}`, event, opts);
 
 // RIGHT — flatten to one segment, or use entityType for the namespace dimension
 await client.streams.append(`${venueId}-${issueId}`, event, { ...opts });
-await client.streams.append(issueId, event, { entityType: `issue.${venueId}` });
+await client.streams.append(issueId, { ...event, entityType: `issue.${venueId}` }, opts);  // entityType lives on the event, not the options
 ```
 
 Allowed charset: letters, digits, `-`, `_`, `.`, `:`, `~`.

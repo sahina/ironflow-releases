@@ -5,7 +5,7 @@ Guide SDK upgrades and event schema versioning with upcasters.
 ## Step 1: Determine Current Versions
 
 ```bash
-# Server
+# CLI binary (local). For the running engine: `ironflow server info` or MCP `ironflow_server_info`
 ironflow version
 
 # TypeScript SDK packages
@@ -20,8 +20,8 @@ grep "ironflow" go.mod
 ## Step 2: Find Latest
 
 **Everything ships in lockstep.** One release stamps the same version into the server,
-all four npm packages, and the Go SDK — `scripts/release.sh` writes a single `$VERSION`
-everywhere. So there is no "which version pairs with which"; they match by construction.
+all four npm packages, the Go SDK and the Python SDK — `scripts/release.sh` writes a single
+`$VERSION` everywhere. So there is no "which version pairs with which"; they match by construction.
 
 Public artifacts (the engine repo `sahina/ironflow` is **private** — end users cannot
 read it):
@@ -31,6 +31,7 @@ read it):
 | Server binary, release notes | `sahina/ironflow-releases` | `v0.24.0` |
 | Go SDK | `sahina/ironflow-go` (mirror) | `v0.24.0` — **not** `sdk/go/ironflow/v*` |
 | JS SDK | npm `@ironflow/{core,node,browser,langgraph}` | `0.24.0` |
+| Python SDK (client-only) | PyPI `ironflow-py` (import name `ironflow`) | `0.24.0` — stable releases only, no prereleases |
 
 ```bash
 # Latest server + release notes (note --repo: the default repo is private)
@@ -103,26 +104,15 @@ After updating, fix compilation errors and deprecation warnings.
 
 ### Common Patterns
 
-**Import path change:**
-```typescript
-// Old
-import { createFunction } from "@ironflow/sdk";
-// New
-import { createFunction } from "@ironflow/node";
-```
+The changelog names the breaking change; the shape of the fix is one of:
 
-Search:
+**Import path change** — find every old import, rewrite it:
 ```bash
-grep -rn "from ['\"]@ironflow/sdk['\"]" src/ --include="*.ts"
+grep -rn "from ['\"]@ironflow/<old-path>['\"]" src/ --include="*.ts"
 ```
 
-**API signature change** (e.g., `url` → `serverUrl`):
-```typescript
-// Old
-createWorker({ url: "http://localhost:9123", functions: [...] });
-// New
-createWorker({ serverUrl: "http://localhost:9123", functions: [...] });
-```
+**Option rename** (e.g. a config field renamed in a `create*` call) — grep the old field
+name at every call site of that constructor, then let `tsc` find what the grep missed.
 
 **Projection handler signature** (handlers usually backward-compatible — extra args optional):
 ```typescript
@@ -276,8 +266,9 @@ sequence. No need to write v1→v3 directly.
    - Revert dependency to previous version
    - Revert code changes (imports, API signatures)
    - Restart worker/app
-4. **Server downgrade:** restore previous binary, restart. Migrations are forward-compatible
-   (additive, no DROPs), so old code generally reads new schema.
+4. **Server downgrade:** restore previous binary, restart. Migrations are NOT purely additive —
+   several drop columns (e.g. 038, 039) — so a downgrade across one of those needs a DB restore
+   from before the upgrade.
 5. **Projection rebuild after rollback** if handlers changed:
    `ironflow projection rebuild <name>`
 

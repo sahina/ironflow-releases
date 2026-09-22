@@ -49,7 +49,7 @@ Click **Run agent**. The page calls `ironflow.agents.invoke("doc-processor", {..
 ## Edge cases exercised
 
 - **Double-click submit** — `idempotencyKey` derived per click prevents duplicate runs
-- **Tab close mid-invoke** — `AbortController` triggers server-side `CancelRun` (B-3 D11)
+- **Tab close mid-invoke** — `AbortController` aborts the HTTP request; the server reads the abandoned caller and cancels the run itself (ADR 0067), no client-side `cancelRun`
 - **Network flap** — `SubscriptionManager` reconnects with replay; completion still observed
 - **Empty result** — UI renders `{}` cleanly without crashing
 

@@ -5,7 +5,7 @@ what the team says about itself. Every row in the report carries the `file:line`
 that produced the score, or the row reads "no evidence found" — which is itself a
 finding, not a blank.
 
-This section comes **before** the Ironflow mapping in the report. It is
+This section follows the adoption path in the report (see `report-template.html`). It is
 vendor-neutral on purpose: it earns the right to the second half. A reader who
 stops after this section has still been handed something useful.
 

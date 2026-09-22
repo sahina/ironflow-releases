@@ -9,9 +9,7 @@ Provision, deploy, scale, monitor, troubleshoot, and recover Ironflow deployment
 > means they're on compose or a single binary.
 >
 > Not covered here on purpose: Ironflow Cloud's own infrastructure (single Hetzner VPS +
-> systemd + OpenTofu, no k8s). That's internal ops. If you find yourself reaching for
-> `_internal/runbooks/_archive/**`, stop — those are cold storage and explicitly
-> non-authoritative for AI context.
+> systemd + OpenTofu, no k8s). That's internal ops.
 
 > **On Kubernetes without an Ironflow source checkout, use the published chart:**
 >
@@ -237,15 +235,17 @@ ironflow deploy --template medium --name prod \
 ```
 
 What happens during deploy:
-1. Validates template + release name
+1. Checks `--name` is set
 2. Resolves chart from `deploy/helm/ironflow/`
-3. Installs prereqs (CNPG operator, Barman Cloud, kube-prometheus-stack, Traefik if Hetzner)
+3. Installs prereqs (cert-manager, kube-prometheus-stack; CNPG operator + Barman Cloud for small/medium; Traefik if Hetzner)
 4. Annotates Traefik for Hetzner LB (if `--hetzner-location`)
 5. Builds NATS subchart
 6. Auto-injects S3 config from `HETZNER_S3_ENDPOINT`, `HETZNER_S3_BUCKET`
 7. `helm upgrade --install`
 
-Post-deploy:
+Post-deploy (object names below assume release name `ironflow`; with `--name prod` the
+chart renders `prod-ironflow`, `prod-nats-0`, `prod-ironflow-postgresql` — see
+`kubectl get all -n <ns>` for the real names):
 ```bash
 kubectl get pods -n ironflow
 kubectl port-forward svc/ironflow -n ironflow 9123:9123 &
@@ -561,8 +561,6 @@ kubectl top pods -n ironflow
 kubectl top nodes
 ```
 
-(`_internal/runbooks/` is an Ironflow-maintainer tree, not shipped with the binary —
-nothing in this skill requires it.)
 
 ---
 
@@ -685,8 +683,8 @@ helm rollback ironflow -n ironflow                 # to previous
 helm rollback ironflow 3 -n ironflow               # to specific revision
 ```
 
-> Helm rollback restores binary, NOT DB schema. Migrations are forward-only/additive
-> (no DROPs), so old code generally reads new schema. Breaking migrations need DB restore.
+> Helm rollback restores binary, NOT DB schema. Migrations are forward-only and some drop
+> columns (038, 039), so a rollback across one of those needs a DB restore.
 
 ### Template Switch (Small → Medium)
 
@@ -704,14 +702,13 @@ Procedure:
 
 ### CNPG Operator
 
+Installed as Helm release `cnpg` (chart `cnpg/cloudnative-pg`, deployment
+`cnpg-cloudnative-pg` in `cnpg-system`). `ironflow deploy upgrade` re-applies the pinned
+prereq versions; do not `kubectl apply` the upstream manifest over it (field-manager conflicts).
+
 ```bash
-kubectl get deployment cnpg-controller-manager -n cnpg-system \
+kubectl get deployment cnpg-cloudnative-pg -n cnpg-system \
   -o jsonpath='{.spec.template.spec.containers[0].image}'
-
-kubectl apply --server-side \
-  -f https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-1.28/releases/cnpg-1.28.2.yaml
-
-kubectl rollout status deployment/cnpg-controller-manager -n cnpg-system
 ```
 
 ---
@@ -740,11 +737,10 @@ kubectl get clusterrolebinding | grep ironflow
 ### Secret Rotation
 
 ```bash
-# Master key (causes restart)
-kubectl delete secret ironflow-master-key -n ironflow
-kubectl create secret generic ironflow-master-key -n ironflow \
-  --from-literal=master-key=$(openssl rand -hex 32)
-kubectl rollout restart deployment/ironflow -n ironflow
+# Master key — a Helm value (ironflow.masterKey), stored in <release>-secret; rotate via helm
+# (rolls the pod). WARNING: any later `helm upgrade` that omits --set ironflow.masterKey
+# silently drops encryption — keep it in your values file.
+ironflow deploy --template medium --name prod --set ironflow.masterKey=$(openssl rand -hex 32)
 
 # API keys — rotate keeps the same key record and returns a new value
 ironflow apikey rotate <key-id> --json
@@ -779,7 +775,7 @@ Resource estimates:
 
 | Template | Ironflow CPU | Memory | PG | NATS |
 |---|---|---|---|---|
-| Small | 100m | 256-512Mi | 5Gi | 10Gi |
+| Small | 100m | 256-512Mi | 5Gi | 2Gi (chart default) |
 | Medium | 750m (3x250m) | 1.5-3Gi | 10Gi | 30Gi (3x10Gi) |
 | Large | HPA | HPA | External | External |
 

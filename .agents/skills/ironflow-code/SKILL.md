@@ -1,6 +1,6 @@
 ---
 name: ironflow-code
-version: 0.38.0
+version: 0.39.0
 description: |
   Build Ironflow components — write functions, projections, workers, entity streams,
   webhooks, sagas, plus generate tests and audit existing code for anti-patterns.
@@ -123,7 +123,7 @@ Apply these non-negotiable rules (full list in `anti-patterns.md`):
   `YieldSignal`. A `try/catch` around one, or a `.catch()` chained onto it, eats
   that signal, so the run completes instead of waiting. A `waitForEvent` timeout is not catchable either: the scheduler fails
   the run out from under the handler. Model a deadline as its own event and wait
-  on a single settled event. `match` uses the full `data.field` path
+  on a single settled event. `match` names a key in `event.data` (the `data.` prefix is optional)
 - Push mode for <10s; pull mode for >10s (the engine's `PushTimeout` is 10s and
   kills the request — it is not advisory)
 - Recording enabled (`recording: true`) for debuggable functions
@@ -135,8 +135,8 @@ Apply these non-negotiable rules (full list in `anti-patterns.md`):
   facts that have no entity stream
 - Entity IDs are a single path segment — no `/`, `?`, `#`, `%`, `&`, or
   whitespace; use `entityType` for the namespace dimension
-- Projections carry the `as IronflowProjection` cast (keeps handler/state types
-  checked instead of silently widening)
+- Projections carry the `as IronflowProjection` cast — `createWorker({ projections })`
+  takes `IronflowProjection[]`, and the cast erases the state/event generics to fit
 - KV `bucket.get()` wrapped in try/catch
 - `config.watch()` / `bucket.watch()` watchers stopped on cleanup
 - Webhooks always verify signatures
@@ -214,14 +214,18 @@ grep -rn "ironflow.CreateFunction\|ironflow.CreateProjection\|ironflow.NewWorker
 
 ```typescript
 import { describe, it, expect } from "vitest";
+import type { ManagedProjectionHandler, ProjectionContext } from "@ironflow/node";
 import { orderStats } from "./order-stats";
 import { OrderEvents } from "../events/order-events";
 
 // `createProjection` returns `{ config }` and nothing else — reach the reducer
-// through `.config`, not off the projection object.
+// through `.config`, not off the projection object. `handler` is typed as a
+// managed|external union and takes a third `ctx` argument — narrow it and stub ctx.
+type State = { totalOrders: number; totalRevenue: number };
+const ctx = { logger: console } as unknown as ProjectionContext;
 describe("order-stats projection", () => {
-  const handler = orderStats.config.handler;
-  const initialState = orderStats.config.initialState();
+  const handler = orderStats.config.handler as ManagedProjectionHandler<State>;
+  const initialState = orderStats.config.initialState!();
 
   it("starts with zero state", () => {
     expect(initialState).toEqual({ totalOrders: 0, totalRevenue: 0 });
@@ -232,14 +236,14 @@ describe("order-stats projection", () => {
       { name: OrderEvents.PLACED, data: { orderId: "1", total: 49.99 } },
       { name: OrderEvents.PLACED, data: { orderId: "2", total: 25.00 } },
     ];
-    const final = events.reduce((s, e) => handler(s, e), initialState);
+    const final = events.reduce((s, e) => handler(s, e, ctx), initialState);
     expect(final.totalOrders).toBe(2);
     expect(final.totalRevenue).toBeCloseTo(74.99);
   });
 
   it("does not mutate previous state", () => {
     const before = { ...initialState };
-    handler(initialState, { name: OrderEvents.PLACED, data: { total: 10 } });
+    handler(initialState, { name: OrderEvents.PLACED, data: { total: 10 } }, ctx);
     expect(initialState).toEqual(before);
   });
 });
@@ -384,12 +388,14 @@ scripts/audit-scan.sh <directory>
 
 Relative to this skill's own directory, which your harness names when it loads the skill.
 Output is `file:line:severity:rule:message` format. The script greps for known
-anti-patterns.
+anti-patterns: 18 TypeScript rules and 4 Go rules (`missing-recording`, `hardcoded-url`,
+`PROJ-DET-002`, `PROJ-DET-003`) — Go code gets no coverage for side-effects, yielding
+steps, `expectedVersion`, idempotency, webhooks or upcasters; review those by hand.
 
 If the script cannot be executed — a packaged skill is served as readable resources, not
 as files on disk — read `scripts/audit-scan.sh` as a skill resource and apply its patterns with the
-search tools instead. Keep the rule names it uses — Step 2 looks each one up in `anti-patterns.md`, so a
-renamed rule has nothing to classify against.
+search tools instead. Keep the rule names it uses so the report matches scanner output;
+classify each hit against `anti-patterns.md` by topic (the sections are numbered, not keyed by rule ID).
 
 ### Step 2: For each finding, classify
 

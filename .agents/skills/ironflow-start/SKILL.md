@@ -1,6 +1,6 @@
 ---
 name: ironflow-start
-version: 0.38.0
+version: 0.39.0
 description: |
   Adopt Ironflow — set up in a new or existing project and make architectural
   decisions. Triggers on: "set up ironflow", "install ironflow", "add ironflow to",
@@ -115,8 +115,8 @@ Then start it:
 ironflow serve --dev      # localhost:9123 — SQLite, embedded NATS, auth disabled
 ```
 
-**`--dev` is not optional for local work.** Auth is always enforced otherwise — there is
-no config toggle — so every `ironflow emit`, SDK call, and dashboard request returns
+**`--dev` is not optional for local work.** Auth is always enforced otherwise — the only
+other off-switch is `auth.devMode: true` in `ironflow.yaml`, the same bypass — so every `ironflow emit`, SDK call, and dashboard request returns
 `401 authentication required`. Dropping `--dev` (production) auto-bootstraps an admin
 key written to `<db-dir>/.ironflow_bootstrap_key.json` (mode 0400), which you then pass
 as `IRONFLOW_API_KEY`.
@@ -212,7 +212,10 @@ import { hello } from "@/functions/hello";
 
 const allFunctions = [hello];
 
-export const POST = serve({ functions: allFunctions });
+export const POST = serve({
+  functions: allFunctions,
+  signingKey: process.env.IRONFLOW_SIGNING_KEY,   // omit = unverified POSTs (SDK warns)
+});
 
 // GET = register functions (call once after deploy)
 export async function GET() {
@@ -237,8 +240,9 @@ Two things to flag before the user builds on this:
   `description`, `triggers`, `retry`, `timeoutMs`, `concurrency`, `debounce`,
   `preferredMode`, `endpointUrl`, `actorKey`, `cancelOn` — nothing else. A push function
   registered this way runs with `recording: false`, so `ironflow inspect` has no frames
-  to replay, no matter what the `createFunction` config says. `secrets`, `metadata`, and
-  `stepTimeout` are dropped the same way. Pull mode's `worker.start()` sends all of them.
+  to replay, no matter what the `createFunction` config says. `secrets` and `metadata`
+  are dropped the same way. Pull mode's `worker.start()` sends all three (`stepTimeout`
+  is enforced client-side by the worker in both modes).
   If time-travel debugging matters, that's an argument for pull.
 - `serve()` returns `Promise<Response | void>` (it also accepts Node req/res). Next.js
   typed-route checking can reject that as a route export; cast if `next build` complains.
@@ -286,7 +290,7 @@ IRONFLOW_SERVER_URL=http://localhost:9123
 # IRONFLOW_API_KEY=ifkey_...              # REQUIRED unless the server runs with --dev
 
 # Push mode:
-# IRONFLOW_SIGNING_KEY=...                # verifies Ironflow's signature on inbound POSTs
+# IRONFLOW_SIGNING_KEY=...                # pass as serve({ signingKey }) — the SDK never reads this env var itself
 # NEXT_PUBLIC_URL=http://localhost:3000   # your app's own URL — you build endpointUrl from it
 
 # Server-side only (not read by the SDK):

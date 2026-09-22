@@ -8,7 +8,7 @@ Seeded from the pattern table that used to live in `ironflow-start` Mode 2.
 | `node.scheduled` | bullmq, pg-boss, agenda, node-cron, Bree, `@nestjs/schedule` | A queue without durable steps. A job failing at stage 3 restarts at stage 1 | Pull-mode function; resume from the last successful step | strong |
 | `node.fire-and-forget` | `void someAsync()`, `.catch(() => {})`, `setImmediate` | Swallowed failures. The most common source of "it just didn't happen" | Emit an event; the run is durable and queryable | strong |
 | `node.broker-consumer` | amqplib, kafkajs, SQS client, NATS | Already doing EDA | Verdict becomes **already doing EDA** | reframe |
-| `node.retry` | p-retry, async-retry, hand-rolled backoff | In-process retry, lost on restart | Engine-side retry with backoff and DLQ | strong |
+| `node.retry` | p-retry, async-retry, hand-rolled backoff | In-process retry, lost on restart | Engine-side retry with backoff, queryable failed-run history, resume from the last step | strong |
 | `node.status-column` | `status: 'pending' \| 'processing' \| ...` | Hand-rolled state machine | Entity stream; the column becomes a projection | supporting |
 | `node.read-model` | Three or more JOINs in one query | A read model computed on every request | Managed projection — the reducer maintains the shape | supporting |
 

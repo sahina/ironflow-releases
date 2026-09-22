@@ -65,8 +65,8 @@ export const processOrder = createFunction(
 | `mode` | `"push"` or `"pull"` |
 | `secrets` | Secret names to resolve at execution |
 | `concurrency` | `{ limit, key }` for rate limiting |
-| `retry` | `{ maxAttempts, initialDelayMs, backoffFactor }` |
-| `timeout` | Function timeout in ms (default 600000) |
+| `retry` | `{ maxAttempts, initialDelayMs, backoffFactor, maxDelayMs }` (defaults 3 / 1000 / 2.0 / 300000) |
+| `timeout` | Function timeout in ms. Unset = no per-function budget. Pull runs are never timed out; push requests are capped by the engine's `pushTimeout` (default 10s) regardless |
 | `schema` | Zod schema for `event.data` validation |
 | `debounce` | `{ periodMs, key?, maxWaitMs? }` — collapse event storms (floor 1000ms; async-only) |
 | `cancelOn` | `[{ event, match }]` — auto-cancel this run when a matching event arrives |
@@ -90,7 +90,6 @@ const { eventId, runIds } = await client.emit(
     idempotencyKey: `order-${orderId}`,  // dedupes repeat emits
     version: 1,                          // event schema version, default 1
     metadata: { source: "checkout" },
-    namespace: "default",
   },
 );
 
@@ -101,6 +100,8 @@ const results = await client.emitSync(OrderEvents.PLACED, data, { timeout: 30000
 
 // One function by ID, one result — this one DOES throw RunFailedError /
 // RunCancelledError / RunWaitTimeoutError, because there is exactly one run.
+// Those classes are exported from "@ironflow/core", not "@ironflow/node" —
+// `pnpm add @ironflow/core` to `instanceof` them.
 const { output } = await client.invoke("process-order", { data, timeout: 30000 });
 ```
 
@@ -123,7 +124,7 @@ await step.sleepUntil("wait-open", "2026-03-16T09:30:00Z");
 // handler is never resumed, so no code after this line runs.
 const approval = await step.waitForEvent("wait-approval", {
   event: OrderEvents.APPROVED,
-  match: "data.orderId",         // full path including "data."
+  match: "orderId",              // path inside event.data ("data." prefix is optional)
   timeout: "24h",                // default "7d"
 });
 
@@ -156,8 +157,8 @@ const stripeKey = ctx.secrets.get("stripe-key");
 ### Yielding steps: never catch their rejection
 
 `sleep`, `sleepUntil`, `waitForEvent`, `invoke` and `invokeAsync` suspend the run by
-**throwing an internal `YieldSignal`** (`sdk/js/node/src/step.ts`). The SDK catches it at
-the handler boundary and reports `status: "yielded"` (`sdk/js/node/src/serve.ts:398`).
+**throwing an internal `YieldSignal`** (`sdk/js/node/src/internal/errors.ts`). The SDK catches it at
+the handler boundary and reports `status: "yielded"` (`sdk/js/node/src/serve.ts:396`).
 
 ```typescript
 // WRONG — the catch swallows the YieldSignal. The run never suspends;
@@ -180,7 +181,7 @@ await step.invokeAsync("order-approval-deadline", { orderId });
 
 const settled = await step.waitForEvent("await-settlement", {
   event: OrderEvents.SETTLED,   // emitted by the approval path OR the deadline path
-  match: "data.orderId",
+  match: "orderId",
   timeout: "48h",               // hard ceiling: if THIS fires, the run fails
 });
 ```
@@ -229,8 +230,9 @@ const worker = createWorker({
   projections: [orderStats as IronflowProjection],   // cast required
 });
 
-// start() registers every function, then polls forever — it NEVER resolves.
-// Anything written after this line is dead code. Do setup before it.
+// start() registers every function, then polls until stop()/drain() is called —
+// it only resolves on shutdown (and rejects on a 401/403 instead of reconnecting).
+// Anything written after this line runs at shutdown, not startup. Do setup before it.
 await worker.start();
 ```
 
@@ -268,8 +270,8 @@ import { ironflow } from "@ironflow/browser";
 ironflow.configure({ serverUrl: process.env.NEXT_PUBLIC_IRONFLOW_URL! });
 await ironflow.connect();   // for real-time
 
-// One-time read
-const result = await ironflow.getProjection<MyState>("order-stats");
+// One-time read — returns an envelope; the reducer state is `.state`
+const { state, version, lastEventSeq } = await ironflow.getProjection<MyState>("order-stats");
 
 // Real-time — server pushes full state on save (NEVER poll)
 const sub = await ironflow.subscribeToProjection<MyState>("order-stats", {
@@ -336,11 +338,12 @@ await kv.createBucket({ name: "user-settings" });   // stored as APP_user-settin
 
 const bucket = kv.bucket("user-settings");
 await bucket.put("user-123", { theme: "dark" });
+let entry;
 try {
-  const entry = await bucket.get("user-123");
+  entry = await bucket.get("user-123");                     // throws on a missing key
 } catch { /* missing key */ }
 await bucket.create("user-456", { theme: "light" });        // create-if-not-exists
-await bucket.update("user-123", { theme: "light" }, entry.revision);  // CAS
+if (entry) await bucket.update("user-123", { theme: "light" }, entry.revision);  // CAS
 const keys = await bucket.listKeys();                        // string[]; optional filter arg
 await bucket.delete("user-123");
 ```
@@ -367,7 +370,7 @@ const cfg = await config.get("flags");
 await config.patch("flags", { betaFeatures: true });
 
 const watcher = config.watch("flags", {
-  onUpdate: (data) => console.log(data),
+  onUpdate: (ev) => console.log(ev.data, ev.revision),   // ConfigWatchEvent, not the bare data
 });
 watcher.stop();
 ```

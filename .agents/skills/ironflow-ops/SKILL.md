@@ -1,6 +1,6 @@
 ---
 name: ironflow-ops
-version: 0.38.0
+version: 0.39.0
 description: |
   Operate Ironflow — debug failed/stuck runs, migrate SDK versions with upcasters,
   deploy/scale/troubleshoot clusters. Triggers on: "run failed", "stuck workflow",

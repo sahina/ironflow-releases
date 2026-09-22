@@ -5,21 +5,23 @@ Model Context Protocol. Three modes:
 
 - **Read-only** (default): list, get, query, and the operator read verbs — 23 tools
 - **Read-write** (`--allow-writes`): + emit events, invoke functions, write secrets and KV, and
-  the operator control verbs (resume, rebuild, requeue, reset) — 34 tools
-- **Read-write with evidence** (`--allow-writes --evidence-file`): + the reload barrier — 35 tools
+  the operator control verbs (resume, rebuild, requeue, reset) — 39 tools
+- **Read-write with evidence** (`--allow-writes --evidence-file`): + the reload barrier — 40 tools
 
 ## Start MCP Server
 
 ```bash
 ironflow mcp                       # read-only (23 tools)
-ironflow mcp --allow-writes        # read + write (34 tools)
-ironflow mcp --allow-writes --evidence-file trail.jsonl   # + ironflow_await_reload (35)
+ironflow mcp --allow-writes        # read + write (39 tools)
+ironflow mcp --allow-writes --evidence-file trail.jsonl   # + ironflow_await_reload (40)
 ```
 
 Other flags: `--server-url` (default `http://localhost:9123`), `--api-key`,
 `--static-only` (exclude SDK-registered agent tools), `--transport stdio|streamable-http`.
 With `--transport streamable-http`, `--host` (default `127.0.0.1`), `--port` (0 = OS
-picks) and `--port-file` control the bind; stdio ignores all three.
+picks) and `--port-file` control the bind; stdio ignores all three. streamable-http also
+**requires `IRONFLOW_MCP_BEARER_TOKEN`** (the server exits without it), refuses any non-loopback
+`--host`, and serves at `/mcp` behind that bearer token.
 
 ## Configure in `.mcp.json`
 
@@ -73,20 +75,25 @@ The last three are **diagnosis** verbs, deliberately available without
 `--allow-writes`: an agent in read-only mode can see that dispatch is blocked or
 that events are dead-lettered. Fixing either needs the write verbs below.
 
-## Tools (write — requires `--allow-writes`) — 11
+## Tools (write — requires `--allow-writes`) — 16
 
 | Tool | Purpose |
 |---|---|
 | `ironflow_emit_event` | Emit an event (fire-and-forget — does **not** wait for the run) |
 | `ironflow_invoke_function` | Invoke a function (fire-and-forget) |
 | `ironflow_append_entity_event` | Append an event to an entity stream |
+| `ironflow_delete_stream` | Delete **one** entity stream: appends a `$stream.deleted` tombstone so further appends are refused, and drops its snapshots. `purge: true` also deletes every event below the tombstone. Irreversible (`confirm: true` required — the MCP stand-in for `--yes`) |
+| `ironflow_redact_event` | Irreversibly replace **one** event's data with a placeholder; entity-stream snapshots derived from it are dropped too. Does not reach the runs it triggered (`confirm: true` required) |
+| `ironflow_redact_run` | Irreversibly replace **one** run's input and output, and every audit payload for that run and its steps. Terminal runs only (`confirm: true` required) |
+| `ironflow_redact_step` | Irreversibly replace **one** step's output and original output, and every audit payload for that step. Takes the step's row id, not its name (`confirm: true` required) |
 | `ironflow_secret_set` | Set a secret |
 | `ironflow_kv_put` | Write a KV value |
 | `ironflow_cancel_run` | Cancel a running workflow |
+| `ironflow_delete_run` | Permanently delete **one** terminal run and its steps. Irreversible (`confirm: true` required — the MCP stand-in for `--yes`). A non-terminal run is refused; cancel first. There is no bulk tool — `ironflow run prune` and the SDKs' `deleteRuns` stay outside MCP |
 | `ironflow_resume_run` | Resume a paused **or failed** run — this is also the retry verb |
-| `ironflow_rebuild_projection` | Start a projection rebuild. **Destructive** — deletes the read model and replays; there is no preview |
+| `ironflow_rebuild_projection` | Start a projection rebuild. **Destructive** — deletes the read model and replays. Call with `dry_run: true` first: it returns the scope (`total_events`) and changes nothing. `from_event_id`, `to_event_id`, `partition` narrow the replay |
 | `ironflow_outbox_dlq_requeue` | Requeue dead-letter rows — **every row sharing the `event_id`**, not one (`env` required) |
-| `ironflow_outbox_dlq_discard` | Discard dead-letter rows permanently — **every row sharing the `event_id`**. Irreversible (`env` required) |
+| `ironflow_outbox_dlq_discard` | Discard dead-letter rows permanently — **every row sharing the `event_id`**. Irreversible (`env` and `confirm: true` required — the MCP stand-in for `--yes`) |
 | `ironflow_circuit_breaker_reset` | Reset a breaker to closed, unblocking dispatch |
 
 ## Tools (reload barrier) — requires `--allow-writes` **and** `--evidence-file`
