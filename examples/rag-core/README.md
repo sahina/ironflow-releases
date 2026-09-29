@@ -49,7 +49,7 @@ cp .env.example .env
 # paste this into IRONFLOW_API_KEY in .env:
 cat ../../.ironflow/.ironflow_bootstrap_key.json | jq -r .key
 
-pnpm install && pnpm setup && pnpm start
+pnpm install && pnpm run setup && pnpm start
 ```
 
 Expected:
@@ -96,7 +96,7 @@ This is the point of the whole design. It needs two terminals, because
 ```fish
 # T2 — stop the worker (Ctrl-C), throw the index away, restart the worker
 rm rag.db
-pnpm setup
+pnpm run setup
 pnpm start
 ```
 
@@ -228,7 +228,7 @@ events.ts        the event contract — the index is a function of these
 workflows/       the durable ingest workflow
 projections/     the external projection that writes rag.db
 worker.ts        createWorker — pull mode
-setup.ts         pnpm setup — creates rag.db (chunks + vec_chunks)
+setup.ts         pnpm run setup — creates rag.db (chunks + vec_chunks)
 cli.ts           pnpm ingest / pnpm ask
 tests/           pure-logic tests — pnpm test
 ```

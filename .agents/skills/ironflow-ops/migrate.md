@@ -31,7 +31,7 @@ read it):
 | Server binary, release notes | `sahina/ironflow-releases` | `v0.24.0` |
 | Go SDK | `sahina/ironflow-go` (mirror) | `v0.24.0` — **not** `sdk/go/ironflow/v*` |
 | JS SDK | npm `@ironflow/{core,node,browser,langgraph}` | `0.24.0` |
-| Python SDK (client-only) | PyPI `ironflow-py` (import name `ironflow`) | `0.24.0` — stable releases only, no prereleases |
+| Python SDK (Tier 1 polling worker) | PyPI `ironflow-py` (import name `ironflow`) | `0.24.0` — stable releases only, no prereleases |
 
 ```bash
 # Latest server + release notes (note --repo: the default repo is private)
@@ -186,6 +186,11 @@ events.register(defineEvent({
 const worker = createWorker({ functions: [...], eventDefinitions: events });
 ```
 
+Python uses `Worker(functions=[...], upcasters=registry).run()` from
+`ironflow.worker`. It does not accept Node's `eventDefinitions` option — pass
+an `ironflow.UpcasterRegistry` directly instead; check the Python worker API
+before proposing an upcaster migration.
+
 `serve({ functions, eventDefinitions })` takes the same option for push mode.
 
 There is also a lower-level `createUpcasterRegistry()` in `@ironflow/core`, but nothing
@@ -220,6 +225,12 @@ worker := ironflow.NewWorker(ironflow.WorkerConfig{
     Upcasters: registry,
 })
 ```
+
+For Python, register decorated `@function(...)` handlers through
+`Worker(functions=[...], upcasters=registry).run()`. `ironflow.UpcasterRegistry.register`
+takes `(event_name, from_version, to_version, fn)` like Go, but a hop can jump
+straight to `to_version` (Node semantics) instead of requiring `to_version ==
+from_version + 1`, and `fn` takes and returns plain data, not `json.RawMessage`.
 
 ### Chaining (v1 → v3 automatic)
 

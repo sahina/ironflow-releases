@@ -1,6 +1,6 @@
 /**
  * Registers the SQL projections in Ironflow and creates the app-owned schema
- * in ragapp. Run once: pnpm setup
+ * in ragapp. Run once: pnpm run setup
  *
  * Two targets, two mechanisms, and that is the whole point of this file:
  * projections go through the Ironflow client, the ragapp schema goes through

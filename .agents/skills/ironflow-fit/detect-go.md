@@ -22,3 +22,4 @@ Signal IDs are emitted by `scripts/scan.sh`. This file is the interpretation.
 ## Adoption note
 
 Go is Tier 1 — full worker runtime, durable steps, pull mode. No adoption caveat.
+Python is also Tier 1 for polling workers: `ironflow.worker.Worker(functions=[...]).run()`.

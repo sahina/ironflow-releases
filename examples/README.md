@@ -111,12 +111,12 @@ cd examples/agents/reconciliation-agent && pnpm install && pnpm dev
 # Then signal the counterparty's reply: pnpm reply -- <caseId> "..."
 
 # Run the RAG part 1 example (no Docker; needs a bootstrap API key in .env)
-cd examples/rag-core && pnpm install && pnpm setup && pnpm start
+cd examples/rag-core && pnpm install && pnpm run setup && pnpm start
 # In another terminal: pnpm ingest, then pnpm ask "..."
 
 # Run the financial RAG example (needs Docker + ANTHROPIC_API_KEY)
 cd examples/financial-rag && pnpm install && docker compose up -d --wait
-# Then: pnpm setup && pnpm seed-corpus && pnpm start
+# Then: pnpm run setup && pnpm seed-corpus && pnpm start
 # In another terminal: pnpm poll, then pnpm ask "..."
 
 # Validate the YAML configuration examples (no install needed)

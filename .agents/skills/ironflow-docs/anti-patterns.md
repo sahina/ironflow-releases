@@ -200,9 +200,9 @@ reads. Crossing the streams defeats CQRS.
 ### 5b. Dual-emitting `streams.append` + `emit` for the same fact
 
 `streams.append` already reaches projections. One append writes **two** outbox rows in
-the same transaction (`internal/eventtrigger/helper.go:645`): one on the entity topic
+the same transaction (`internal/eventtrigger/helper.go:704`): one on the entity topic
 for stream subscribers, one on `BuildUserEventTopic(eventName)` — the exact subject a
-projection's durable filters on (`internal/projection/coordinator.go:93`). Emitting the
+projection's durable filters on (`internal/projection/coordinator.go:92`). Emitting the
 same fact again publishes it twice, so the reducer runs twice and every total silently
 double-counts.
 
@@ -390,6 +390,10 @@ const data = event.data as OrderData;
 import { type IronflowProjection } from "@ironflow/node";
 createWorker({ projections: [myProjection as IronflowProjection] });
 ```
+
+This cast applies to TypeScript workers. Go's `NewWorker` and Python's
+`Worker(functions=[...], projections=[...]).run()` have different configuration shapes;
+Python's `projections` take `ironflow.projection.create_projection(...)` values, so no cast.
 
 ### 14. KV `bucket.get()` without try/catch
 

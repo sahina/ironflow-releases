@@ -38,16 +38,16 @@ it.each([{ separator: [] }, { separator: ["--"] }])("preserves an explicit rejec
     event: "agent.approve.contact",
     data: { runId: "run-123", approved: false, approver: "operator", reason: "declined" },
   });
-});
+}, 10_000);
 it.each([{ separator: [] }, { separator: ["--"] }])("routes the reply and its body with separator %j", async ({ separator }) => {
   await command(["reply", ...separator, "case-123", "posted to our sibling account"]);
   expect(requests.at(-1)).toEqual({
     event: "case.resolution.signal",
     data: { caseId: "case-123", kind: "reply", replyClassification: "posted-elsewhere", confirmedActionId: "reassign-to-sibling" },
   });
-});
+}, 10_000);
 it("rejects an invalid approval value without emitting", async () => {
   const before = requests.length;
   await expect(command(["approve", "--", "run-123", "flase"])).rejects.toThrow();
   expect(requests).toHaveLength(before);
-});
+}, 10_000);

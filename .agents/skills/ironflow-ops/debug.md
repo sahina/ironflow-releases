@@ -45,8 +45,9 @@ If unhealthy → fix server connectivity first (see `platform.md`).
 > `/api/`, it assumes a `--dev` server; otherwise add
 > `-H "Authorization: Bearer $IRONFLOW_API_KEY"`.
 >
-> The full public list is `/health`, `/ready`, `/metrics`, `/api/v1/capabilities`, and
-> the auth-login paths.
+> The full public list is `/health`, `/ready`, `/metrics`, `/api/v1/capabilities`, the auth
+> login/validate paths and the platform login (plus webhook ingest, which needs its own `ifwh_`
+> token, `OPTIONS` preflights, and the non-API dashboard shell).
 
 ## Symptom Routing
 
@@ -269,7 +270,7 @@ ironflow projection list --json                              # all projections
   failure first, or the entry dead-letters again.
 
   **`--dry-run` works.** The guard sits above every mutation
-  (`internal/projection/rebuild.go:394`), so a dry run is a pure query: it reports the
+  (`internal/projection/rebuild.go:415`), so a dry run is a pure query: it reports the
   start cursor, the target and the event count, registers no job and deletes nothing.
   It can still FAIL: with `IRONFLOW_EVENT_RETENTION_DAYS` set, a rebuild that would
   replay from before the retention horizon is refused — by the dry run as well as the
@@ -368,7 +369,7 @@ the server has a NATS provider; without one they don't exist at all.
 | Projection drift | State mismatch | Impure handler / missing event type | Pure handler; verify events array |
 | Concurrency conflict | Append fails | Stale `expectedVersion` | `getInfo()` first |
 | Stale memoized output | Retry uses old results | Step previously completed | Create new run instead of retrying |
-| Push timeout (10s default) | Long task in serverless | Wrong mode | Switch to pull with `createWorker`. Self-hosters can raise `engine.pushTimeout` in `ironflow.yaml`; on a managed server you cannot |
+| Push timeout (10s default) | Long task in serverless | Wrong mode | Switch to pull with Node `createWorker`, Go `NewWorker`, or Python `Worker(functions=[...]).run()`. Self-hosters can raise `engine.pushTimeout` in `ironflow.yaml`; on a managed server you cannot |
 | Missing registration | Event emitted, no run | Function not in serve/worker | Add to functions array |
 | Wrong event name | Function never fires | Typo, case mismatch | Verify exact event name |
 | `waitForEvent` timeout | Run fails; nothing after the wait runs | Timeout is not observable in the handler — no null, no catchable error | Model the deadline as its own event, or react to `system.run.*.failed`. Never catch a yielding step's rejection — `try/catch` or `.catch()`, both eat the YieldSignal |

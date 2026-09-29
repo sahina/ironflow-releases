@@ -20,16 +20,14 @@ and the reader can follow a link.
 
 ## The tiers
 
-**Tier 1 — Go and TypeScript.** Full worker runtime: durable-step memoization,
-crash-resume replay, `sleep` / `waitForEvent` suspension, saga compensation, pull
-mode. Hand-written, never generated.
+**Tier 1 — Go, TypeScript, Python.** Hand-written worker runtimes provide
+pull mode and durable-step memoization. Python's client surface is generated.
+Advanced step primitives differ by language; check the SDK comparison before
+promising a specific operation.
 
-> "Go and TypeScript are the only Tier-1 languages, and that limit is deliberate.
-> No additional Tier-1 languages are planned." — `sdk-comparison.md`
-
-**Tier 2 — Python today; Rust, C#, Java later.** Generated client, no worker
-runtime. Functions still execute via **push mode**: the server POSTs to an HTTP
-endpoint you own, which needs no runtime at all.
+**Tier 2 — Rust, C#, Java later.** Generated client, no worker runtime.
+Functions can still execute via **push mode**: the server POSTs to an HTTP
+endpoint you own, which needs no SDK runtime.
 
 **No SDK.** Generate your own. Everything below applies.
 
@@ -63,12 +61,12 @@ Tier-2 authoring path, and it is fully documented — `push-protocol.md` covers 
 request and response shapes, HMAC verification, and, for durable steps, the step-ID
 formula and memoization rules.
 
-### 3. Pull mode — Go or TypeScript, permanently
+### 3. Pull mode — a Tier-1 SDK worker
 
-Crash-resume, long sleeps and saga compensation over a long-running worker need the
-Tier-1 runtime. In practice: a small Node or Go process beside their services,
-holding the orchestration. **Their services stay Java.** That process calls them; it
-does not replace them.
+Crash-resume and long sleeps over a long-running worker need a Tier-1 runtime.
+Saga compensation is available in Go, Node and Python. A Python polling worker
+can handle its supported durable steps. **Their services stay Java.** The
+worker calls those services; it does not replace them.
 
 ## Both generators, or the path dead-ends
 
@@ -104,14 +102,16 @@ controller, which is fine — but it is the only inbound door.
 
 A generated client **will** contain `workers_register`, `workers_list_jobs` and
 `workers_update_jobs`, fully typed. They look ready to use. `other-languages.md`
-§"Pull mode is not supported outside Go and Node" says plainly that they are not
-part of the supported surface, and lists the four traps — ack-before-execute, fence
-echo on every mutating call, two response shapes, POST-or-PUT.
+§"Pull mode is not supported outside the Go, TypeScript and Python SDKs" draws
+the support boundary. Generated clients alone are not
+part of the supported worker surface. The guide lists four traps:
+ack-before-execute, fence echo on every mutating call, two response shapes,
+and POST-or-PUT.
 
 Phrase it as **unsupported, not undocumented.** The rules are published now; what is
 missing is a runtime and anyone to support the result. The step ID is the
 memoization key on both sides of the wire, and getting it wrong re-runs a step that
-already completed — a double charge, silently. Recommending a Go or Node sidecar is
+already completed — a double charge, silently. Recommending a Tier-1 worker sidecar is
 still the right call, and telling skeptical engineers not to build against your own
 typed endpoints is the most credibility-earning sentence in the report.
 
@@ -130,7 +130,7 @@ Keep this short and link out; `other-languages.md` has the full table.
   code.
 - **Python installs as `ironflow-py`, not `ironflow`.** `pip install ironflow-py`
   from v0.33.1 (#1913); the import name stays `ironflow`. The bare name on PyPI is an
-  unrelated materials-science package. Note the SDK is client-only — no worker runtime.
+  unrelated materials-science package. The SDK includes a polling worker.
 - **A first-party C# SDK was designed and closed** (so "C# later" above means "not
   planned", not "on the roadmap"). Issue #172, `NOT_PLANNED`:
   "speculative, no demand signal. Reopen if a .NET user materializes." If the reader

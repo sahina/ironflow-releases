@@ -16,6 +16,11 @@ anything slower belongs in pull mode.
 
 Mix both when you have both kinds of tasks.
 
+For pull, Node uses `createWorker(...).start()`, Go uses
+`ironflow.NewWorker(...).Run(ctx)`, and Python uses
+`Worker(functions=[...]).run()` from `ironflow.worker`. Python's worker polls
+over HTTP; its `async def` handlers use `ctx.step` for durable work.
+
 ## Commands vs Events (CQRS foundational)
 
 The most important CQRS distinction. Conflating these is the #1 defect in event-driven

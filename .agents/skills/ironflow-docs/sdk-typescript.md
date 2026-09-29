@@ -236,6 +236,9 @@ const worker = createWorker({
 await worker.start();
 ```
 
+Python's equivalent polling entry point is `Worker(functions=[...]).run()`
+from `ironflow.worker`; see `sdk-python.md` for its decorator and step API.
+
 Subpath exports are public API: `@ironflow/node/worker`, `/serve`, `/agent`,
 `/worker-streaming` (opt-in ConnectRPC streaming worker) and `/test` (test harness).
 

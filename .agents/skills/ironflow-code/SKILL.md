@@ -1,6 +1,6 @@
 ---
 name: ironflow-code
-version: 0.39.0
+version: 0.40.0
 description: |
   Build Ironflow components — write functions, projections, workers, entity streams,
   webhooks, sagas, plus generate tests and audit existing code for anti-patterns.
@@ -126,6 +126,10 @@ Apply these non-negotiable rules (full list in `anti-patterns.md`):
   on a single settled event. `match` names a key in `event.data` (the `data.` prefix is optional)
 - Push mode for <10s; pull mode for >10s (the engine's `PushTimeout` is 10s and
   kills the request — it is not advisory)
+- Python pull workers use `from ironflow.worker import Worker, function`:
+  `@function(id="job", triggers=[{"event": "job.started"}])` on an `async def`
+  handler, then `Worker(functions=[handler]).run()`. Bare durations are seconds;
+  step callbacks must be idempotent.
 - Recording enabled (`recording: true`) for debuggable functions
 - Managed projections are pure; side effects → `mode: "external"`
 - Entity stream appends include `expectedVersion`
@@ -186,6 +190,7 @@ Against a Live Dev Server".
 ```bash
 grep -rn "createFunction\|createProjection\|createWorker\|createWebhook" src/ --include="*.ts"
 grep -rn "ironflow.CreateFunction\|ironflow.CreateProjection\|ironflow.NewWorker" . --include="*.go"
+grep -rn "from ironflow.worker import\|@function(" . --include="*.py"
 ```
 
 ### Step 3: Apply test patterns

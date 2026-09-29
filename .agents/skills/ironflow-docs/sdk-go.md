@@ -178,6 +178,9 @@ worker := ironflow.NewWorker(ironflow.WorkerConfig{
 worker.Run(ctx)   // automatically registers all functions
 ```
 
+Python's equivalent polling entry point is `Worker(functions=[...]).run()`
+from `ironflow.worker`; see `sdk-python.md` for its decorator and step API.
+
 ## Serve (Push Mode — HTTP Handler)
 
 ```go

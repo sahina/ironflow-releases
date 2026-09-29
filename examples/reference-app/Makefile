@@ -49,7 +49,7 @@ payments-build: ## Build the Node payment worker the supervisor starts
 	$(PNPM) --filter @reference-app/payments build
 
 notifications-install: ## Create the Python virtualenv the supervisor starts the subscriber from
-	@$(PYTHON) -m venv $(VENV)
+	@$(PYTHON) -m venv --clear $(VENV)
 	@$(VENV)/bin/pip install --quiet --upgrade pip
 	@$(VENV)/bin/pip install --quiet -e "$(NOTIFICATIONS_DIR)[dev]"
 

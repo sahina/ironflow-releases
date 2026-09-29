@@ -63,11 +63,11 @@ Leave it running. Wait for `server listening` before continuing.
 
 ```bash
 cd examples/financial-rag
-pnpm setup          # 3 SQL projections in Ironflow + the ragapp schema
+pnpm run setup      # 3 SQL projections in Ironflow + the ragapp schema
 pnpm seed-corpus    # writes two synthetic filings into corpus/
 ```
 
-`pnpm setup` prints:
+`pnpm run setup` prints (bare `pnpm setup` is pnpm's own built-in command, not this script):
 
 ```text
   ✓ documents (created)

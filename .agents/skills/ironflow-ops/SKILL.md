@@ -1,6 +1,6 @@
 ---
 name: ironflow-ops
-version: 0.39.0
+version: 0.40.0
 description: |
   Operate Ironflow — debug failed/stuck runs, migrate SDK versions with upcasters,
   deploy/scale/troubleshoot clusters. Triggers on: "run failed", "stuck workflow",
@@ -57,8 +57,11 @@ Don't load all three. Load what's relevant.
 
 ## Auth (read before running anything)
 
-Every `/api/` path requires authentication — always, no config toggle. Only `/health`,
-`/ready`, `/metrics`, `/api/v1/capabilities`, and the auth-login paths are public.
+Every `/api/`, `/ws` and `/ironflow.v1.` path requires authentication — always, no config toggle.
+Among those, only `/health`, `/ready`, `/metrics`, `/api/v1/capabilities`, `/api/v1/auth/login`,
+`/api/v1/auth/validate` and `/api/v1/platform/auth/login` are public, plus `POST /api/v1/webhooks/{id}`
+when it presents the source's `ifwh_` ingest token. `OPTIONS` preflights pass on every path, and the
+non-API dashboard shell is served without an API key (it has its own cookie auth).
 
 - **Prefer the `ironflow` CLI.** It attaches `IRONFLOW_API_KEY` for you.
 - A bare `curl .../api/v1/...` returns `{"error":"authentication required"}` unless the

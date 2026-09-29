@@ -120,7 +120,7 @@ Open <http://localhost:3000>.
 4. Place the same order twice by copying the request in devtools and resending
    with the same `commandId` and `orderId` in the body. Verify dedup two ways:
    the worker log shows the second invocation short-circuiting (no new
-   `streams.append` call, and the stream read returns one event, not two:
+   `streams.append` call), and the stream read returns one event, not two:
 
    ```bash
    curl -X POST "$IRONFLOW_SERVER_URL/ironflow.v1.EntityStreamService/ReadStream" \

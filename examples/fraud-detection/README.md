@@ -124,7 +124,7 @@ contribution score (0.0 to 0.35):
   │ Signal               │ How it works                             │
   ├──────────────────────┼──────────────────────────────────────────┤
   │ velocity-check       │ Reads/increments counter in KV Store.    │
-  │                      │ > 5 txns/hr = 0.35 risk.                 │
+  │                      │ > 5 txns/hr = 0.35 risk, > 3 = 0.15.     │
   │                      │ No Redis needed — built-in KV.           │
   ├──────────────────────┼──────────────────────────────────────────┤
   │ geo-check            │ Compares card country vs IP country vs   │

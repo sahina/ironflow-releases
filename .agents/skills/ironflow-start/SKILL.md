@@ -1,6 +1,6 @@
 ---
 name: ironflow-start
-version: 0.39.0
+version: 0.40.0
 description: |
   Adopt Ironflow — set up in a new or existing project and make architectural
   decisions. Triggers on: "set up ironflow", "install ironflow", "add ironflow to",
@@ -153,6 +153,9 @@ on a server you do not control, anything longer must be pull.
 
 Go has both — `ironflow.NewWorker` (pull) and `ironflow.Serve` (push). Pull is the
 natural fit for a Go service, but don't tell the user Go is pull-only.
+Python uses `Worker(functions=[...]).run()` from `ironflow.worker` for pull,
+and `ironflow.serve` (`serve()`, `register()`) for push. Node uses
+`createWorker(...).start()`.
 
 ### Step 4: Install SDK
 <!-- derived-from: docs/tutorials/installation.mdx#typescript-sdk -->
@@ -179,6 +182,8 @@ is engine-internal and won't resolve for users.
 **Fresh project** — `ironflow init my-app`, or `ironflow init my-app --template
 go-quickstart`. Those are the only two templates (`quickstart` is the TS default);
 anything else errors. It runs `pnpm install` for you — `--skip-install` opts out.
+There is no Python template: create a venv, `pip install ironflow-py`, and write one
+`worker.py` by hand.
 
 What it actually produces is **flat**: one `worker.ts` (or `main.go`) holding a function,
 a projection, and the worker, plus `package.json` / `tsconfig.json`. No `src/`, no
@@ -260,6 +265,11 @@ const worker = createWorker({
 await worker.start();   // automatically registers all functions
 ```
 
+Python pull worker: `from ironflow.worker import Worker, function`, decorate
+an `async def` handler with `@function(id="hello", triggers=[{"event": "hello"}])`,
+then call `Worker(functions=[hello]).run()`. See
+`~/.agents/skills/ironflow-docs/sdk-python.md` for the complete form.
+
 **Sample function** — `src/functions/hello.ts`:
 
 ```typescript
@@ -330,6 +340,7 @@ curl http://localhost:3000/api/ironflow   # register functions
 # Terminal 2 (pull mode)
 npx tsx worker.ts
 # or: go run ./cmd/worker
+# or: python worker.py
 ```
 
 Then test:

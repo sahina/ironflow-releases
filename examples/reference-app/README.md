@@ -221,8 +221,8 @@ Startup order is engine, then readiness, then services, then the web
 application. Each service reports ready by the strongest claim available to it:
 the ordering service by the schemas it registered, the payment worker by a live
 heartbeat on `GET /api/v1/workers`, and the Python subscriber by a timestamp it
-rewrites in a KV bucket. The last one has no alternative — the Python SDK ships
-no worker runtime, so that process appears in no worker list, and a registered
+rewrites in a KV bucket. The last one has no alternative — the pinned Python SDK (0.33.1)
+ships no worker runtime (`ironflow.worker` landed on `main` after the v0.39.0 tag and is not in any published release yet), so that process appears in no worker list, and a registered
 schema outlives the process that registered it.
 
 A child that exits before it is ready fails the whole start with a named reason
@@ -310,7 +310,8 @@ of the authorization key.
 ## The Python subscriber
 
 `services/notifications-python` is the odd one out on purpose: it is a
-**client-only** process. The Python SDK ships no worker runtime, so it registers
+**client-only** process. The pinned Python SDK (0.33.1) ships no worker runtime
+(`ironflow.worker` landed after the v0.39.0 tag and is unreleased), so it registers
 no function, executes no step and claims no worker slot. All it does is
 subscribe to a Pub/Sub topic over ConnectRPC, write one row per message to its
 own SQLite database, and emit `notification.sent`.
