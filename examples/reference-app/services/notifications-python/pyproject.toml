@@ -24,10 +24,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# types-jsonschema, not an ignore_missing_imports override: the package IS
-# installed, so mypy reports `import-untyped` rather than `import-not-found`
-# and the override silences neither. Real stubs type the call site instead.
-dev = ["pytest==9.1.1", "mypy==2.3.1", "ruff==0.16.5", "types-jsonschema==4.26.0.20260518"]
+# types-jsonschema: the package IS installed but ships no stubs, so pyrefly
+# reports `untyped-import`. Real stubs type the call site instead.
+dev = ["pytest==9.1.1", "pyrefly==1.3.2", "ruff==0.16.5", "types-jsonschema==4.26.0.20260518"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/reference_notifications"]
@@ -36,10 +35,11 @@ packages = ["src/reference_notifications"]
 testpaths = ["tests"]
 pythonpath = ["src"]
 
-[tool.mypy]
-python_version = "3.10"
-strict = true
-mypy_path = "src"
+[tool.pyrefly]
+preset = "strict"
+python-version = "3.10"
+project-includes = ["src"]
+search-path = ["src"]
 
 [tool.ruff]
 target-version = "py310"
@@ -48,3 +48,10 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+
+[tool.pyrefly.errors]
+# `strict` plus the mypy-strict flags it leaves off (warn_return_any,
+# warn_unused_ignores, missing return annotations).
+no-any-return = true
+unannotated-return = true
+unused-type-ignore = true

@@ -53,14 +53,14 @@ notifications-install: ## Create the Python virtualenv the supervisor starts the
 	@$(VENV)/bin/pip install --quiet --upgrade pip
 	@$(VENV)/bin/pip install --quiet -e "$(NOTIFICATIONS_DIR)[dev]"
 
-# `cd` first, and deliberately: mypy and ruff look for their configuration in
+# `cd` first, and deliberately: pyrefly and ruff look for their configuration in
 # the working directory, so running them from here silently ignored
 # services/notifications-python/pyproject.toml — which is how a settings-only
 # difference between this gate and a contributor's own run got through once.
 notifications-test: notifications-install ## Contract, store and delivery tests for the Python subscriber
 	@cd $(NOTIFICATIONS_DIR) && .venv/bin/python -m pytest -q
 	@cd $(NOTIFICATIONS_DIR) && .venv/bin/ruff check .
-	@cd $(NOTIFICATIONS_DIR) && .venv/bin/mypy src
+	@cd $(NOTIFICATIONS_DIR) && .venv/bin/pyrefly check --python-interpreter-path .venv/bin/python src
 
 lint: ## Lint every workspace package that defines a lint script
 	$(PNPM) run lint
