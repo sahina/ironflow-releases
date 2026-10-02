@@ -59,3 +59,35 @@ asyncio.run(register([send_receipt], endpoint_url="https://api.example.com/ironf
   and silently undoes its push registration.
 
 See `docs/reference/api/python-sdk.md#push-mode`.
+
+## Files
+
+<!-- derived-from: docs/how-to-guides/storage/files.mdx#signed-urls -->
+<!-- derived-from: docs/how-to-guides/storage/files.mdx#events -->
+
+```python
+client.files_buckets(body={"name": "inbox", "emitEvents": True, "allowSignedUrls": True})
+info = client.files_update_buckets_objects("inbox", "scans/a.pdf", pdf_bytes,
+                                           content_type="application/pdf")   # the PUT; bytes or seekable file
+with client.files_get_buckets_objects("inbox", "scans/a.pdf", if_match=info["etag"]) as resp:
+    data = resp.read()                                   # BinaryResponse; or resp.iter_bytes()
+page = client.files_list_buckets_objects("inbox", prefix="scans/", delimiter="/")
+client.files_buckets_move("inbox", body={"from": "scans/a.pdf", "to": "archive/a.pdf"})
+client.files_buckets_move_prefix("inbox", body={"from": "scans/", "to": "archive/"})   # {"count": n}
+up = client.files_buckets_signed_urls_upload("inbox", body={"path": "up/x.png", "ttlSeconds": 600, "createOnly": True})   # createOnly: a second PUT gets 412
+client.files_delete_buckets_objects("inbox", "scans/a.pdf")
+```
+
+No bucket handle: the bucket name is the first argument. Set user metadata with
+`extra_headers={"X-Ironflow-Meta-key": "v"}`. A body that is not bytes and not seekable raises
+`ValueError`. Errors: `PreconditionFailedError` 412, `PayloadTooLargeError` 413,
+`UnsupportedMediaTypeError` 415 (all `IronflowError` subclasses), other statuses are
+`IronflowError` with `status_code`.
+
+Rules that bite: every upload needs `Content-Length` (411) and `Content-Type`; a bucket needs
+`allowSignedUrls: true` before you can sign, and `false` revokes every URL (403, code
+`SIGNED_URLS_DISABLED`); multi-node needs
+the same `auth.jwtSecret` on every node (503 otherwise); file events are at-least-once within
+24 h, so key on `etag`; `ironflow.file.*` and `ironflow.bucket.*` are platform-only event names;
+the filesystem backend counts files against the disk, not the database limit. Full guide:
+https://docs.ironflow.run/how-to-guides/storage/files/

@@ -6,7 +6,7 @@
  * projections go through the Ironflow client, the ragapp schema goes through
  * the app's own pool. The app never opens a connection to Ironflow's database.
  */
-import { createClient } from "@ironflow/node";
+import { ConflictError, createClient } from "@ironflow/node";
 import { SQL_PROJECTIONS } from "./projections/sql.js";
 import { createSchema } from "./src/db.js";
 
@@ -20,8 +20,9 @@ async function main() {
     try {
       const result = await client.sqlProjections.create(projection);
       console.log(`  ✓ ${result.name} (${result.status})`);
-    } catch {
+    } catch (error) {
       // Re-running setup against an existing projection is expected and fine.
+      if (!(error instanceof ConflictError)) throw error;
       console.log(`  · ${projection.name} already registered`);
     }
   }

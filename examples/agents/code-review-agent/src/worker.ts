@@ -7,13 +7,13 @@ import { codeReviewAgent } from "./agent.js";
 //   pnpm start        # Production mode
 //
 // Trigger:
-//   pnpm trigger -- octocat/hello 42
+//   pnpm trigger octocat/hello 42
 //
 // Approve from another terminal:
-//   pnpm approve -- <runId>
+//   pnpm approve <runId>
 //
 // Reject with reason:
-//   pnpm approve -- <runId> false "looks unsafe"
+//   pnpm approve <runId> false "looks unsafe"
 //
 // ────────────────────────────────────────────────────────────────
 

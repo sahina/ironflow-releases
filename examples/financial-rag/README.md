@@ -52,12 +52,17 @@ Every `pnpm` script here loads `.env` via Node's `--env-file-if-exists`, so no
 ### 3. Start the engine — terminal 2
 
 ```bash
-# from the repo root
+# from the repo root; the explicit paths keep this example's state isolated
 IRONFLOW_DATABASE_URL="postgres://ironflow:ironflow@localhost:5434/ironflow" \
-  ./build/ironflow serve
+  ./build/ironflow serve \
+    --nats-store-dir=/tmp/ironflow-financial-rag-nats \
+    --bootstrap-key-file=/tmp/ironflow-financial-rag-bootstrap-key.json
 ```
 
-Leave it running. Wait for `server listening` before continuing.
+Leave it running. Wait for `server listening` before continuing. Copy the key
+from `/tmp/ironflow-financial-rag-bootstrap-key.json` into `IRONFLOW_API_KEY`
+in `examples/financial-rag/.env`; setup and worker requests need it because the
+engine is not running in `--dev` mode. The example scripts load `.env`.
 
 ### 4. Register projections and build the corpus
 

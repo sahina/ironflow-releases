@@ -128,7 +128,7 @@ export default function Home() {
     const ac = new AbortController();
     abortRef.current = ac;
 
-    let watchSub: { unsubscribe(): void } | null = null;
+    const watchSub = { current: null as { unsubscribe(): void } | null };
 
     try {
       const result = await ironflow.agents.invoke<{
@@ -149,7 +149,7 @@ export default function Home() {
             // Replay (default 1000) inside agents.subscribe covers any
             // events emitted between Trigger return and this attach.
             try {
-              watchSub = await ironflow.agents.subscribe(rid, {
+              watchSub.current = await ironflow.agents.subscribe(rid, {
                 onStep: (e) => {
                   // Drop late events from prior runs.
                   if (currentRunIdRef.current !== rid) return;
@@ -198,7 +198,7 @@ export default function Home() {
     } finally {
       // Clean up the parallel progress subscription. Invoke has already
       // settled by the time this runs, so step events have been delivered.
-      watchSub?.unsubscribe();
+      watchSub.current?.unsubscribe();
     }
   }
 

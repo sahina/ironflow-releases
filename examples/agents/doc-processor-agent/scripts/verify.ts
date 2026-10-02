@@ -1,7 +1,7 @@
 // Read the doc-processor-memory projection and assert a docId is present.
 // Used by `make demo-agent-crash-resume` to confirm the post-crash run completed.
 //
-//   pnpm verify -- <docId>
+//   pnpm verify <docId>
 //
 // Exits 0 if the docId is present with status="published", non-zero otherwise.
 

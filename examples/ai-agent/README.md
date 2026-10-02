@@ -51,6 +51,10 @@ pnpm -C ../../sdk/js build
 # Install dependencies
 pnpm install
 
+# Agent memory needs the server URL in both environment variables.
+export IRONFLOW_URL=http://localhost:9123
+export IRONFLOW_SERVER_URL="$IRONFLOW_URL"
+
 # Start the worker
 pnpm dev
 

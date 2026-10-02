@@ -1,6 +1,6 @@
 // Trigger a doc.received event so the worker has something to chew on.
 //
-//   pnpm trigger -- <docId> <imageUrl>
+//   pnpm trigger <docId> <imageUrl>
 //
 // Defaults: docId="doc-1", imageUrl="https://example.com/invoice.png"
 

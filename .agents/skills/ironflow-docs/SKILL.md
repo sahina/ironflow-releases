@@ -1,6 +1,6 @@
 ---
 name: ironflow-docs
-version: 0.40.0
+version: 0.41.0
 description: |
   Ironflow reference documentation — SDK syntax, CLI commands, MCP tools, and patterns.
   Use when looking up specific API signatures, CLI flags, MCP tool names, or canonical
@@ -30,9 +30,9 @@ inline example for the common case + a URL to the full hosted docs for depth.
 
 | Topic | File | When to load |
 |-------|------|--------------|
-| TypeScript SDK | `sdk-typescript.md` | Writing TS functions, projections, workers, KV, config |
-| Go SDK | `sdk-go.md` | Writing Go functions, projections, workers |
-| Python SDK | `sdk-python.md` | Writing Python pull workers, push handlers and durable steps |
+| TypeScript SDK | `sdk-typescript.md` | Writing TS functions, projections, workers, KV, config, files |
+| Go SDK | `sdk-go.md` | Writing Go functions, projections, workers, files |
+| Python SDK | `sdk-python.md` | Writing Python pull workers, push handlers, durable steps and files |
 | CLI commands | `cli.md` | `ironflow` binary commands and flags |
 | MCP tools | `mcp.md` | MCP tool names, parameters, read-only vs write modes |
 | Patterns | `patterns.md` | Canonical code patterns (sagas, webhooks, upcasters) |

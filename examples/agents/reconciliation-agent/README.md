@@ -86,10 +86,10 @@ pnpm exec tsx scripts/find-pending.ts
 
 # Approve it. Only this run advances; the draft it is about is on the parked
 # step's `input` (`client.getRunSteps(runId)`, or the dashboard):
-pnpm approve -- <runId> true
+pnpm approve <runId> true
 
 # Signal a counterparty reply for that case:
-pnpm reply -- <caseId> "the amount posted to our sibling account"
+pnpm reply <caseId> "the amount posted to our sibling account"
 ```
 
 ## Seeing reuse happen
@@ -99,7 +99,7 @@ ratio move:
 
 ```bash
 pnpm trigger                                  # statement #1: matchedRatio ~0.90, escalated ~5
-# approve one case, then pnpm reply -- <caseId> "..."
+# approve one case, then pnpm reply <caseId> "..."
 # case.resolved fires; reconciliation-curated-rules gains a rule for that counterparty
 pnpm trigger                                  # statement #2 (same fixture)
 ```
@@ -177,8 +177,8 @@ reader to discover.
   path never runs. `tests/sweep.test.ts` covers `deadlineEventFor` in isolation; nothing
   drives a real deadline to expiry against a live server.
 - **Memory is one growing stream.** `MemoryConfig.streamId` is a static string and
-  `memory.entityStream()` — the per-key escape a production deployment would want — is
-  unimplemented. The curated projection keys its state by counterparty inside one
+  the agent memory API has no per-key stream — the escape a production deployment
+  would want. The curated projection keys its state by counterparty inside one
   stream instead of giving each counterparty its own stream.
 - **A learned rule is not cause-specific.** `learnRule` always parameterizes the same
   fixed predicate (`{ kind: "label-prefix", prefix: "ADJ-" }`) regardless of which cause

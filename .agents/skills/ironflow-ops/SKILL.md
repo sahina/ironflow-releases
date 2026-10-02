@@ -1,9 +1,10 @@
 ---
 name: ironflow-ops
-version: 0.40.0
+version: 0.41.0
 description: |
   Operate Ironflow — debug failed/stuck runs, migrate SDK versions with upcasters,
-  deploy/scale/troubleshoot clusters. Triggers on: "run failed", "stuck workflow",
+  deploy/scale/troubleshoot clusters, package an app with the engine into one container.
+  Triggers on: "package my app", "containerize", "ship my app", "run failed", "stuck workflow",
   "debug ironflow", "wrong output", "missing event", "projection drift",
   "upgrade ironflow", "update SDK", "migrate to", "event versioning",
   "deploy ironflow", "scale cluster", "add tenant", "provision", "k3d", "hetzner",
@@ -19,7 +20,7 @@ allowed-tools: Read, Glob, Grep, Bash, WebFetch
 # Ironflow Ops
 
 Workflow for operating Ironflow at runtime: debugging, migration, and platform ops.
-Three sub-domains live in topic files (load on demand).
+Four sub-domains live in topic files (load on demand).
 
 > **Path convention.** Scripts are named relative to this skill's own directory — your
 > harness names that directory when it loads the skill, and a packaged skill serves them as
@@ -41,19 +42,23 @@ Three sub-domains live in topic files (load on demand).
 debug.md           # diagnose failed/stuck/wrong runs
 migrate.md         # upgrade SDK + write upcasters
 platform.md        # deploy/scale/operate clusters
+deploy.md          # package the user's app + engine into one container
 ```
 
 ## Sub-Topic Routing
 
-Match the user's request to one of three sub-topics, then read the corresponding file:
+Match the user's request to one of four sub-topics, then read the corresponding file:
 
 | Intent | Read |
 |---|---|
 | "run failed", "stuck", "wrong output", "missing event", "projection drift", "worker not processing", "KV broken", "entity stream weird" | `debug.md` |
 | "upgrade ironflow", "update SDK", "what changed", "migrate to v...", "upcaster", "event schema versioning" | `migrate.md` |
+| "package my app", "containerize my app", "ship my app", "deploy my app", "one container", "Dockerfile for my app" | `deploy.md` |
 | "deploy", "provision", "scale", "cluster", "tenant", "monitor", "backup", "restore", "docker compose", "self-host", "k3d", "hetzner", "helm", "kubectl" | `platform.md` |
 
-Don't load all three. Load what's relevant.
+Don't load all four. Load what's relevant. "Deploy" is two things: the user's **app**
+(with the engine in one container) is `deploy.md`; the **engine** as its own service
+(Compose, VPS, Kubernetes) is `platform.md`. If you cannot tell, ask once.
 
 ## Auth (read before running anything)
 

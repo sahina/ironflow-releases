@@ -1,6 +1,6 @@
 // Trigger a pr.opened event so the worker picks up a review.
 //
-//   pnpm trigger -- <repo> <prNumber>
+//   pnpm trigger <repo> <prNumber>
 
 import { IronflowClient } from "@ironflow/node";
 import { EVENTS } from "../src/events.js";
@@ -22,4 +22,4 @@ const client = new IronflowClient({
 const result = await client.emit(EVENTS.PrOpened, { repo, pr });
 console.log(`emitted ${EVENTS.PrOpened} eventId=${result.eventId} runIds=${result.runIds.join(",")}`);
 console.log(`runId: ${result.runIds[0]}`);
-console.log("approve with: pnpm approve -- " + result.runIds[0]);
+console.log("approve with: pnpm approve " + result.runIds[0]);

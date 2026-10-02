@@ -1,0 +1,5 @@
+test.sh
+README.md
+__pycache__
+.env*
+**/.env*

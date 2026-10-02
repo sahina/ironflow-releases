@@ -11,7 +11,7 @@ import { docMemory } from "./memory.js";
 //
 // Trigger a doc:
 //
-//   pnpm trigger -- doc-1 https://example.com/invoice.png
+//   pnpm trigger doc-1 https://example.com/invoice.png
 //
 // Or directly via the CLI:
 //
@@ -20,7 +20,7 @@ import { docMemory } from "./memory.js";
 //
 // Verify state:
 //
-//   pnpm verify -- doc-1
+//   pnpm verify doc-1
 //
 // ────────────────────────────────────────────────────────────────
 

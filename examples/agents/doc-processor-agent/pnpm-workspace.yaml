@@ -2,6 +2,7 @@ packages:
   - '../../../sdk/js/core'
   - '../../../sdk/js/browser'
   - '../../../sdk/js/node'
+  - './web'
 
 allowBuilds:
   esbuild: true

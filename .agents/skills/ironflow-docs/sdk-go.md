@@ -262,6 +262,40 @@ w, err := kv.Bucket("user-settings").Watch(ctx, ironflow.KVWatchCallbacks{
 defer w.Stop()                        // ALWAYS clean up
 ```
 
+## Files
+
+<!-- derived-from: docs/how-to-guides/storage/files.mdx#signed-urls -->
+<!-- derived-from: docs/how-to-guides/storage/files.mdx#events -->
+
+```go
+files := client.Files()                                  // Files() is a METHOD on *Client
+emit, signed := true, true
+_, err := files.CreateBucket(ctx, "inbox", ironflow.FileBucketConfig{EmitEvents: &emit, AllowSignedURLs: &signed})
+
+inbox := files.Bucket("inbox")
+info, err := inbox.Put(ctx, "scans/a.pdf", r, size, ironflow.PutFileOptions{ContentType: "application/pdf"})
+obj, err := inbox.Get(ctx, "scans/a.pdf", ironflow.GetFileOptions{IfMatch: info.ETag})   // *FileObject; close obj.Body
+page, err := inbox.List(ctx, ironflow.ListFilesOptions{Prefix: "scans/", Delimiter: "/"})  // Files, Prefixes, NextCursor
+_, err = inbox.Move(ctx, "scans/a.pdf", "archive/a.pdf", ironflow.MoveFileOptions{})
+n, err := inbox.MovePrefix(ctx, "scans/", "archive/")   // both end in "/"; max 10000
+u, err := inbox.SignUpload(ctx, "up/x.png", ironflow.SignUploadOptions{TTL: 10 * time.Minute, CreateOnly: true})   // u.URL; CreateOnly: a second PUT gets 412
+err = inbox.Delete(ctx, "archive/a.pdf")
+```
+
+`Put` takes the size, and only an `io.ReadSeeker` body is retried. Bucket config fields are
+pointers: nil means "server default" on create and "unchanged" on update. Errors (use
+`errors.Is`): `ErrPreconditionFailed`, `ErrPayloadTooLarge`, `ErrUnsupportedMediaType`,
+`ErrConflict`; a 404 is `*IronflowError` with `Code == "NOT_FOUND"`. Trigger on a file event with
+`Trigger{Event: "ironflow.file.created", Expression: "data.bucket == 'inbox'"}`.
+
+Rules that bite: every upload needs `Content-Length` (411) and `Content-Type`; a bucket needs
+`allowSignedUrls: true` before you can sign, and `false` revokes every URL (403, code
+`SIGNED_URLS_DISABLED`); multi-node needs
+the same `auth.jwtSecret` on every node (503 otherwise); file events are at-least-once within
+24 h, so key on `etag`; `ironflow.file.*` and `ironflow.bucket.*` are platform-only event names;
+the filesystem backend counts files against the disk, not the database limit. Full guide:
+https://docs.ironflow.run/how-to-guides/storage/files/
+
 ## Config Client
 
 ```go

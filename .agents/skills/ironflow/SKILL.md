@@ -1,6 +1,6 @@
 ---
 name: ironflow
-version: 0.40.0
+version: 0.41.0
 description: |
   Universal entry point for Ironflow AI assistance. Classifies user intent and dispatches
   to the right specialized skill. Use when the user mentions "ironflow", "help with ironflow",
@@ -72,7 +72,7 @@ Match the user's request against these buckets:
 | Does it fit / where would we use it | `ironflow-fit` | "should we use ironflow", "where can we use it", "ironflow fit", "analyze my codebase" |
 | Set up / scaffold / architecture | `ironflow-start` | "set up", "install", "walk me through", "push vs pull" |
 | Build code / tests / audit | `ironflow-code` | "write a function", "add tests", "review my code" |
-| Operate / debug / deploy | `ironflow-ops` | "run failed", "stuck", "scale cluster", "upgrade SDK" |
+| Operate / debug / deploy / package | `ironflow-ops` | "run failed", "stuck", "scale cluster", "upgrade SDK", "package my app" |
 | Reference / lookup | `ironflow-docs` | "how do I emit", "CLI for X", "SDK syntax" |
 
 ### Confidence levels

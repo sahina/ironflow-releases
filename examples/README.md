@@ -26,6 +26,7 @@ Every Ironflow application follows four pillars:
 | [todo-web/](./todo-web/)                         | Bare-bones Next.js todo   | Getting started       | Embedded worker, events, projections        |
 | [travel-booking/](./travel-booking/)             | The 90-second showcase demo | Anyone new to Ironflow | Saga rollback, crash-resume, a race for the last seat, time travel |
 | [reference-app/](./reference-app/)               | Polyglot order processing | Multi-language systems | Go, TypeScript and Python services on one Ironflow backend: entity streams, a durable wait, durable steps, Pub/Sub and crash recovery |
+| [flask-single-container/](./flask-single-container/) | App + engine as one deployable unit | Shipping a small app | Flask, a pull-mode worker and the engine in one container with one volume |
 | [fraud-detection/](./fraud-detection/)           | Real-time risk pipeline   | Building real systems | `step.parallel()`, KV counters, pub/sub alerts |
 | [compliance-audit/](./compliance-audit/)         | Audit trail + execution proof | Regulated workloads | Entity-stream lineage in the Compliance dashboard |
 | [ai-agent/](./ai-agent/)                         | Durable AI research agent | AI engineers          | `agent()`, `tool()`, `llm()`, event-sourced memory |
@@ -41,6 +42,7 @@ Every Ironflow application follows four pillars:
 - Go 1.26+ (required to build Ironflow)
 - Node.js 22+ and pnpm (for TypeScript examples; `reference-app/` needs 24.2+)
 - Python 3.10+ (for `reference-app/`'s notification service only)
+- Docker (for `flask-single-container/` only)
 
 ## Quick Reference
 
@@ -94,29 +96,33 @@ cd examples/compliance-audit && pnpm install && pnpm tsx worker.ts
 # In another terminal: pnpm tsx setup.ts
 
 # Run the AI research agent
-cd examples/ai-agent && pnpm install && pnpm dev
+cd examples/ai-agent && pnpm install
+export IRONFLOW_URL=http://localhost:9123
+export IRONFLOW_SERVER_URL="$IRONFLOW_URL"
+pnpm dev
 # In another terminal: ironflow emit agent.research --data '{"topic":"event sourcing"}'
 
 # Run the agent examples (doc-processor-agent, code-review-agent)
 cd examples/agents/doc-processor-agent && pnpm install && pnpm dev
-# In another terminal: pnpm trigger -- doc-1 https://example.com/invoice.png
+# In another terminal: pnpm trigger doc-1 https://example.com/invoice.png
 
 cd examples/agents/code-review-agent && pnpm install && pnpm dev
-# In another terminal: pnpm trigger -- octocat/hello 42
-# Then approve the runId it prints: pnpm approve -- <runId>
+# In another terminal: pnpm trigger octocat/hello 42
+# Then approve the runId it prints: pnpm approve <runId>
 
 cd examples/agents/reconciliation-agent && pnpm install && pnpm dev
 # In another terminal: pnpm trigger, then pnpm exec tsx scripts/find-pending.ts
-# Approve a case: pnpm approve -- <runId> true
-# Then signal the counterparty's reply: pnpm reply -- <caseId> "..."
+# Approve a case: pnpm approve <runId> true
+# Then signal the counterparty's reply: pnpm reply <caseId> "..."
 
 # Run the RAG part 1 example (no Docker; needs a bootstrap API key in .env)
 cd examples/rag-core && pnpm install && pnpm run setup && pnpm start
 # In another terminal: pnpm ingest, then pnpm ask "..."
 
-# Run the financial RAG example (needs Docker + ANTHROPIC_API_KEY)
+# Run financial RAG (needs Docker + ANTHROPIC_API_KEY + engine bootstrap key).
+# Follow its README steps 1–3 to start Postgres and the configured engine first.
 cd examples/financial-rag && pnpm install && docker compose up -d --wait
-# Then: pnpm run setup && pnpm seed-corpus && pnpm start
+# Then put the engine bootstrap key in .env and run: pnpm run setup && pnpm seed-corpus && pnpm start
 # In another terminal: pnpm poll, then pnpm ask "..."
 
 # Validate the YAML configuration examples (no install needed)

@@ -36,13 +36,13 @@ pnpm install
 pnpm dev
 
 # Trigger a review (separate terminal)
-pnpm trigger -- octocat/hello 42
+pnpm trigger octocat/hello 42
 
 # `pnpm trigger` prints the runId (and the exact approve command). Approve it:
-pnpm approve -- <runId>
+pnpm approve <runId>
 
 # Or reject:
-pnpm approve -- <runId> false "looks unsafe"
+pnpm approve <runId> false "looks unsafe"
 ```
 
 ## Crash-resilience callout
@@ -51,7 +51,7 @@ pnpm approve -- <runId> false "looks unsafe"
 
 ```bash
 # Trigger and watch the worker pause at the approval gate
-pnpm trigger -- octocat/hello 42
+pnpm trigger octocat/hello 42
 
 # Kill the worker. The run stays paused on the server.
 kill -9 $(pgrep -f "tsx.*worker.ts")
@@ -65,7 +65,7 @@ sleep 120
 pnpm dev
 
 # Approve it; the worker resumes, posts the comment.
-pnpm approve -- <runId>
+pnpm approve <runId>
 ```
 
 This is the YC pitch in 30 seconds: **runs that span hours of human-time without burning a worker slot or losing context on restart.**

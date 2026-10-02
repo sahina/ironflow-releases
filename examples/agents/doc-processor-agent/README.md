@@ -38,10 +38,10 @@ pnpm install
 pnpm dev
 
 # 4. Trigger a doc (separate terminal)
-pnpm trigger -- doc-1 https://example.com/invoice.png
+pnpm trigger doc-1 https://example.com/invoice.png
 
 # 5. Verify state
-pnpm verify -- doc-1
+pnpm verify doc-1
 ```
 
 ## Crash-resume demo

@@ -1,8 +1,8 @@
 // Send the human-approval event so the agent's approve("post-review")
 // gate releases.
 //
-//   pnpm approve -- <runId>                   # approve
-//   pnpm approve -- <runId> false "reason"    # reject with reason
+//   pnpm approve <runId>                   # approve
+//   pnpm approve <runId> false "reason"    # reject with reason
 
 import { IronflowClient } from "@ironflow/node";
 

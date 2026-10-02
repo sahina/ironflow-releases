@@ -363,6 +363,39 @@ const watcher = bucket.watch(
 watcher.stop();   // ALWAYS clean up
 ```
 
+## Files
+
+<!-- derived-from: docs/how-to-guides/storage/files.mdx#signed-urls -->
+<!-- derived-from: docs/how-to-guides/storage/files.mdx#events -->
+
+```typescript
+const files = createClient().files();               // files() is a METHOD (browser: ironflow.files())
+await files.createBucket("inbox", { emitEvents: true, allowSignedUrls: true });
+
+const inbox = files.bucket("inbox");
+const info = await inbox.put("scans/a.pdf", bytes, { contentType: "application/pdf" });
+const file = await inbox.get("scans/a.pdf", { ifMatch: info.etag });   // { body, contentType, etag, size, arrayBuffer(), text() }
+const page = await inbox.list({ prefix: "scans/", delimiter: "/" });   // { files, prefixes, nextCursor }
+await inbox.move("scans/a.pdf", "archive/a.pdf");
+const moved = await inbox.movePrefix("scans/", "archive/");            // count; both end in "/"; max 10000
+const { url } = await inbox.signUpload("up/x.png", { ttlSeconds: 600, maxBytes: 1 << 20, contentType: "image/png", createOnly: true });   // createOnly: a second PUT gets 412
+await inbox.delete("archive/a.pdf");
+```
+
+A stream body (Node) needs `contentLength` and is not retried. In a browser with no credentials,
+`uploadToSignedUrl(url, blob)` and `downloadFromSignedUrl(url)` use plain `fetch`. Errors:
+`PreconditionFailedError` 412, `PayloadTooLargeError` 413, `UnsupportedMediaTypeError` 415,
+`ConflictError` 409; a 404 is `IronflowError` with code `NOT_FOUND`. Trigger on a file event with
+`{ event: "ironflow.file.created", expression: "data.bucket == 'inbox'" }`.
+
+Rules that bite: every upload needs `Content-Length` (411) and `Content-Type`; a bucket needs
+`allowSignedUrls: true` before you can sign, and `false` revokes every URL (403, code
+`SIGNED_URLS_DISABLED`); multi-node needs
+the same `auth.jwtSecret` on every node (503 otherwise); file events are at-least-once within
+24 h, so key on `etag`; `ironflow.file.*` and `ironflow.bucket.*` are platform-only event names;
+the filesystem backend counts files against the disk, not the database limit. Full guide:
+https://docs.ironflow.run/how-to-guides/storage/files/
+
 ## Config Client
 
 ```typescript
