@@ -1,12 +1,14 @@
 """Flask API in front of Ironflow. The engine runs in the same container, on loopback."""
 
 import os
+import urllib.error
+import urllib.request
 
 from flask import Flask, jsonify, request
 from protobuf.wkt import Struct
 
 from ironflow import IronflowRPC, IronflowRPCError
-from ironflow.rpc.v1 import GetRunRequest, RunStatus, TriggerRequest
+from ironflow.rpc.v1 import GetFunctionRequest, GetRunRequest, RunStatus, TriggerRequest
 
 app = Flask(__name__)
 
@@ -26,6 +28,20 @@ def healthz():
     return jsonify(ok=True)
 
 
+@app.get("/readyz")
+def readyz():
+    # Read-only prerequisites for accepting orders. Registration can outlive a worker;
+    # this check does not establish execution or successful completion.
+    try:
+        with urllib.request.urlopen(os.environ["IRONFLOW_SERVER_URL"] + "/ready", timeout=2):
+            pass
+        with _rpc() as rpc:
+            rpc.functions.get(GetFunctionRequest(id="process-order"), timeout=2)
+    except (urllib.error.URLError, TimeoutError, IronflowRPCError):
+        return jsonify(error="engine, authentication, or process-order registration unavailable"), 503
+    return jsonify(ok=True)
+
+
 @app.post("/orders")
 def place_order():
     order = request.get_json(silent=True) or {}
@@ -39,8 +55,8 @@ def place_order():
         result = rpc.events.emit(TriggerRequest(event="order.placed", data=Struct.from_python(order)))
     if not result.run_ids:
         # The event is recorded but no function matched it: the worker has not
-        # registered yet. That event starts no run, so the caller must retry.
-        return jsonify(error="worker not registered yet, retry"), 503
+        # registered yet. The event was recorded, so do not blindly resubmit it.
+        return jsonify(error="worker not registered; event recorded", event_id=result.event_id), 503
     return jsonify(run_id=result.run_ids[0], event_id=result.event_id), 202
 
 

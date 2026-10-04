@@ -1,8 +1,18 @@
 #!/usr/bin/env bash
 # One container, three processes: the Ironflow engine, the pull-mode worker and
-# the web server. The engine starts first because it creates the API key the
-# other two need.
+# the web server. The engine starts first because it creates or applies the
+# API key the other two need.
 set -euo pipefail
+
+# A platform volume (Fly) mounts root-owned. Start as root only to hand /data to the app user,
+# then run the rest of this script as that user. HOME is reset because gunicorn writes under it.
+if [ "$(id -u)" = 0 ]; then
+  mkdir -p /data
+  # Only when the owner differs: a recursive chown of a full volume on every start is slow.
+  # A mount that refuses chown falls through to the writable check below, which says why.
+  [ "$(stat -c %u /data)" = "$(id -u app)" ] || chown -R app:app /data || true
+  HOME=/home/app exec setpriv --reuid=app --regid=app --init-groups "$0" "$@"
+fi
 
 DATA_DIR=/data
 KEY_FILE="$DATA_DIR/.ironflow_bootstrap_key.json"
@@ -33,8 +43,9 @@ shutdown() {
 trap 'shutdown; exit 143' TERM INT
 
 ready=0
-for _ in $(seq 1 60); do
-  if python -c "import urllib.request; urllib.request.urlopen('$IRONFLOW_SERVER_URL/ready', timeout=2)" 2>/dev/null; then
+deadline=$((SECONDS + 60))
+while [ "$SECONDS" -lt "$deadline" ]; do
+  if python -c "import urllib.request; urllib.request.urlopen('$IRONFLOW_SERVER_URL/ready', timeout=2)" 2>/dev/null && [ "$SECONDS" -lt "$deadline" ]; then
     ready=1
     break
   fi
@@ -49,10 +60,19 @@ if [ "$ready" != 1 ]; then
   exit 1
 fi
 
-# The engine writes the key to a file and never to stdout. Read it into the
-# environment; do not echo it.
-IRONFLOW_API_KEY="$(python -c "import json,sys; print(json.load(open(sys.argv[1]))['key'])" "$KEY_FILE")"
+# A seeded key comes from the platform secret store, so nothing is read from the volume and
+# nothing is left on it. Without one, the engine writes the key to a file and never to stdout;
+# read it into the environment and do not echo it.
+if [ -z "${IRONFLOW_API_KEY:-}" ]; then
+  if [ -n "${IRONFLOW_BOOTSTRAP_ADMIN_KEY:-}" ]; then
+    IRONFLOW_API_KEY="$IRONFLOW_BOOTSTRAP_ADMIN_KEY"
+  else
+    IRONFLOW_API_KEY="$(python -c "import json,sys; print(json.load(open(sys.argv[1]))['key'])" "$KEY_FILE")"
+  fi
+fi
 export IRONFLOW_API_KEY
+# The app has no use for the dashboard password, and the worker and web process inherit this env.
+unset IRONFLOW_BOOTSTRAP_ADMIN_PASSWORD
 
 python worker.py & pids+=($!)
 gunicorn --bind "0.0.0.0:${PORT:-8000}" app:app & pids+=($!)

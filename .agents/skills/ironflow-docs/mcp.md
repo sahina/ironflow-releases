@@ -3,17 +3,17 @@
 The Ironflow MCP server lets AI agents interact with a running Ironflow instance via the
 Model Context Protocol. Three modes:
 
-- **Read-only** (default): list, get, query, and the operator read verbs — 23 tools
+- **Read-only** (default): list, get, query, retrieve documentation, and the operator read verbs — 24 tools
 - **Read-write** (`--allow-writes`): + emit events, invoke functions, write secrets and KV, and
-  the operator control verbs (resume, rebuild, requeue, reset) — 39 tools
-- **Read-write with evidence** (`--allow-writes --evidence-file`): + the reload barrier — 40 tools
+  the operator control verbs (resume, rebuild, requeue, reset) — 40 tools
+- **Read-write with evidence** (`--allow-writes --evidence-file`): + the reload barrier — 41 tools
 
 ## Start MCP Server
 
 ```bash
-ironflow mcp                       # read-only (23 tools)
-ironflow mcp --allow-writes        # read + write (39 tools)
-ironflow mcp --allow-writes --evidence-file trail.jsonl   # + ironflow_await_reload (40)
+ironflow mcp                       # read-only (24 tools)
+ironflow mcp --allow-writes        # read + write (40 tools)
+ironflow mcp --allow-writes --evidence-file trail.jsonl   # + ironflow_await_reload (41)
 ```
 
 Other flags: `--server-url` (default `http://localhost:9123`), `--api-key`,
@@ -43,11 +43,12 @@ picks) and `--port-file` control the bind; stdio ignores all three. streamable-h
 rest of the CLI. Setting it in `env` is inert and the server silently talks to
 `http://localhost:9123`. Point at a non-default engine with `--server-url`.
 
-## Tools (read-only) — 23, always registered
+## Tools (read-only) — 24, always registered
 
 | Tool | Purpose |
 |---|---|
 | `ironflow_server_info` | Server health and version |
+| `ironflow_get_docs` | Retrieve a contract or authoring guide; `topic` is `openapi`, `push-protocol`, or `function-authoring` |
 | `ironflow_overview` | Dashboard stats: function count, active runs, workers, recent events |
 | `ironflow_list_runs` | List runs, with `limit`/`offset` paging |
 | `ironflow_get_run` | Get run detail |
@@ -75,6 +76,41 @@ The last three are **diagnosis** verbs, deliberately available without
 `--allow-writes`: an agent in read-only mode can see that dispatch is blocked or
 that events are dead-lettered. Fixing either needs the write verbs below.
 
+## Contract resources and authoring guidance
+
+When writing a handler without an SDK, retrieve `push-protocol` and
+`function-authoring` first. For calls to the engine's REST API, retrieve `openapi`.
+All three resources and `ironflow_get_docs` are available in read-only mode and with
+`--static-only`, over either transport.
+
+| Resource URI | MIME type | Tool topic | Source |
+|---|---|---|---|
+| `ironflow://docs/openapi` | `application/json` | `openapi` | Configured engine's authenticated `GET /api/v1/openapi.json` |
+| `ironflow://docs/push-protocol` | `text/markdown` | `push-protocol` | Bundled [push wire protocol](https://docs.ironflow.run/reference/api/push-protocol/) |
+| `ironflow://docs/function-authoring` | `text/markdown` | `function-authoring` | Bundled [SDKless handler guide](https://docs.ironflow.run/how-to-guides/integration/other-languages/) |
+
+The OpenAPI resource describes **REST only**. It excludes ConnectRPC methods and
+push callbacks and is not the complete Ironflow API contract. It comes from the
+configured engine on each read, using the configured API key; a failed fetch is
+reported as an error. The Markdown guides ship with the MCP binary and remain
+available offline. They may differ from the target engine's version or current
+website; the tool's first text block names the source, and its second contains the
+document itself.
+
+Read a resource with `resources/read`:
+
+```json
+{"jsonrpc":"2.0","id":1,"method":"resources/read","params":{"uri":"ironflow://docs/push-protocol"}}
+```
+
+If the host supports tools but does not expose resources, call `ironflow_get_docs`.
+Its required `topic` accepts exactly `openapi`, `push-protocol`, or
+`function-authoring`; URLs and other values are rejected.
+
+```json
+{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"ironflow_get_docs","arguments":{"topic":"function-authoring"}}}
+```
+
 ## Tools (write — requires `--allow-writes`) — 16
 
 | Tool | Purpose |
@@ -95,6 +131,16 @@ that events are dead-lettered. Fixing either needs the write verbs below.
 | `ironflow_outbox_dlq_requeue` | Requeue dead-letter rows — **every row sharing the `event_id`**, not one (`env` required) |
 | `ironflow_outbox_dlq_discard` | Discard dead-letter rows permanently — **every row sharing the `event_id`**. Irreversible (`env` and `confirm: true` required — the MCP stand-in for `--yes`) |
 | `ironflow_circuit_breaker_reset` | Reset a breaker to closed, unblocking dispatch |
+
+## Tools (terminal bridge) — requires `--allow-writes` **and** `--terminal-bridge-url`
+
+Opt-in, outside the counts above. Needs `IRONFLOW_TERMINAL_BRIDGE_TOKEN` and a loopback
+`--terminal-bridge-url` pointing at Ironflow Desktop's terminal bridge.
+
+| Tool | Purpose |
+|---|---|
+| `ironflow_terminal_run` | Run a shell command in a new terminal tab the user can see and stop; returns its `session_id` |
+| `ironflow_terminal_read` | Read a tab's output from `offset`; returns the `next` offset and the tab's status |
 
 ## Tools (reload barrier) — requires `--allow-writes` **and** `--evidence-file`
 
@@ -121,6 +167,11 @@ clients. The list is fetched **once at MCP-server startup** (best-effort — a f
 failure logs a warning and leaves the static surface); there is no live
 `tools/list_changed` push, so a tool an SDK registers afterwards appears only after
 you restart the MCP server or IDE. Pass `--static-only` to exclude them.
+
+Ironflow Desktop can also enable `ironflow_terminal_run` and `ironflow_terminal_read`
+through `--terminal-bridge-url`, `--allow-writes`, and
+`IRONFLOW_TERMINAL_BRIDGE_TOKEN`. These optional tools are outside the core counts
+above.
 
 ### Tailing the event feed
 

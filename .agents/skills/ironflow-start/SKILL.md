@@ -1,13 +1,13 @@
 ---
 name: ironflow-start
-version: 0.41.0
+version: 0.42.0
 description: |
   Adopt Ironflow — set up in a new or existing project and make architectural
   decisions. Triggers on: "set up ironflow", "install ironflow", "add ironflow to",
-  "scaffold ironflow", "walk me through", "push vs pull", "entity streams vs events",
+  "scaffold ironflow", "create a project", "create a runnable starter", "walk me through", "push vs pull", "entity streams vs events",
   "managed vs external projection".
   NOT for analyzing whether Ironflow fits a codebase (use ironflow-fit).
-  NOT for writing application code (use ironflow-code).
+  NOT for implementing application features after setup (use ironflow-code).
   NOT for runtime debugging or deployment (use ironflow-ops).
   NOT for SDK reference lookup (use ironflow-docs).
 user-invocable: true
@@ -31,6 +31,7 @@ Codebase fit analysis lives in `ironflow-fit`. SDK syntax lives in `ironflow-doc
 ```
 ~/.agents/skills/ironflow-docs/sdk-typescript.md   # for code shown during setup
 ~/.agents/skills/ironflow-docs/sdk-go.md           # Go equivalent
+~/.agents/skills/ironflow-docs/sdk-python.md       # Python equivalent
 ~/.agents/skills/ironflow-docs/patterns.md         # for arch decision matrices
 ~/.agents/skills/ironflow-docs/cli.md              # for ironflow init / serve commands
 ```
@@ -39,6 +40,7 @@ Codebase fit analysis lives in `ironflow-fit`. SDK syntax lives in `ironflow-doc
 
 | Intent | Mode |
 |---|---|
+| "create a project", "create a runnable starter", new application | **Create project**: read `create-project.md` relative to this skill |
 | "set up", "install", "configure ironflow", "walk me through" | **Setup** |
 | "push vs pull", "entity streams vs events", architecture question | **Architecture Decision** |
 
@@ -66,8 +68,16 @@ as files on disk — read `scripts/detect-project.sh` as a skill resource and ap
 search tools instead. The fields below are what the rest of this skill branches on, so produce all of them
 even when a value is `unknown` or `none`.
 
-Output: `framework=<nextjs|hono|express|remix|node|go|unknown> language=<ts|go|both|none>
-ironflow_installed=<true|false> ironflow_cli=<version|none> package_manager=<...>`.
+Output: `framework=<nextjs|hono|express|remix|node|go|flask|fastapi|django|python|unknown>
+language=<ts|go|python|mixed|none> languages=<comma-separated ts,go,python|none>
+ironflow_installed=<true|false|unknown> ironflow_cli=<version|none> package_manager=<...>`.
+
+For a mixed project, ask which language/application to target, then rerun
+`scripts/detect-project.sh ts`, `go`, or `python` in its directory. Until selected,
+framework, package manager, and SDK installation are `unknown`. After selection,
+those fields describe only the selected stack. Resource-only agents apply this same
+contract. Python detection is a dependency-name heuristic; inspect ambiguous or
+dynamic manifests before deciding what to install.
 
 `ironflow_installed` is about the SDK in this project; `ironflow_cli` is about the engine
 binary on PATH. They move independently — a project can have the SDK with no engine, or
@@ -87,12 +97,25 @@ it run `ironflow skills sync` (add `--local` to vendor into `./.agents/skills`) 
 `ironflow skills doctor` to re-wire the agent. Otherwise on-disk skills describe an
 older engine than the one running.
 
-If `language=both`, ask which to use. If `framework=unknown`, ask user to confirm or
-suggest scaffolding via `ironflow init`.
+If `language=mixed`, select the target stack before interpreting installation state.
+If `framework=unknown`, inspect the files and ask the user to confirm the intended stack.
+
+If the destination has no application yet, including a directory with only Desktop
+metadata or ignore files, read `create-project.md` and follow its interview. Inspect
+unrecognized files first; missing manifests alone do not make a directory disposable.
 
 ### Step 2: Get an engine running
 <!-- derived-from: docs/tutorials/getting-started.mdx#1-start-the-server -->
 <!-- derived-from: docs/tutorials/installation.mdx#desktop-app -->
+
+First check for an existing engine connection in the environment or workspace.
+When one is configured, verify that connection and reuse it; an unused port 9123
+does not mean the configured engine is unavailable. Do not propose another engine
+unless the user requests one or no connection is configured.
+In Desktop, reuse the workspace engine and its authenticated connection facilities.
+Check whether SDK processes inherit connection variables; MCP access alone does not
+guarantee that. If needed, have the user configure credentials locally in a gitignored
+file, never paste them in chat. Skip standalone engine installation/startup in that case.
 
 The SDK is a client. It needs an `ironflow` engine to talk to, and on a clean machine
 there isn't one. Don't skip to `pnpm add` — the user will hit `command not found:
@@ -172,6 +195,12 @@ Go:
 go get github.com/sahina/ironflow-go/ironflow
 ```
 
+Python (reuse an existing environment/package manager; fresh pip example):
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install ironflow-py
+```
+
 `@ironflow/core` is a transitive dependency of node and browser — don't install it
 separately. The Go import path is the public mirror; `github.com/sahina/ironflow/sdk/go/...`
 is engine-internal and won't resolve for users.
@@ -206,7 +235,8 @@ app/api/ironflow/route.ts        # serve() handler (Next.js push)
 
 ### Step 6: Create entry point
 
-For SDK syntax, read `~/.agents/skills/ironflow-docs/sdk-typescript.md` (or `sdk-go.md`).
+For SDK syntax, read `~/.agents/skills/ironflow-docs/sdk-typescript.md`, `sdk-go.md`,
+or `sdk-python.md` for the selected language.
 
 **Push mode (Next.js)** — `app/api/ironflow/route.ts`:
 
@@ -320,10 +350,13 @@ not emitted.
 There is no `APP_URL` convention in Ironflow — for a non-Next framework, name your app's
 own URL variable whatever you like; only your registration code reads it.
 
-Add to `.gitignore` if missing: `.env`, `.env.local`, and `.ironflow/` — `serve` writes
-the local SQLite db, embedded NATS store and `blobs/` there, alongside
-`.ironflow_bootstrap_key.json` (an admin API key) and `.ironflow_jwt_secret`. Setting
-`spec.storage.path` moves all of it to that file's directory, so ignore that path instead.
+Ironflow's local files must stay out of version control: `serve` writes the SQLite db,
+embedded NATS store and `blobs/` under `.ironflow/`, alongside `.ironflow_bootstrap_key.json`
+(an admin API key) and `.ironflow_jwt_secret`; `.env` and `.env.local` hold credentials.
+Setting `spec.storage.path` moves the data to that file's directory, so ignore that path
+instead. If the project is in a Git work tree, review it and create or extend `.gitignore`
+for these and for everything else its stack generates, as `create-project.md` describes
+("Git and `.gitignore`").
 
 ### Step 8: Verify
 
@@ -340,14 +373,20 @@ curl http://localhost:3000/api/ironflow   # register functions
 # Terminal 2 (pull mode)
 npx tsx worker.ts
 # or: go run ./cmd/worker
-# or: python worker.py
+# or: .venv/bin/python worker.py
 ```
+
+For Desktop, skip Terminal 1 and target the workspace's actual engine URL and local
+credentials in all commands. For Python, use the project environment consistently.
 
 Then test:
 ```bash
 ironflow emit hello.requested --data '{"name": "Ironflow"}'
 ironflow run list --json
 ```
+
+Use a unique marker for the sample invocation and check that invocation's run and
+expected output with a bounded wait; another completed run does not verify setup.
 
 `run list --json` prints an array of `{id, function, status, started_at, ended_at}`.
 Empty array after an emit usually means the function never registered (push: did the

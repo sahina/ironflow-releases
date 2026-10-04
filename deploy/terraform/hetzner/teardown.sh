@@ -35,10 +35,10 @@ echo ""
 echo "This will DESTROY all cluster resources on Hetzner Cloud:"
 echo "  - All Kubernetes nodes (VMs)"
 echo "  - Load balancers, firewalls, networks"
-echo "  - Hetzner Cloud Volumes (persistent data)"
+echo "  - Hetzner Cloud Volumes labeled cluster=${CLUSTER_NAME} (unlabeled CSI volumes are retained)"
 echo ""
 
-read -p "Type 'destroy' to confirm: " CONFIRM
+read -r -p "Type 'destroy' to confirm: " CONFIRM
 if [ "$CONFIRM" != "destroy" ]; then
   echo "Aborted."
   exit 0
@@ -76,30 +76,12 @@ for vol_id in $(hcloud volume list -l "cluster=${CLUSTER_NAME}" -o noheader -o c
   hcloud volume detach "$vol_id" 2>/dev/null || true
   hcloud volume delete "$vol_id" 2>/dev/null || true
 done
-# Clean up PVC volumes without cluster labels (CSI-created).
-# Only delete if attached to a non-existent server (orphaned after interrupted teardown).
-# Unattached PVC volumes are only deleted if no other clusters exist in the project,
-# since we can't determine which cluster they belonged to.
-OTHER_SERVERS=$(hcloud server list -o noheader -o columns=name 2>/dev/null | grep -cv "^${CLUSTER_NAME}-" || true)
-OTHER_SERVERS=${OTHER_SERVERS:-0}
+# CSI-created PVC names and attachment state do not establish cluster ownership.
+# Retain volumes without the cluster label, even if detached or apparently orphaned.
 for vol_id in $(hcloud volume list -o noheader -o columns=id 2>/dev/null); do
   VOL_NAME=$(hcloud volume describe "$vol_id" -o format='{{.Name}}' 2>/dev/null || true)
-  if echo "$VOL_NAME" | grep -q "pvc-"; then
-    VOL_SERVER=$(hcloud volume describe "$vol_id" -o format='{{.Server.ID}}' 2>/dev/null || true)
-    if [ -z "$VOL_SERVER" ] || [ "$VOL_SERVER" = "0" ] || [ "$VOL_SERVER" = "<nil>" ]; then
-      if [ "$OTHER_SERVERS" -eq 0 ]; then
-        echo "  Deleting unattached PVC volume: $vol_id ($VOL_NAME)"
-        hcloud volume delete "$vol_id" 2>/dev/null || true
-      else
-        echo "  Skipping unattached PVC volume: $vol_id ($VOL_NAME) (other clusters exist in project)"
-      fi
-    elif ! hcloud server describe "$VOL_SERVER" >/dev/null 2>&1; then
-      echo "  Deleting orphaned PVC volume: $vol_id ($VOL_NAME) (server $VOL_SERVER no longer exists)"
-      hcloud volume detach "$vol_id" 2>/dev/null || true
-      hcloud volume delete "$vol_id" 2>/dev/null || true
-    else
-      echo "  Skipping PVC volume: $vol_id ($VOL_NAME) (attached to active server $VOL_SERVER)"
-    fi
+  if [[ "$VOL_NAME" == pvc-* ]]; then
+    echo "  Skipping unowned PVC volume: $vol_id ($VOL_NAME). Verify ownership in Hetzner Console before manual deletion."
   fi
 done
 
@@ -175,5 +157,5 @@ if [ "$REMAINING" -gt 0 ]; then
   echo "WARNING: $REMAINING ${CLUSTER_NAME} server(s) still exist. Check Hetzner Console."
   hcloud server list -o noheader -o columns=id,name,status | grep "^.*${CLUSTER_NAME}-"
 else
-  echo "All Hetzner resources destroyed. Billing stopped."
+  echo "Cluster servers destroyed. Retained unowned volumes may still incur charges; review Hetzner Console."
 fi

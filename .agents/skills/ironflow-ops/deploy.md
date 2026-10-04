@@ -4,8 +4,9 @@ Package the user's app and the Ironflow engine into ONE container, and prove it 
 user's machine. This file is for the user's own app. To operate the engine (Compose
 stack, VPS, Kubernetes), read `platform.md`.
 
-**This version packages. It does not deploy.** Never run a deploy command, a registry
-push, or a command that costs money. Print those commands in the report.
+**This file packages. It does not deploy. Deploying is `deploy-target.md`, which the user asks
+for separately.** While following this file, never run a deploy command, a registry push, or a
+command that costs money. Print those commands in the report.
 
 ## Rules
 
@@ -18,7 +19,7 @@ push, or a command that costs money. Print those commands in the report.
 - Do not choose packages or a framework for the user. Package the project that exists.
 - Step 4 (Plan) is mandatory. Write nothing and run nothing until the user approves the plan
   in the chat.
-- Step 6 (Verify) is mandatory. Without a passed verify, report a failure.
+- Step 6 (Verify) is mandatory. Without a passed verify, report failed or incomplete verification.
 
 ## Step 1: Inspect
 
@@ -27,6 +28,7 @@ Find these facts before you ask a question:
 | Fact | Where to look |
 |---|---|
 | Language and dependency file | `requirements.txt`, `pyproject.toml`, `package.json`, `go.mod` |
+| Startup dependencies and readiness | startup code, initialization/migrations, registrations, dependency checks, existing readiness probes |
 | Web start command | `Procfile`, `package.json` scripts, README, the framework default |
 | Worker entry point | the file that calls `Worker(...).run()`, `createWorker(...)`, or `ironflow.NewWorker(...)`; none for a client-only app |
 | App port | the start command, `PORT`, the framework default |
@@ -65,8 +67,10 @@ Print the plan in this order:
    version you will pin.
 2. **Files:** each file you will create or change. For an existing `Dockerfile`, show the
    diff. With a workflow, list `.github/workflows/deploy.yml`.
-3. **Verify:** the exact `docker build` and `docker run` commands, with the container name,
-   volume name, and host port.
+3. **Verify:** the exact commands in execution order, including `docker build`, `docker run`,
+   readiness gates, one application operation, acceptance and completion checks, restart,
+   renewed readiness gates, and persistence checks. Include the container name, volume name,
+   host port, probe deadlines, and expected results.
 4. **CI/CD:** only when the prompt asks for it. The branch, the image name
    (`ghcr.io/<owner>/<repo>`, lower case), and the line: "The workflow is written here but
    not run here. It runs on your next push to `<branch>`."
@@ -90,6 +94,36 @@ file or a different port, print the change and ask again.
 
 ## Step 5: Write
 
+### Readiness and dependency order
+
+Inspect the application's startup path before filling the recipe. For each process and
+verification operation, identify the prerequisites it actually needs: engine readiness,
+credentials, schema or data initialization, function registration, subscriptions, workers,
+or another application dependency. Start independent processes together only when their
+prerequisites allow it. Gate dependent startup commands and application operations on the
+required checks. Apply the same order in entrypoints, README commands, and verification scripts.
+
+Choose checks from the application, rather than assuming an HTTP route exists. Examples
+include an existing readiness endpoint, an authenticated read-only query, a registration or
+subscription check, or a CLI status command. Check the conditions needed for the next operation.
+A listening port, a live process, a successful `docker run -d`, or Ironflow's `/ready` alone
+does not prove the application is ready. `/health` is liveness; `/ready` checks the engine's
+own dependencies. A worker's process existing does not prove its registration is complete.
+
+Bound every wait with an overall deadline and timeouts on each probe. Poll read-only checks;
+stop on process exit or deadline with a message naming the missing prerequisite and elapsed
+limit. A fixed sleep alone is not a readiness check. Keep credentials out of probe output and
+failure diagnostics. If no adequate check exists, explain the gap and report the dependent
+validation as unverified; do not invent a successful probe.
+
+Readiness permits an operation to be attempted. Acceptance means the application accepted
+that specific operation, such as returning an event or run ID. Completion requires a terminal
+success state and the expected result. An HTTP success or accepted event is not completion.
+Submit side-effecting operations once and retain their identifiers; poll read-only status
+for completion. On an ambiguous response or timeout, inspect existing state before deciding
+whether to resubmit. Retry a mutation only with a verified idempotency mechanism or proof it
+had no side effects. A failure response alone does not prove that nothing was written.
+
 ### How it works
 <!-- derived-from: examples/flask-single-container/README.md#how-it-works -->
 
@@ -105,7 +139,7 @@ The recipe has four slots. Fill them from the project.
 | Install | `pip install --no-cache-dir -r requirements.txt` | `npm ci --omit=dev` (or the project's package manager) | copy the built binary |
 | Web command | for example `gunicorn --bind 0.0.0.0:${PORT:-8000} app:app` | for example `node dist/server.js` | the binary |
 | Worker command | `python worker.py`, or none | `node dist/worker.js`, or none | the worker binary, or none |
-| Ready probe | `python -c "import urllib.request; urllib.request.urlopen('$IRONFLOW_SERVER_URL/ready', timeout=2)"` | `node -e "fetch('$IRONFLOW_SERVER_URL/ready').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"` | `curl -sf "$IRONFLOW_SERVER_URL/ready"` |
+| Engine ready probe | `python -c "import urllib.request; urllib.request.urlopen('$IRONFLOW_SERVER_URL/ready', timeout=2)"` | `node -e "fetch('$IRONFLOW_SERVER_URL/ready', {signal: AbortSignal.timeout(2000)}).then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"` | `curl --connect-timeout 1 --max-time 2 -sf "$IRONFLOW_SERVER_URL/ready"` |
 | Key read | `python -c "import json,sys; print(json.load(open(sys.argv[1]))['key'])" "$KEY_FILE"` | `node -p "require(process.argv[1]).key" "$KEY_FILE"` | `jq -r .key "$KEY_FILE"` |
 
 Python is proven in CI by the reference example. The other stacks use the same recipe
@@ -114,7 +148,8 @@ and are proven only by Step 6 on this project. Tell the user which case applies.
 `Dockerfile` (Python shown; change the slots for other stacks):
 
 ```dockerfile
-FROM ghcr.io/sahina/ironflow-releases:<engine-version> AS engine
+ARG ENGINE_IMAGE=ghcr.io/sahina/ironflow-releases:<engine-version>
+FROM ${ENGINE_IMAGE} AS engine
 
 FROM python:<version>-slim
 COPY --from=engine /app/ironflow /usr/local/bin/ironflow
@@ -125,17 +160,30 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
-USER app
+# No USER line: the entrypoint starts as root only to take ownership of a platform volume
+# (Fly mounts /data root-owned), then drops to the app user.
 VOLUME ["/data"]
 EXPOSE <app-port>
 ENTRYPOINT ["./entrypoint.sh"]
 ```
 
-`entrypoint.sh` (make it executable). Replace the three marked lines with the slots:
+`entrypoint.sh` (make it executable). Replace the marked lines with the slots and add gates
+between app commands where the inspected dependencies require them. The engine probe below gates engine-dependent startup;
+Step 6 still needs application-specific readiness checks.
 
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail
+
+# A platform volume (Fly) mounts root-owned. Start as root only to hand /data to the app user,
+# then run the rest of this script as that user. HOME is reset because gunicorn writes under it.
+if [ "$(id -u)" = 0 ]; then
+  mkdir -p /data
+  # Only when the owner differs: a recursive chown of a full volume on every start is slow.
+  # A mount that refuses chown falls through to the writable check below, which says why.
+  [ "$(stat -c %u /data)" = "$(id -u app)" ] || chown -R app:app /data || true
+  HOME=/home/app exec setpriv --reuid=app --regid=app --init-groups "$0" "$@"
+fi
 
 DATA_DIR=/data
 KEY_FILE="$DATA_DIR/.ironflow_bootstrap_key.json"
@@ -163,8 +211,9 @@ shutdown() {
 trap 'shutdown; exit 143' TERM INT
 
 ready=0
-for _ in $(seq 1 60); do
-  if <READY PROBE> 2>/dev/null; then ready=1; break; fi
+deadline=$((SECONDS + 60))
+while [ "$SECONDS" -lt "$deadline" ]; do
+  if <ENGINE READY PROBE> 2>/dev/null && [ "$SECONDS" -lt "$deadline" ]; then ready=1; break; fi
   if ! kill -0 "$engine" 2>/dev/null; then
     echo "entrypoint: the engine exited before it was ready" >&2
     exit 1
@@ -176,8 +225,19 @@ if [ "$ready" != 1 ]; then
   exit 1
 fi
 
-IRONFLOW_API_KEY="$(<KEY READ>)"
+# A seeded key comes from the platform secret store, so nothing is read from the volume and
+# nothing is left on it. Without one, the engine writes the key to a file and never to stdout;
+# read it into the environment and do not echo it.
+if [ -z "${IRONFLOW_API_KEY:-}" ]; then
+  if [ -n "${IRONFLOW_BOOTSTRAP_ADMIN_KEY:-}" ]; then
+    IRONFLOW_API_KEY="$IRONFLOW_BOOTSTRAP_ADMIN_KEY"
+  else
+    IRONFLOW_API_KEY="$(<KEY READ>)"
+  fi
+fi
 export IRONFLOW_API_KEY
+# The app has no use for the dashboard password, and the worker and web process inherit this env.
+unset IRONFLOW_BOOTSTRAP_ADMIN_PASSWORD
 
 <WORKER COMMAND> & pids+=($!)     # delete this line for a client-only app
 <WEB COMMAND> & pids+=($!)
@@ -257,22 +317,41 @@ The complete reference example is `examples/flask-single-container` in
 
 ## Step 6: Verify
 
-Run every check. Use a container name and a volume name that are specific to this project.
+Run the generated commands in their documented order, without manual delays or out-of-order
+retries. Use project-specific container and volume names. Match the readiness gates and
+success criteria to Step 4's plan.
 
 1. `docker build -t <name>:local .`
 2. `docker run -d --name <name> -p 127.0.0.1:<host-port>:<app-port> -v <name>-data:/data <name>:local`
-3. Call one app route that uses Ironflow, and confirm that the run completes. A worker
-   needs a few seconds to register after start, so retry for up to 30 seconds.
-4. `docker restart <name>`, then confirm that the earlier run is still there.
-5. After the restart, `docker logs <name> 2>&1 | grep -cE 'ifkey_[A-Za-z0-9]{16,}'` must
-   print `0`. The engine banner prints a short key prefix (`ifkey_78e548b5...`). That is
-   not a leak, so do not match on `ifkey_` alone.
-6. `docker port <name>` must show the app port only.
-7. If you wrote a workflow: `actionlint .github/workflows/deploy.yml` must print nothing. If
+3. Wait for the application's prerequisites using the planned bounded, read-only checks.
+   Verify required initialization, registrations, and dependencies before submitting work.
+4. Submit one operation that uses Ironflow. Check acceptance and save its identifiers.
+   Separately wait with bounded read-only checks for successful completion and assert the
+   expected result. Do not retry the operation to work around startup or completion delays.
+5. `docker restart <name>`. Repeat the readiness checks needed to read persisted state,
+   including engine connectivity, authentication, and any application initialization or
+   registration the read depends on. Read the earlier operation by its saved identifier
+   and verify its successful state and result. Do not create new work as proof of persistence.
+   If also testing new work after restart, first recheck its submission prerequisites and
+   track it separately from the persisted operation.
+6. After restart, check logs for full credentials without printing matching lines:
+   `docker logs <name> > <temporary-log> 2>&1`, then
+   `grep -cE 'ifkey_[A-Za-z0-9]{16,}' <temporary-log>` must print `0`. Confirm log collection
+   succeeded and remove the temporary log. Treat grep exit 1 as no matches and exit >1 as a
+   check error. The banner's short prefix (`ifkey_78e548b5...`)
+   is not a leak. Sanitize diagnostics before sharing logs; never print full credentials.
+7. `docker port <name>` must show the app port only.
+8. If you wrote a workflow: `actionlint .github/workflows/deploy.yml` must print nothing. If
    `actionlint` is not installed, parse the file with a YAML parser and say that you did not
    lint it. Do not run the workflow.
 
-If a check fails, read `docker logs <name>`, fix the cause, and run all checks again.
+If a check fails, inspect logs without exposing credentials and fix the cause. Repeat the
+relevant checks in dependency order, preserving operation IDs and reconciling side effects
+before submitting more work. If Docker, dependencies, credentials, or another prerequisite
+are unavailable, name every blocked or skipped check and why. Static review or parsing does
+not establish runtime readiness, completion, or persistence. Without a passed runtime verify,
+report packaging verification as incomplete or failed, never as proven.
+
 Remove the container when you are done. Ask the user before you remove the volume.
 
 ## Step 7: Report
@@ -280,12 +359,14 @@ Remove the container when you are done. Ask the user before you remove the volum
 Tell the user:
 
 - The files you wrote or changed.
-- Which checks passed, with the command for each.
+- Which checks passed, with the command for each, and which failed or remain unverified with
+  their reasons. Distinguish readiness, acceptance, completion, and post-restart persistence.
 - If the stack is CI-proven (Python) or proven only by Step 6.
 - If you wrote a workflow: it was checked, not run. It runs on your next push to
   `<branch>`. It pushes `ghcr.io/<owner>/<repo>:<commit-sha>` and nothing deploys that image.
 - The known limits below.
-- The commands for a deploy to a host with a persistent volume. Do not run them.
+- The commands for a deploy to a host with a persistent volume. Do not run them from this file.
+  Tell the user that deploying is a separate request and name `deploy-target.md`.
 
 ### Known limits
 <!-- derived-from: examples/flask-single-container/README.md#known-limits -->
@@ -294,8 +375,8 @@ Tell the user:
 - A volume on `/data` is mandatory. Without one, removing the container deletes all runs
   and events.
 - The dashboard is not reachable from outside the container.
-- The bootstrap key stays on the volume. The published API-keys guide says to read it
-  once, delete the file and rotate; this recipe does not.
+- The bootstrap key stays on the volume unless it is seeded (`deploy-target.md`). Seeding needs
+  an engine release that supports it; check with `ironflow serve --help`.
 - A restart stops the engine. There is no zero-downtime deploy.
 
 ### CI/CD limits

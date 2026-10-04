@@ -1,6 +1,6 @@
 ---
 name: ironflow
-version: 0.41.0
+version: 0.42.0
 description: |
   Universal entry point for Ironflow AI assistance. Classifies user intent and dispatches
   to the right specialized skill. Use when the user mentions "ironflow", "help with ironflow",
@@ -84,6 +84,7 @@ Common HIGH examples:
 - "my order processing run failed" → `ironflow-ops`
 - "create a function that processes orders" → `ironflow-code`
 - "set up ironflow in my Next.js app" → `ironflow-start`
+- "create a runnable Python starter" → `ironflow-start`
 - "would ironflow help our Spring services?" → `ironflow-fit`
 - "what's the syntax for waitForEvent" → `ironflow-docs`
 
@@ -116,7 +117,7 @@ Your request could match a few skills. Which one?
               Trigger: "where can we use ironflow", "analyze my codebase"
 
   2) start  — Set up Ironflow / scaffold / pick patterns
-              Trigger: "set up ironflow", "push vs pull"
+              Trigger: "set up ironflow", "create a project", "push vs pull"
 
   3) code   — Write functions, projections, workers, tests, audits
               Trigger: "write a function", "add tests"
