@@ -20,8 +20,8 @@ grep "ironflow" go.mod
 ## Step 2: Find Latest
 
 **Everything ships in lockstep.** One release stamps the same version into the server,
-all four npm packages, the Go SDK and the Python SDK — `scripts/release.sh` writes a single
-`$VERSION` everywhere. So there is no "which version pairs with which"; they match by construction.
+all four npm packages, the Go SDK and the Python SDK — the release script writes a single
+version everywhere. So there is no "which version pairs with which"; they match by construction.
 
 Public artifacts (the engine repo `sahina/ironflow` is **private** — end users cannot
 read it):

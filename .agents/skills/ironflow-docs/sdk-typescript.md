@@ -404,6 +404,7 @@ const config = client.config();              // config() is a METHOD, not a prop
 await config.set("flags", { darkMode: true });
 const cfg = await config.get("flags");
 await config.patch("flags", { betaFeatures: true });
+await config.update("flags", { darkMode: false }, cfg.revision); // 412 if another writer saved first
 
 const watcher = config.watch("flags", {
   onUpdate: (ev) => console.log(ev.data, ev.revision),   // ConfigWatchEvent, not the bare data

@@ -20,4 +20,4 @@ it.each([
   expect(process.env.IRONFLOW_URL).toBe(expected);
   expect(createWorker).toHaveBeenCalledWith(expect.objectContaining({ serverUrl: expected }));
   expect(start).toHaveBeenCalledOnce();
-});
+}, 30_000); // The cold worker/SDK import can exceed Vitest's 5s default during CI.

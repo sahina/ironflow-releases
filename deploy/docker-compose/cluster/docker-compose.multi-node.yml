@@ -37,7 +37,7 @@ services:
   # -ip.bind=0.0.0.0 binds loopback so the in-container healthcheck works.
   # MinIO rejected (registry+license); see ADR-0035.
   seaweedfs:
-    image: chrislusf/seaweedfs:4.31
+    image: chrislusf/seaweedfs:4.48
     command:
       ["server", "-dir=/data", "-s3", "-s3.config=/etc/seaweedfs/s3.json", "-ip.bind=0.0.0.0"]
     ports:

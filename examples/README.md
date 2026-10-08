@@ -26,6 +26,7 @@ Every Ironflow application follows four pillars:
 | [todo-web/](./todo-web/)                         | Bare-bones Next.js todo   | Getting started       | Embedded worker, events, projections        |
 | [travel-booking/](./travel-booking/)             | The 90-second showcase demo | Anyone new to Ironflow | Saga rollback, crash-resume, a race for the last seat, time travel |
 | [reference-app/](./reference-app/)               | Polyglot order processing | Multi-language systems | Go, TypeScript and Python services on one Ironflow backend: entity streams, a durable wait, durable steps, Pub/Sub and crash recovery |
+| [file-upload/](./file-upload/)                   | File storage in Python    | Python developers     | Buckets, signed URLs, a worker on `ironflow.file.created` |
 | [flask-single-container/](./flask-single-container/) | App + engine as one deployable unit | Shipping a small app | Flask, a pull-mode worker and the engine in one container with one volume |
 | [fraud-detection/](./fraud-detection/)           | Real-time risk pipeline   | Building real systems | `step.parallel()`, KV counters, pub/sub alerts |
 | [compliance-audit/](./compliance-audit/)         | Audit trail + execution proof | Regulated workloads | Entity-stream lineage in the Compliance dashboard |
@@ -39,7 +40,7 @@ Every Ironflow application follows four pillars:
 
 ## Prerequisites
 
-- Go 1.26+ (required to build Ironflow)
+- Go 1.27+ (required to build Ironflow)
 - Node.js 22+ and pnpm (for TypeScript examples; `reference-app/` needs 24.2+)
 - Python 3.10+ (for `reference-app/`'s notification service only)
 - Docker (for `flask-single-container/` only)

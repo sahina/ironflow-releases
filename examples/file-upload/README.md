@@ -28,8 +28,6 @@ python upload.py
 
 Set `IRONFLOW_SERVER_URL` and `IRONFLOW_API_KEY` if the server is not `http://localhost:9123` in dev mode.
 
-The Python worker and the files API ship after v0.39.0. Until a release includes them, install from a checkout: `pip install -e ../../sdk/python`.
-
 Run `upload.py` a second time and the paths already exist, so Ironflow emits `ironflow.file.updated`, not `created`. The worker does not run and the old reports stay. Use new paths, or add `ironflow.file.updated` as a second trigger.
 
 See the [file storage guide](../../docs/how-to-guides/storage/files.mdx).

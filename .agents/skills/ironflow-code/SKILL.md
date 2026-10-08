@@ -1,6 +1,6 @@
 ---
 name: ironflow-code
-version: 0.42.0
+version: 0.43.0
 description: |
   Build Ironflow components — write functions, projections, workers, entity streams,
   webhooks, sagas, plus generate tests and audit existing code for anti-patterns.
@@ -109,6 +109,12 @@ For CRUD-style work (no aggregate, no command), skip the `commands/` and `aggreg
 folders — plain events + functions + projections are the full set.
 
 ### Step 4: Write the code
+
+Before implementing an entity lifecycle or a workflow with branches, waits, multiple
+functions, or saga compensation, read `~/.agents/skills/ironflow-docs/diagrams.md` using the cross-skill
+path convention above. Present the proposed flow in Mermaid with a short explanation
+so the user can review it, and update it when the design changes. Skip a new diagram
+when the conversation already contains one that matches the current design.
 
 Apply these non-negotiable rules (full list in `anti-patterns.md`):
 

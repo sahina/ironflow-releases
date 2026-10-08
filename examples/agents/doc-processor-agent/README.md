@@ -54,7 +54,7 @@ The literal script behind `make demo-agent-crash-resume`:
 
 What it does:
 
-1. Starts the worker (`pnpm dev`)
+1. Starts the worker (`pnpm start`)
 2. Emits `doc.received` with a slow image URL (3-second OCR sleep)
 3. After 1.5 seconds — **mid-OCR** — sends `kill -9` to the worker
 4. Restarts the worker

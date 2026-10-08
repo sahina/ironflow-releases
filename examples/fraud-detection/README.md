@@ -135,6 +135,7 @@ contribution score (0.0 to 0.35):
   ├──────────────────────┼──────────────────────────────────────────┤
   │ merchant-risk-check  │ Checks merchant category code (MCC).     │
   │                      │ Gambling, telemarketing = 0.20 risk.     │
+  │                      │ Jewelry, digital goods = 0.10 risk.      │
   └──────────────────────┴──────────────────────────────────────────┘
 ```
 

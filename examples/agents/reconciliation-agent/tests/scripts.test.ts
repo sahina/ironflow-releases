@@ -10,8 +10,18 @@ const server = createServer((req, res) => {
   let body = "";
   req.on("data", (chunk) => { body += chunk; });
   req.on("end", () => {
-    requests.push(JSON.parse(body));
+    const payload = JSON.parse(body);
     res.writeHead(200, { "content-type": "application/json" });
+    if (req.url?.endsWith("/ListRuns")) {
+      res.end(JSON.stringify({ runs: payload.functionId === "reconciliation-case" && payload.status === "RUN_STATUS_WAITING"
+        ? [{ id: "run-123", status: "RUN_STATUS_WAITING" }] : [] }));
+      return;
+    }
+    if (req.url?.endsWith("/GetRunSteps")) {
+      res.end(JSON.stringify({ steps: [{ stepId: `${payload.runId}:approve.contact:0`, status: "STEP_STATUS_WAITING" }] }));
+      return;
+    }
+    requests.push(payload);
     res.end("{}");
   });
 });
@@ -50,4 +60,9 @@ it("rejects an invalid approval value without emitting", async () => {
   const before = requests.length;
   await expect(command(["approve", "--", "run-123", "flase"])).rejects.toThrow();
   expect(requests).toHaveLength(before);
+}, 10_000);
+
+it("finds a contact approval in an automatically waiting run", async () => {
+  const { stdout } = await command(["exec", "tsx", "scripts/find-pending.ts"]);
+  expect(stdout.trim()).toBe("run-123");
 }, 10_000);

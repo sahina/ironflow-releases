@@ -47,7 +47,7 @@ If unhealthy → fix server connectivity first (see `platform.md`).
 >
 > The full public list is `/health`, `/ready`, `/metrics`, `/api/v1/capabilities`, the auth
 > login/validate paths and the platform login (plus webhook ingest, which needs its own `ifwh_`
-> token, `OPTIONS` preflights, and the non-API dashboard shell).
+> token, `/api/v1/files/signed` with its `?token=`, `OPTIONS` preflights, and the non-API dashboard shell).
 
 ## Symptom Routing
 

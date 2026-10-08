@@ -69,6 +69,11 @@ or installing their dependencies:
   `git init` when the destination is not yet in a Git work tree, and the `.gitignore`.
 - Engine connection method, install/start commands, and the sample verification action.
 
+When component relationships or execution ordering need visual explanation, read
+`~/.agents/skills/ironflow-docs/diagrams.md` using this skill's cross-skill resource
+convention and include a Mermaid diagram in this proposal. Update it if the proposal
+changes before acceptance.
+
 Acceptance covers generation, installation, and that local verification. Merge
 approved edits into existing files; preserve unrelated content. Changes beyond the
 accepted scope need a revised proposal. Do not add application features merely because

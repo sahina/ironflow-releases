@@ -130,7 +130,7 @@ Keep this short and link out; `other-languages.md` has the full table.
   code.
 - **Python installs as `ironflow-py`, not `ironflow`.** `pip install ironflow-py`
   from v0.33.1 (#1913); the import name stays `ironflow`. The bare name on PyPI is an
-  unrelated materials-science package. The SDK includes a polling worker.
+  unrelated materials-science package. The polling worker ships from v0.40.0.
 - **A first-party C# SDK was designed and closed** (so "C# later" above means "not
   planned", not "on the roadmap"). Issue #172, `NOT_PLANNED`:
   "speculative, no demand signal. Reopen if a .NET user materializes." If the reader

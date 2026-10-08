@@ -1,6 +1,6 @@
 ---
 name: ironflow-docs
-version: 0.42.0
+version: 0.43.0
 description: |
   Ironflow reference documentation — SDK syntax, CLI commands, MCP tools, and patterns.
   Use when looking up specific API signatures, CLI flags, MCP tool names, or canonical
@@ -36,6 +36,7 @@ inline example for the common case + a URL to the full hosted docs for depth.
 | CLI commands | `cli.md` | `ironflow` binary commands and flags |
 | MCP tools | `mcp.md` | MCP tool names, parameters, read-only vs write modes |
 | Patterns | `patterns.md` | Canonical code patterns (sagas, webhooks, upcasters) |
+| Design diagrams | `diagrams.md` | Visual design proposals for component relationships, execution ordering, or lifecycles |
 | Anti-patterns | `anti-patterns.md` | Things to avoid — what breaks at runtime |
 
 ## How to Use This Skill

@@ -8,11 +8,8 @@ import { createClient } from "@ironflow/node";
 
 const client = createClient({ serverUrl });
 
-// A run parked on step.waitForEvent (which approve() wraps) has RUN status
-// "paused" — "waiting" is the STEP status of that parked step, checked
-// below. (internal/engine/yield_orchestrator.go: HandleWaitEventYield sets
-// run.Status = store.RunStatusPaused.)
-const { runs } = await client.listRuns({ functionId: "reconciliation-case", status: "paused", limit: 50 });
+// Automatic durable waits use "waiting"; "paused" is an operator hold.
+const { runs } = await client.listRuns({ functionId: "reconciliation-case", status: "waiting", limit: 50 });
 
 for (const run of runs) {
   const { steps } = await client.getRunSteps(run.id);

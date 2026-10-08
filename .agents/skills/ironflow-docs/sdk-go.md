@@ -304,6 +304,7 @@ cfg := client.Config()               // Config() is a METHOD on *Client
 _, err := cfg.Set(ctx, "flags", map[string]any{"darkMode": true})
 resp, err := cfg.Get(ctx, "flags")   // *ConfigResponse: Name, Data map[string]any, Revision, UpdatedAt
 _, err = cfg.Patch(ctx, "flags", map[string]any{"betaFeatures": true})
+_, err = cfg.Update(ctx, "flags", map[string]any{"darkMode": false}, resp.Revision) // HTTP_412 if another writer saved first
 entries, err := cfg.List(ctx)
 err = cfg.Delete(ctx, "flags")
 

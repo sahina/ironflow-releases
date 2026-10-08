@@ -1,6 +1,6 @@
 ---
 name: ironflow-ops
-version: 0.42.0
+version: 0.43.0
 description: |
   Operate Ironflow — debug failed/stuck runs, migrate SDK versions with upcasters,
   deploy/scale/troubleshoot clusters, package an app with the engine into one container.
@@ -77,7 +77,7 @@ as unverified, never passed.
 Every `/api/`, `/ws` and `/ironflow.v1.` path requires authentication — always, no config toggle.
 Among those, only `/health`, `/ready`, `/metrics`, `/api/v1/capabilities`, `/api/v1/auth/login`,
 `/api/v1/auth/validate` and `/api/v1/platform/auth/login` are public, plus `POST /api/v1/webhooks/{id}`
-when it presents the source's `ifwh_` ingest token. `OPTIONS` preflights pass on every path, and the
+when it presents the source's `ifwh_` ingest token, and `/api/v1/files/signed` (its `?token=` is the credential). `OPTIONS` preflights pass on every path, and the
 non-API dashboard shell is served without an API key (it has its own cookie auth).
 
 - **Prefer the `ironflow` CLI.** It attaches `IRONFLOW_API_KEY` for you.

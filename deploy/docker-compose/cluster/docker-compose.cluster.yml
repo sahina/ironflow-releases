@@ -79,7 +79,7 @@ services:
   # services bind loopback for the in-container healthcheck. MinIO rejected
   # (registry+license); see ADR-0035.
   seaweedfs:
-    image: chrislusf/seaweedfs:4.31
+    image: chrislusf/seaweedfs:4.48
     command:
       [
         "server",

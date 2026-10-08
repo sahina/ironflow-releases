@@ -309,6 +309,19 @@ ironflow mcp --allow-writes                        # read + write
 }
 ```
 
+## A2A Adapter
+
+Expose an `agent()` function to agents in other systems over the Agent2Agent (A2A) v1.0 protocol. A separate process; one A2A task is one run.
+
+```bash
+export IRONFLOW_A2A_BEARER_TOKEN=...               # required; callers send it as a bearer token
+ironflow a2a --agent code-review                   # card: /agents/code-review/.well-known/agent-card.json
+ironflow a2a --agent code-review --caller-input code-review/post-review   # callers may answer this approve() gate
+ironflow a2a --agent code-review --host 0.0.0.0 --public-url https://agents.example.com   # behind a TLS proxy
+```
+
+The adapter calls the server with its own `IRONFLOW_API_KEY` (developer role). Default port 9124. An `approve()` gate stays hidden from callers unless `--caller-input` lists it. Callers reach only runs that the adapter started.
+
 ## Circuit Breakers
 
 ```bash

@@ -28,7 +28,7 @@ Signal IDs are emitted by `scripts/scan.sh`. This file is the interpretation.
 Python is Tier 1, with a hand-written polling worker and generated clients. It installs from PyPI as
 `pip install ironflow-py` (import name `ironflow`) **from v0.33.1** — #1913 landed the
 publishing machinery; v0.33.0 was tagged but no wheel reached PyPI, so v0.33.1 is the
-first release on PyPI. Never say `pip install ironflow`: that bare name belongs to an unrelated
+first release on PyPI. The worker, `serve` and agent modules ship from v0.40.0. Never say `pip install ironflow`: that bare name belongs to an unrelated
 materials-science package from the pyiron group, and it also installs a top-level
 `ironflow` module, so the two cannot share a virtualenv.
 

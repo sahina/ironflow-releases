@@ -1,6 +1,6 @@
 ---
 name: ironflow-start
-version: 0.42.0
+version: 0.43.0
 description: |
   Adopt Ironflow — set up in a new or existing project and make architectural
   decisions. Triggers on: "set up ironflow", "install ironflow", "add ironflow to",
@@ -474,7 +474,11 @@ Ironflow either. Ask the user — most real apps have **pockets** of each.
 5. Note when the alternative would be better.
 6. If CQRS: name the aggregates, commands, domain events, and at least one projection
    before moving on. These become the skeleton `/ironflow-code` builds.
-7. Suggest `/ironflow-code` to implement.
+7. When relationships, ordering, or lifecycles need visual explanation, read
+   `~/.agents/skills/ironflow-docs/diagrams.md` using the cross-skill path convention
+   above and include a Mermaid diagram with the recommendation. Update it as the
+   user revises the design.
+8. Suggest `/ironflow-code` to implement.
 
 ---
 
