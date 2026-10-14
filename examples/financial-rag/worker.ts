@@ -1,5 +1,5 @@
 /**
- * The worker. Runs all four workflows and the external vector projection.
+ * The worker. Runs all five workflows and the external vector projection.
  *
  * Pull mode (createWorker), not serve(). This is load-bearing, not a
  * preference — see README, "Why pull mode".
@@ -32,7 +32,6 @@ const worker = createWorker({
     recordRegression,
   ],
   projections: [vectorIndex],
-  serverUrl: process.env.IRONFLOW_URL ?? "http://localhost:9123",
 });
 
 // Deliberately not awaited: worker.start() never resolves, and any setup

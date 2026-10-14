@@ -1,8 +1,8 @@
 // Send the human-approval event so the agent's approve("post-review")
 // gate releases.
 //
-//   pnpm approve <runId>                   # approve
-//   pnpm approve <runId> false "reason"    # reject with reason
+//   pnpm run approve <runId>                   # approve
+//   pnpm run approve <runId> false "reason"    # reject with reason
 
 import { IronflowClient } from "@ironflow/node";
 
@@ -16,7 +16,6 @@ if (!runIdArg) {
 const approved = approvedArg === undefined ? true : approvedArg === "true";
 
 const client = new IronflowClient({
-  serverUrl: process.env.IRONFLOW_URL ?? "http://localhost:9123",
   apiKey: process.env.IRONFLOW_API_KEY,
 });
 

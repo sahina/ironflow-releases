@@ -236,7 +236,9 @@ const orderSummary = createProjection<OrderSummaryState>({
     STREAM_EVENTS.OrderShipped,
     STREAM_EVENTS.OrderCancelled,
   ],
-  partitionKey: "$.data.orderId",
+  // Rooted at the event payload, not an envelope: "$.data.orderId" matches
+  // nothing and every order lands in the __global__ partition.
+  partitionKey: "$.orderId",
   initialState: () => ({
     orderId: "",
     customerId: "",

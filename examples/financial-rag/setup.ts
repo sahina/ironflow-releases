@@ -8,11 +8,9 @@
  */
 import { ConflictError, createClient } from "@ironflow/node";
 import { SQL_PROJECTIONS } from "./projections/sql.js";
-import { createSchema } from "./src/db.js";
+import { closePool, createSchema } from "./src/db.js";
 
-const client = createClient({
-  serverUrl: process.env.IRONFLOW_URL ?? "http://localhost:9123",
-});
+const client = createClient();
 
 async function main() {
   console.log("Registering SQL projections in Ironflow...");
@@ -31,6 +29,8 @@ async function main() {
   await createSchema();
   console.log("  ✓ chunks, index_pointer");
 
+  // Without this the idle pool keeps the process alive for ~10s after "Done".
+  await closePool();
   console.log("\nDone. Next: pnpm seed-corpus && pnpm start");
 }
 

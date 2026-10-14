@@ -8,9 +8,7 @@
 import { createClient } from "@ironflow/node";
 import { EVENTS } from "../events.js";
 
-const client = createClient({
-  serverUrl: process.env.IRONFLOW_URL ?? "http://localhost:9123",
-});
+const client = createClient();
 
 await client.emit(EVENTS.PollTick, { source: "manual" });
 console.log("poll triggered — watch the worker log for the batch");

@@ -121,23 +121,54 @@ export IRONFLOW_API_KEY=$(cat ../../.ironflow/.ironflow_bootstrap_key.json | jq 
 ../../build/ironflow projection rebuild vector-index
 ```
 
-Without the export the command fails with a bare 401. `pnpm ingest` works from
+Without the export the command fails with a bare 401, unless a discovery file
+supplies the key (see the end of this paragraph). `pnpm ingest` works from
 the same directory only because the app scripts in `package.json` (`setup`,
 `start`, `dev`, `ingest`, `ask`) pass `--env-file-if-exists=.env` to tsx. The
-`ironflow` binary has no equivalent — it reads `IRONFLOW_API_KEY` from the
-process environment and nowhere else.
+`ironflow` binary does not read `.env`. It reads `IRONFLOW_API_KEY` from the
+process environment. Only when no `IRONFLOW_SERVER_URL` or
+`IRONFLOW_API_KEY` is set does it fall back to the `.ironflow/engine.json`
+discovery file, searched upward from the current directory.
 
 The rebuild command returns as soon as it resets the cursor; the runner drains
 the events on its next poll. Leave the worker up so you can watch it finish.
 
 The index comes back from the event stream. **Zero embedding-API calls** — the
-vectors were in the events all along. Verified: 11 chunks restored from 20
-events.
+vectors were in the events all along. Verified: all 11 chunks restored (the
+rebuild job reported 29 total events in that run).
+
+On a non-default port, set `IRONFLOW_SERVER_URL` for the CLI, worker, and app
+scripts.
 
 ## Exercise 2 — kill it mid-ingest
 
 Start an ingest, kill the worker, restart it. Read **Known limits** below first,
-so you know what to expect — it is not quite what "durable execution" suggests.
+so you know what to expect — the recovery takes minutes.
+
+The three-document corpus finishes in about a second, so there is nothing to
+interrupt. Point the worker at a bigger folder with `CORPUS_DIR` (read by the
+worker, so set it before `pnpm start`):
+
+```fish
+mkdir -p /tmp/big-corpus
+for i in (seq 1 1500)
+    printf '# Doc %s\n\n## Section 1\n\nDoc %s explains widget %s.\n\n## Section 2\n\nThe widget uses port %s.\n' $i $i $i (math 4000 + $i) > /tmp/big-corpus/doc$i.md
+end
+set -x CORPUS_DIR /tmp/big-corpus
+pnpm start   # T2, then `pnpm ingest` in T3
+```
+
+Wait a few seconds so at least one checkpoint has flushed, then `kill -9` the
+worker's node process (`pgrep -fl worker.ts`) and run `pnpm start` again. If you
+kill inside the first second, no checkpoint has flushed yet and the replacement
+worker redoes every document.
+
+Measured on 0.43.1 with offline embeddings and a similar corpus (1500 docs, three
+sections each, so 4500 chunks): killed
+after 748 documents had started; 655 steps were checkpointed. The replacement
+worker embedded 846 documents, 94 of them a second time, and the run completed
+about 2 minutes 15 seconds after the restart. Result: 4500 `rag.chunk.embedded`
+events and 4500 rows in `rag.db`, no duplicates.
 
 ## Why pull mode
 
@@ -153,24 +184,24 @@ Ingest wants pull mode anyway: push is an HTTP POST with a ~10s budget, and
 chunking plus embedding a corpus has no ceiling. Pull holds the job open for as
 long as it takes.
 
-This is a different reason from
-[`examples/financial-rag`](../financial-rag/), which is forced onto pull mode by
-a step-key collision in the push executor's multi-turn agent loop
-([#1647](https://github.com/sahina/ironflow/issues/1647)). rag-core has no agent
-loop and does not hit that. The whole series stays on pull mode regardless.
+[`examples/financial-rag`](../financial-rag/) also uses pull mode, because parsing a
+filing takes minutes. It once had a second reason: a step-key collision in the push
+executor's multi-turn agent loop
+([#1647](https://github.com/sahina/ironflow/issues/1647)), fixed in v0.29.0.
+rag-core has no agent loop and never hit that. The whole series stays on pull mode
+regardless.
 
 ## Known limits
 
 Measured while building this example, not guessed.
 
-- **A killed worker does not resume where it left off.** A pull worker ships
-  step results only when the job finishes; there is no incremental checkpoint,
-  and nothing wires the SDK's `drain()` to a signal. Ctrl-C is as lossy as
-  `kill -9`. Measured: 3 seconds into a 3000-document ingest, both signals left
-  **zero** persisted steps, and the reclaimed run re-processed all 3000
-  documents. The run still ends **correct** — every emit carries a
-  content-derived `idempotencyKey`, so the duplicates are dropped and the index
-  has no double rows. Correct, not cheap.
+- **A killed worker resumes from its last checkpoint, not from its last step.** A
+  pull worker sends finished steps to the server about once a second (#1670). A
+  `kill -9` loses at most the current window, and the reclaimed run skips every
+  step already checkpointed. Ctrl-C and SIGTERM are gentler: the worker drains, and
+  that waits up to 30 seconds for active jobs to finish. The run ends **correct**
+  either way — every emit carries a content-derived `idempotencyKey`, so the
+  server drops the duplicates and the index has no double rows.
 - **Recovery takes 90s to 3 minutes.** After the worker dies the run sits in
   `running`, then flips to `waiting`. A live, connected, idle replacement worker
   will not pick it up until the clock runs out. At the 30-second mark it looks
@@ -196,8 +227,8 @@ Measured while building this example, not guessed.
   is an external projection. That is the one component writing outside the
   platform. Part 6 does the pgvector swap.
 - **`ask` bypasses Ironflow entirely.** Retrieval plus one model call is
-  request/response, and there is no ergonomic "emit an event, get the run's
-  result back" client path today.
+  request/response, so `ask` is a plain local call. `client.invoke()` could run it
+  as a function and return the answer as the run result, but this example does not.
 - **Tests are not wired into CI.** `pnpm test` covers pure logic only —
   chunking, ids, the offline embedding, the store round-trip. Workflows are
   verified by running them.

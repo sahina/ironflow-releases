@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/sahina/ironflow/sdk/go/ironflow"
+	"github.com/sahina/ironflow-go/ironflow"
 )
 
 // reduce replays facts through the projection the way the engine does: state is

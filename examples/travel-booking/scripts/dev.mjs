@@ -63,4 +63,4 @@ process.on("SIGTERM", () => shutdown(0));
 run("next", "pnpm", ["exec", "next", "dev"]);
 run("worker", "pnpm", ["exec", "tsx", "worker.ts"], { restart: true });
 
-console.log("[dev] UI on http://localhost:3000 — worker supervised, crash it from the chaos panel");
+console.log(`[dev] UI on http://localhost:${process.env.PORT ?? 3000} — worker supervised, crash it from the chaos panel`);

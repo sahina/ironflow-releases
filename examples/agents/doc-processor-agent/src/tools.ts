@@ -14,6 +14,8 @@ import { z } from "zod";
 // ────────────────────────────────────────────────────────────────
 
 const OCR_SLEEP_MS = Number(process.env.DOC_PROCESSOR_OCR_MS ?? 3000);
+// Lengthened for filming, so a kill can land after OCR has finished.
+const CLASSIFY_SLEEP_MS = Number(process.env.DOC_PROCESSOR_CLASSIFY_MS ?? 200);
 
 export const ocr = defineTool({
   name: "ocr",
@@ -35,7 +37,7 @@ export const classify = defineTool({
   input: z.object({ text: z.string() }),
   handler: async ({ text }) => {
     console.log(`[classify] categorizing ${text.length} chars...`);
-    await new Promise((r) => setTimeout(r, 200));
+    await new Promise((r) => setTimeout(r, CLASSIFY_SLEEP_MS));
     const lowered = text.toLowerCase();
     const category = lowered.includes("invoice")
       ? "invoice"

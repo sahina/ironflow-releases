@@ -2,8 +2,10 @@
 
 Durable exception resolution for bank reconciliation. A statement carries ~100 transactions.
 A deterministic pass matches most of them. The residue clusters by counterparty into cases.
-Each case goes through an LLM triage, a human approval, a real outbound message to the
-counterparty, and a durable wait for their reply — or for nobody to reply at all. A
+Each case goes through an LLM triage, a human approval, an outbound message to the
+counterparty, and a durable wait for their reply — or for nobody to reply at all.
+Nothing here calls a real model or sends a real message: triage is a deterministic
+stand-in (`src/llm.ts`) and the "provider" is a local file ledger (`src/contact.ts`). A
 confirmed resolution becomes a rule, so the next statement needs the model less.
 
 ## What this adds
@@ -80,13 +82,13 @@ pnpm dev
 # Trigger a statement (separate terminal)
 pnpm trigger
 
-# The case runs start independently, once per cluster. Find one waiting at the
-# approval gate:
+# The case runs start independently, once per cluster, and take ~15s to reach the
+# approval gate. Find one waiting there:
 pnpm exec tsx scripts/find-pending.ts
 
 # Approve it. Only this run advances; the draft it is about is on the parked
 # step's `input` (`client.getRunSteps(runId)`, or the dashboard):
-pnpm approve <runId> true
+pnpm run approve <runId> true
 
 # Signal a counterparty reply for that case:
 pnpm reply <caseId> "the amount posted to our sibling account"
@@ -123,9 +125,9 @@ still-waiting half of that is exercised by `demo-crash-resume.sh` — closed-cas
 the new-period path are unreachable with the single-period fixture, so both are reasoned
 from the idempotency key, not demonstrated.
 
-The worker and scripts use `IRONFLOW_URL`, then `IRONFLOW_SERVER_URL`, then
+The worker and scripts use `IRONFLOW_SERVER_URL`, then
 `http://localhost:9123`. Startup makes the selected URL available to agent memory too.
-Both `pnpm approve -- ...` and `pnpm approve ...` work; invalid boolean values are rejected.
+Both `pnpm run approve -- ...` and `pnpm run approve ...` work; invalid boolean values are rejected.
 
 ## Crash-resilience: idempotent outbound contact
 
@@ -172,10 +174,15 @@ reader to discover.
   contract since #2185: `approve()` never returns a timeout result. The sweep emits each
   stage's deadline event on its own schedule, well before either wait's TTL could fire,
   so the run always resumes through its own code instead of dying on the engine timeout.
-  That last claim is reasoned, not demonstrated: `DEADLINE_HOURS` is 24 (`src/memory.ts`),
-  so every tick inside a walkthrough logs `sweep complete { emitted: 0 }` and the emit
-  path never runs. `tests/sweep.test.ts` covers `deadlineEventFor` in isolation; nothing
-  drives a real deadline to expiry against a live server.
+  `DEADLINE_HOURS` is 24 (`src/memory.ts`), so every tick inside a walkthrough logs
+  `sweep complete { emitted: 0 }` and the emit path never runs. The shipped code does not
+  drive a deadline to expiry; `tests/sweep.test.ts` covers `deadlineEventFor` in
+  isolation. The path was exercised once against a live server with `DEADLINE_HOURS`
+  temporarily set to 0: the next cron tick rejected an unapproved case ("no approver
+  responded") and timed out cases waiting for a reply ("no-reply"), and both runs
+  completed. A run that *fails* (for example a permanently rejected send) never writes
+  `case.unresolved`, so the projection keeps it at `awaiting-approval` and every later
+  tick re-emits a rejection that matches no run.
 - **Memory is one growing stream.** `MemoryConfig.streamId` is a static string and
   the agent memory API has no per-key stream — the escape a production deployment
   would want. The curated projection keys its state by counterparty inside one

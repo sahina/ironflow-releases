@@ -28,18 +28,18 @@ LEDGER="${LOG_DIR}/contact-ledger.jsonl"
 
 IRONFLOW_BIN="${IRONFLOW_BIN:-${REPO_ROOT}/build/ironflow}"
 SERVER_PORT="${IRONFLOW_PORT:-$((30000 + RANDOM % 30000))}"
-IRONFLOW_URL="${IRONFLOW_URL:-http://localhost:${SERVER_PORT}}"
+# Always the server this script starts, never a shell IRONFLOW_SERVER_URL.
+IRONFLOW_SERVER_URL="http://localhost:${SERVER_PORT}"
 
 # The provider "accepts" then stalls for this long. The kill lands inside
 # that window — after acceptance, before the step result persists. That is
 # the ONLY window where memoization alone lets a second send through.
 SEND_MS="${DEMO_SEND_MS:-4000}"
-KILL_AFTER_MS="${DEMO_KILL_AFTER_MS:-2000}"
+KILL_AFTER_MS="${DEMO_KILL_AFTER_MS:-1000}"
 
 export CONTACT_LEDGER="${LEDGER}"
 export CONTACT_SEND_MS="${SEND_MS}"
-export IRONFLOW_URL
-export IRONFLOW_SERVER_URL="${IRONFLOW_URL}"
+export IRONFLOW_SERVER_URL
 : >"${LEDGER}"
 
 cleanup() {
@@ -96,8 +96,8 @@ fi
 log "starting server (port ${SERVER_PORT}, db ${SERVER_DB})"
 "${IRONFLOW_BIN}" serve --dev --port "${SERVER_PORT}" --nats-port -1 --db "${SERVER_DB}" >"${SERVER_LOG}" 2>&1 &
 SERVER_PID=$!
-for _ in $(seq 1 60); do curl -fs "${IRONFLOW_URL}/health" >/dev/null 2>&1 && break; sleep 0.5; done
-if ! curl -fs "${IRONFLOW_URL}/health" >/dev/null 2>&1; then
+for _ in $(seq 1 60); do curl -fs "${IRONFLOW_SERVER_URL}/health" >/dev/null 2>&1 && break; sleep 0.5; done
+if ! curl -fs "${IRONFLOW_SERVER_URL}/health" >/dev/null 2>&1; then
   err "server failed to come up"; cat "${SERVER_LOG}" >&2 || true; exit 2
 fi
 
@@ -136,7 +136,11 @@ log "approving run ${RUN_ID}"
 (cd "${EXAMPLE_DIR}" && pnpm exec tsx scripts/approve.ts "${RUN_ID}" true) >>"${WORKER_LOG}" 2>&1
 
 # ── 5. kill mid-send ────────────────────────────────────────────
-log "sleeping ${KILL_AFTER_MS}ms then kill -9 worker #1 (mid-send)"
+# Resume after approval takes a variable few seconds (a fixed sleep from the
+# approval landed before the provider accepted on a loaded machine), so wait
+# for the ledger row instead. The row is written before the SEND_MS stall.
+log "waiting for the provider to accept, then kill -9 worker #1 after ${KILL_AFTER_MS}ms (mid-send)"
+for _ in $(seq 1 240); do [[ -s "${LEDGER}" ]] && break; sleep 0.25; done
 sleep "$(awk -v ms="${KILL_AFTER_MS}" 'BEGIN { printf "%f", ms / 1000 }')"
 kill -9 -- "-${WORKER_PID}" 2>/dev/null || kill -9 "${WORKER_PID}" 2>/dev/null || true
 wait "${WORKER_PID}" 2>/dev/null || true

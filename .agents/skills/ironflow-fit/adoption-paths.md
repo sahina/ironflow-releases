@@ -84,7 +84,7 @@ Always instruct both toolchains.
 
 Emit; register a function; list/get/cancel/resume runs and read steps; register a
 projection **and** the external projection worker loop; entity streams; event schemas;
-publish; `ExecuteSQL`; `TriggerSync` and `TriggerBatch`; webhook mutation; `PauseRun`
+publish; `ExecuteSQL`; `TriggerSync` and `TriggerBatch`; webhook management; `PauseRun`
 and `InjectStepOutput`; agent tools.
 
 ## Unreachable from generated code, at any price
@@ -135,7 +135,7 @@ Keep this short and link out; `other-languages.md` has the full table.
   planned", not "on the roadmap"). Issue #172, `NOT_PLANNED`:
   "speculative, no demand signal. Reopen if a .NET user materializes." If the reader
   is a .NET shop, they are the demand signal. Say so.
-- Anything described as planned must be **labeled planned** — `PRODUCT.md`.
+- Anything described as planned must be **labeled planned**.
 
 ## Snippet rule (D14)
 

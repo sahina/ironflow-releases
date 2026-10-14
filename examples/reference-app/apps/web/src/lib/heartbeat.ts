@@ -24,24 +24,11 @@ export const NOTIFICATIONS_HEARTBEAT_KEY = "notifications-heartbeat";
 
 export type Heartbeat = { service?: string; at?: string };
 
-/**
- * Reads a KV entry into a heartbeat, or `undefined` when it is not one.
- *
- * Both shapes arrive here: the REST entry carries `value` as base64, because Go
- * marshals `[]byte` that way, while the browser SDK hands back the decoded
- * object.
- */
+/** Reads a `getJSON()` KV entry into a heartbeat, or `undefined` when it is not one. */
 export function parseHeartbeat(entry: unknown): Heartbeat | undefined {
   if (entry === null || typeof entry !== "object") return undefined;
   const { value } = entry as { value?: unknown };
-  if (value !== null && typeof value === "object") return value as Heartbeat;
-  if (typeof value !== "string") return undefined;
-  try {
-    const decoded: unknown = JSON.parse(atob(value));
-    return decoded !== null && typeof decoded === "object" ? (decoded as Heartbeat) : undefined;
-  } catch {
-    return undefined;
-  }
+  return value !== null && typeof value === "object" ? (value as Heartbeat) : undefined;
 }
 
 /**

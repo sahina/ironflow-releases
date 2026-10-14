@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sahina/ironflow/sdk/go/ironflow"
-	"github.com/sahina/ironflow/sdk/go/ironflow/ironflowtest"
+	"github.com/sahina/ironflow-go/ironflow"
+	"github.com/sahina/ironflow-go/ironflow/ironflowtest"
 )
 
 const testOrderID = "0f3b6c1d9a4e47b28c5d1e6f70a2b3c4"

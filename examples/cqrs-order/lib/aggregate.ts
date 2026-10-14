@@ -53,7 +53,7 @@ export function placeOrder(
   customer: Customer,
   products: Product[],
   occurredAt: string,
-): OrderPlacedEvent[] {
+): [OrderPlacedEvent] {
   // Domain invariants are deterministic — retrying won't fix them. Use
   // NonRetryableError so the engine fails the run immediately instead of
   // burning the retry schedule on a known-bad command.

@@ -12,7 +12,6 @@ const docId = docIdArg ?? "doc-1";
 const imageUrl = imageUrlArg ?? "https://example.com/invoice.png";
 
 const client = new IronflowClient({
-  serverUrl: process.env.IRONFLOW_URL ?? "http://localhost:9123",
   apiKey: process.env.IRONFLOW_API_KEY,
 });
 

@@ -4,6 +4,8 @@
 # Starts an Ironflow server (--dev) against a throwaway SQLite file, starts the
 # worker, forces the card to decline, books a trip, and asserts that both
 # reservations were compensated and inventory came back to where it started.
+# Then races more bookings than seats on one flight (verify-contention.ts) and
+# asserts every seat is sold and none is refused while seats remain.
 #
 # Usage:
 #   ./scripts/demo-saga-rollback.sh
@@ -31,13 +33,26 @@ CHAOS_PORT="${CHAOS_PORT:-$((31000 + RANDOM % 30000))}"
 IRONFLOW_SERVER_URL="http://localhost:${SERVER_PORT}"
 
 export IRONFLOW_SERVER_URL
-export IRONFLOW_URL="${IRONFLOW_SERVER_URL}"
 export CHAOS_PORT
+
+# `pnpm exec tsx` does not forward SIGTERM to the node process that runs
+# worker.ts, so killing only the wrapper leaves the worker (and its chaos port)
+# alive. Collect the whole subtree first.
+descendants() {
+  local child
+  for child in $(pgrep -P "$1" 2>/dev/null); do
+    descendants "$child"
+    echo "$child"
+  done
+}
 
 cleanup() {
   set +e
   for pid in "${WORKER_PID:-}" "${SERVER_PID:-}"; do
     [[ -z "$pid" ]] && continue
+    kids="$(descendants "$pid")"
+    # shellcheck disable=SC2086
+    [[ -n "$kids" ]] && kill -TERM $kids 2>/dev/null
     kill -TERM "$pid" 2>/dev/null || true
     for _ in $(seq 1 20); do
       kill -0 "$pid" 2>/dev/null || break
@@ -102,11 +117,11 @@ if ! worker_ready; then
   exit 2
 fi
 
-log "booking a trip with a card that will decline"
-if (cd "${EXAMPLE_DIR}" && pnpm exec tsx scripts/verify-rollback.ts); then
+log "rollback check (declined card), then contention check (more bookings than seats)"
+if (cd "${EXAMPLE_DIR}" && pnpm exec tsx scripts/verify-rollback.ts && pnpm exec tsx scripts/verify-contention.ts); then
   exit 0
 else
-  err "rollback assertion failed"
+  err "rollback or contention assertion failed"
   echo "── server log ──" >&2
   tail -50 "${SERVER_LOG}" >&2 || true
   echo "── worker log ──" >&2

@@ -1,11 +1,11 @@
 """The Notifications context of the reference app.
 
 A client-only ConnectRPC subscriber. It hosts no functions, executes no steps
-and claims no worker slot — the Python SDK ships no worker runtime, and this
-example is where that shape is shown off rather than worked around.
+and claims no worker slot — by choice: the SDK has a worker runtime
+(`ironflow.worker`), and this example shows the client-only shape instead.
 
 The supervisor (examples/reference-app/scripts/dev.mjs) starts it with
-IRONFLOW_URL, IRONFLOW_API_KEY and REFERENCE_APP_DATA_DIR already pointing at the
+IRONFLOW_SERVER_URL, IRONFLOW_API_KEY and REFERENCE_APP_DATA_DIR already pointing at the
 engine and data directory it just created.
 
 This file is the wiring. The decisions live in notifications.py, the durability
@@ -75,11 +75,7 @@ def data_dir() -> Path:
 
 
 def server_url() -> str:
-    return (
-        os.environ.get("IRONFLOW_URL")
-        or os.environ.get("IRONFLOW_SERVER_URL")
-        or "http://127.0.0.1:9123"
-    )
+    return os.environ.get("IRONFLOW_SERVER_URL") or "http://127.0.0.1:9123"
 
 
 def register_schemas(client: IronflowClient, contracts_dir: Path) -> None:

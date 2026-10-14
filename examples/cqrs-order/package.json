@@ -7,7 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "worker": "tsx --env-file=.env.local worker.ts"
+    "worker": "tsx --env-file=.env.local worker.ts",
+    "test": "node --import tsx --test tests/place-order-handler.test.ts",
+    "typecheck": "tsc --noEmit",
+    "typecheck:live": "tsc --noEmit -p tests/tsconfig.json",
+    "test:live": "node --test tests/crash-recovery.live.mts"
   },
   "dependencies": {
     "@ironflow/browser": "workspace:*",

@@ -46,8 +46,8 @@ One container, two databases: `ironflow` and `ragapp`. `initdb.sql` creates the
 second and enables pgvector on it. Without `--wait` the next command races the
 database.
 
-Every `pnpm` script here loads `.env` via Node's `--env-file-if-exists`, so no
-`export` and no `dotenv` dependency.
+Every `pnpm` script here that needs `.env` loads it with `tsx --env-file-if-exists`,
+so no `export` and no `dotenv` dependency.
 
 ### 3. Start the engine — terminal 2
 
@@ -59,7 +59,7 @@ IRONFLOW_DATABASE_URL="postgres://ironflow:ironflow@localhost:5434/ironflow" \
     --bootstrap-key-file=/tmp/ironflow-financial-rag-bootstrap-key.json
 ```
 
-Leave it running. Wait for `server listening` before continuing. Copy the key
+Leave it running. Wait for the `Ironflow server is ready` log line before continuing. Copy the key
 from `/tmp/ironflow-financial-rag-bootstrap-key.json` into `IRONFLOW_API_KEY`
 in `examples/financial-rag/.env`; setup and worker requests need it because the
 engine is not running in `--dev` mode. The example scripts load `.env`.
@@ -96,7 +96,15 @@ pnpm start
 Prints `financial-rag worker running`, plus a loud warning if `VOYAGE_API_KEY`
 is unset (see below).
 
-### 6. Trigger the pipeline
+### 6. Known issue: SQL projections do not advance
+
+> **Step 7 stalls on the current engine (v0.43.1).** The three SQL projections only process
+> events when something calls `PollProjectionEvents` for them, and nothing does. `proj_documents`
+> stays empty (`ironflow projection status documents` shows `Lag: 2`), so `poll-source` waits on
+> `chunks > 0` for up to two hours and the output below never appears. Tracked in
+> [#2753](https://github.com/sahina/ironflow/issues/2753).
+
+### 7. Trigger the pipeline
 
 Back in terminal 1. The cron fires every 15 minutes; this fires the same event
 now.
@@ -125,7 +133,7 @@ The whole chain is inspectable:
 ./build/ironflow inspect <run_id>    # run_id is in the worker log
 ```
 
-### 7. Ask a question
+### 8. Ask a question
 
 ```bash
 pnpm ask "What was ACME's total revenue in Q3 2024?"
@@ -186,16 +194,14 @@ Three tables in the first, zero in the second. If a `proj_` table shows up in
 
 All five workflows — `poll-source`, `parse-document`, `run-eval`,
 `promote-index`, `record-regression` — use `createWorker`, not `serve()`.
-**Do not port them.**
 
-The agent loop calls `step.run("llm.turn")` once per turn. The SDK
-disambiguates that into `run:llm.turn:0,1,2…`, but the push executor persists
-steps keyed on the raw *name* against a `UNIQUE (run_id, step_id)` constraint.
-Under `serve()`, every turn after the first overwrites turn 1's row, so any
-retry or resume replays turn 1 with the last turn's answer and re-executes the
-rest against the live API. Pull mode keys on the unique ID and is unaffected.
+Parsing is slow. A 200-page filing takes minutes. Push mode is one HTTP POST with
+a budget of about 10 seconds. Pull mode holds the job open for as long as it takes.
 
-Tracked as [#1647](https://github.com/sahina/ironflow/issues/1647).
+An earlier version of this example had a second reason. The push executor stored
+steps by name, so the agent loop's repeated `step.run("llm.turn")` overwrote its own
+rows ([#1647](https://github.com/sahina/ironflow/issues/1647)). Release v0.29.0 fixed
+that.
 
 ## The eval
 
@@ -243,6 +249,25 @@ The workflows themselves are verified by running them, not by a test harness.
   rewrite for a real corpus.
 - **Standalone publishing** — this runs inside an Ironflow checkout, against
   your local SDK build.
+
+## Found while verifying
+
+Found by running it end to end against a real engine (simulated Claude, offline embeddings):
+
+- **A batch is a whole index.** Queries read `index_version = <live pointer>` only, and a batch
+  contains only the filings that changed. Promoting a batch that holds one new filing makes every
+  earlier filing unqueryable. The golden set is the only thing that would block it, and only if it
+  asks about the older filings. Verified: after promoting a one-filing batch, `chunks` rows for
+  the earlier version are still there but no query can reach them.
+- **Re-filing under the same filename cannot be ingested.** Chunk and row IDs derive from the
+  filename (`docId`), so a changed file with the same name collides with the earlier version:
+  `ON CONFLICT DO NOTHING` drops its chunks and the table-row insert hits the primary key. The
+  shadow index comes out empty, the eval fails, and the gate refuses it. Safe, but it cannot be
+  promoted. Restate under a new `ENTITY_PERIOD_ASOF` name, as the corpus does.
+- **A filing whose parse failed is never retried.** `proj_documents` records the version as seen
+  at append time, and the append is idempotent on content. The batch closes after the 2-hour poll
+  budget with `failed > 0`, and the eval then scores an index that lacks that filing. (Read from
+  the code; not exercised at runtime.)
 
 ## Known limit
 

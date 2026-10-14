@@ -1,6 +1,6 @@
 ---
 name: ironflow-code
-version: 0.43.1
+version: 0.44.0
 description: |
   Build Ironflow components — write functions, projections, workers, entity streams,
   webhooks, sagas, plus generate tests and audit existing code for anti-patterns.
@@ -33,6 +33,7 @@ When you need SDK syntax, read these files instead of guessing:
 ```
 ~/.agents/skills/ironflow-docs/sdk-typescript.md
 ~/.agents/skills/ironflow-docs/sdk-go.md
+~/.agents/skills/ironflow-docs/sdk-python.md
 ~/.agents/skills/ironflow-docs/patterns.md
 ~/.agents/skills/ironflow-docs/anti-patterns.md
 ```
@@ -55,10 +56,10 @@ If ambiguous, ask once.
 
 ### Step 1: Detect language
 
-- Read `package.json` for TS/JS, `go.mod` for Go.
-- If both, ask which language.
-- Read the relevant SDK reference: `Read ~/.agents/skills/ironflow-docs/sdk-typescript.md`
-  or `sdk-go.md`.
+- Read `package.json` for TS/JS, `go.mod` for Go, `pyproject.toml` or `requirements.txt` for Python.
+- If more than one, ask which language.
+- Read the relevant SDK reference: `Read ~/.agents/skills/ironflow-docs/sdk-typescript.md`,
+  `sdk-go.md` or `sdk-python.md`.
 
 ### Step 2: Clarify component (if ambiguous)
 

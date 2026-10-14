@@ -1,15 +1,12 @@
 // Walkthrough Step 3 — command handler.
-// Orchestrates: claim → enrich → load → decide → append → finalize.
-//
-// Uses the **claim-first** idempotency pattern: reserve the commandId via a
-// KV `create` (if-not-exists) BEFORE doing any work. If the claim fails,
-// another writer has already processed this command — return their result.
-// On append failure we release the claim so retries can proceed.
+// A pending reservation is recoverable; the committed event proves completion.
 
+import { NonRetryableError, type StreamEvent } from "@ironflow/node";
 import { ironflow } from "./ironflow-server";
 import { commandDedup, type DedupEntry } from "./command-dedup";
 import { customerRepo, productCatalog } from "./enrichment";
 import { foldOrder, placeOrder } from "./aggregate";
+import { STREAM_EVENTS } from "./events";
 import type { PlaceOrderCommand, EventMeta } from "./types";
 
 export type PlaceOrderResult = {
@@ -23,86 +20,79 @@ export async function placeOrderHandler(
 ): Promise<PlaceOrderResult> {
   const { data, metadata } = cmd;
 
-  // 1. Atomic claim — first writer wins. Concurrent retries with the same
-  //    commandId converge here: one proceeds, the others return the winner's
-  //    result without re-running the handler.
   const claim: DedupEntry = {
     orderId: data.orderId,
     claimedAt: new Date().toISOString(),
   };
   const prior = await commandDedup.tryClaim(metadata.commandId, claim);
   if (prior !== null) {
-    return {
-      orderId: prior.orderId,
-      entityVersion: prior.entityVersion ?? 0,
-      dedup: true,
-    };
+    if (prior.orderId !== data.orderId) {
+      throw new NonRetryableError("Command ID already used for another order");
+    }
+    // Empty defaults ("" / 0) in a serialized pending record do not prove completion.
+    const { completedAt, entityVersion } = prior;
+    if (
+      typeof completedAt === "string" && completedAt !== "" &&
+      typeof entityVersion === "number" && Number.isSafeInteger(entityVersion) && entityVersion > 0
+    ) {
+      return { orderId: prior.orderId, entityVersion, dedup: true };
+    }
   }
 
-  try {
-    // 2. Enrichment — freeze "current" values into the event.
-    const customer = await customerRepo.getById(data.customerId);
-    const products = await productCatalog.getMany(
-      data.items.map((i) => i.productId),
-    );
-
-    // 3. Load current stream state.
-    const { events } = await ironflow.streams.read(data.orderId);
-    const state = foldOrder(events);
-
-    // 4. Decide — validate and produce domain events.
-    const newEvents = placeOrder(
-      state,
-      data,
-      customer,
-      products,
-      metadata.issuedAt,
-    );
-
-    // 5. Append atomically with optimistic concurrency. Cross-cutting IDs
-    //    ride in the `metadata` option — not inside `data`. Downstream
-    //    handlers and projections read them via `event.metadata`.
-    const eventMetadata: EventMeta = {
-      causationId: metadata.commandId,
-      correlationId: metadata.correlationId ?? metadata.commandId,
-      tenantId: metadata.tenantId,
-      traceId: metadata.traceId,
-      issuedBy: metadata.issuedBy,
-    };
-
-    let expectedVersion = state.version;
-    let lastEntityVersion = expectedVersion;
-    for (const ev of newEvents) {
-      const res = await ironflow.streams.append(
-        data.orderId,
-        {
-          entityType: "order",
-          name: ev.name,
-          data: ev.data,
-        },
-        { expectedVersion, metadata: eventMetadata },
-      );
-      expectedVersion = res.entityVersion;
-      lastEntityVersion = res.entityVersion;
-    }
-
-    // 6. Finalize the claim with the resulting version. Subsequent retries
-    //    with the same commandId will now return this version directly.
+  const finish = async (entityVersion: number, dedup: boolean): Promise<PlaceOrderResult> => {
     await commandDedup.finalize(metadata.commandId, {
       ...claim,
+      claimedAt: prior?.claimedAt ?? claim.claimedAt,
       completedAt: new Date().toISOString(),
-      entityVersion: lastEntityVersion,
+      entityVersion,
     });
+    return { orderId: data.orderId, entityVersion, dedup };
+  };
+  const isReceipt = (ev: StreamEvent) =>
+    ev.name === STREAM_EVENTS.OrderPlaced && ev.metadata?.causationId === metadata.commandId;
+  const { events } = await ironflow.streams.read(data.orderId);
+  const receipt = events.find(isReceipt);
+  if (receipt) return finish(receipt.entityVersion, true);
 
-    return {
-      orderId: data.orderId,
-      entityVersion: lastEntityVersion,
-      dedup: false,
-    };
+  const customer = await customerRepo.getById(data.customerId);
+  const products = await productCatalog.getMany(data.items.map((i) => i.productId));
+  const state = foldOrder(events);
+  const [ev] = placeOrder(state, data, customer, products, metadata.issuedAt);
+  const eventMetadata: EventMeta = {
+    causationId: metadata.commandId,
+    correlationId: metadata.correlationId ?? metadata.commandId,
+    tenantId: metadata.tenantId,
+    traceId: metadata.traceId,
+    issuedBy: metadata.issuedBy,
+  };
+
+  let ack: { eventId: string };
+  try {
+    ack = await ironflow.streams.append(
+      data.orderId,
+      { entityType: "order", name: ev.name, data: ev.data },
+      {
+        expectedVersion: state.version,
+        // Engine idempotency keys are environment-wide; scope to the order so a reused
+        // command ID cannot return another order's event. IDs may contain ':', so encode
+        // both parts to keep the delimiter unambiguous.
+        idempotencyKey: `cqrs-order:place-order:${encodeURIComponent(data.orderId)}:${encodeURIComponent(metadata.commandId)}`,
+        metadata: eventMetadata,
+      },
+    );
   } catch (err) {
-    // Release the claim so an honest retry can proceed. We swallow the
-    // release error (best-effort) so the original error propagates.
-    await commandDedup.release(metadata.commandId).catch(() => {});
+    const { events: committed } = await ironflow.streams.read(data.orderId);
+    const receipt = committed.find(isReceipt);
+    if (receipt) return finish(receipt.entityVersion, true);
     throw err;
   }
+  // An acknowledgement is not proof: the engine's environment-wide key index can answer
+  // with a non-entity event or another stream's event. Only this command's receipt is.
+  const { events: committed } = await ironflow.streams.read(data.orderId);
+  const placed = committed.find(isReceipt);
+  if (!placed) {
+    throw new NonRetryableError("Append acknowledged without a committed entity version for this command");
+  }
+  // Finalization failures leave the receipt recoverable on the next retry.
+  return finish(placed.entityVersion, placed.id !== ack.eventId);
 }

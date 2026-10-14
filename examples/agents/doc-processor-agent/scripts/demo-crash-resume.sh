@@ -8,6 +8,9 @@
 # Usage:
 #   ./scripts/demo-crash-resume.sh                  # uses bundled binary build/ironflow
 #   IRONFLOW_BIN=/path/to/ironflow ./scripts/demo-crash-resume.sh
+#   DEMO_RECORD=1 ./scripts/demo-crash-resume.sh    # screen-recording mode: wait 20s before the
+#                                                   # event, kill mid-classify (after OCR finished) so the
+#                                                   # replayed step is visible, keep the server up until Ctrl-C
 #
 # Exit codes:
 #   0  agent recovered from crash, projection saw doc-2 published
@@ -30,21 +33,26 @@ SERVER_DB="${LOG_DIR}/ironflow.db"
 
 IRONFLOW_BIN="${IRONFLOW_BIN:-${REPO_ROOT}/build/ironflow}"
 # Pick an ephemeral port so re-runs don't collide with a stuck previous
-# server holding 9123. Caller can override IRONFLOW_PORT/IRONFLOW_URL.
+# server holding 9123. Caller can override IRONFLOW_PORT. The URL always targets the
+# server this script starts, never a shell IRONFLOW_SERVER_URL (that is the dev server).
 SERVER_PORT="${IRONFLOW_PORT:-$((30000 + RANDOM % 30000))}"
-IRONFLOW_URL="${IRONFLOW_URL:-http://localhost:${SERVER_PORT}}"
+IRONFLOW_SERVER_URL="http://localhost:${SERVER_PORT}"
 DOC_ID="${DEMO_DOC_ID:-demo-crash-$(date +%s)}"
 IMAGE_URL="${DEMO_IMAGE_URL:-https://example.com/invoice.png}"
 OCR_MS="${DOC_PROCESSOR_OCR_MS:-3000}"
-KILL_AFTER_MS="${DEMO_KILL_AFTER_MS:-1500}"
+if [[ -n "${DEMO_RECORD:-}" ]]; then
+  # OCR finishes at ~3s and classify runs 5s, so the kill at 5.5s leaves one
+  # finished step for the restarted worker to replay instead of re-run.
+  export DOC_PROCESSOR_CLASSIFY_MS="${DOC_PROCESSOR_CLASSIFY_MS:-5000}"
+  KILL_AFTER_MS="${DEMO_KILL_AFTER_MS:-5500}"
+  KILL_WHERE="mid-classify"
+else
+  KILL_AFTER_MS="${DEMO_KILL_AFTER_MS:-1500}"
+  KILL_WHERE="mid-OCR"
+fi
 
 export DOC_PROCESSOR_OCR_MS="${OCR_MS}"
-# Both env names: SDK client + REST worker read IRONFLOW_SERVER_URL,
-# the agent module's memory backend reads IRONFLOW_URL first then falls
-# back to IRONFLOW_SERVER_URL. Setting both keeps every code path on
-# the random demo port.
-export IRONFLOW_URL
-export IRONFLOW_SERVER_URL="${IRONFLOW_URL}"
+export IRONFLOW_SERVER_URL
 
 cleanup() {
   set +e
@@ -88,17 +96,19 @@ fi
 
 # ── 1. start server ─────────────────────────────────────────────
 log "starting server (port: ${SERVER_PORT}, logs: ${SERVER_LOG}, db: ${SERVER_DB})"
-"${IRONFLOW_BIN}" serve --dev --port "${SERVER_PORT}" --db "${SERVER_DB}" >"${SERVER_LOG}" 2>&1 &
+# --nats-port -1 takes an ephemeral NATS socket; the default 4222 collides with any
+# other running ironflow (or a previous demo still in TIME_WAIT).
+"${IRONFLOW_BIN}" serve --dev --port "${SERVER_PORT}" --nats-port -1 --db "${SERVER_DB}" >"${SERVER_LOG}" 2>&1 &
 SERVER_PID=$!
 
 # wait for server ready
 for _ in $(seq 1 60); do
-  if curl -fs "${IRONFLOW_URL}/health" >/dev/null 2>&1; then
+  if curl -fs "${IRONFLOW_SERVER_URL}/health" >/dev/null 2>&1; then
     break
   fi
   sleep 0.5
 done
-if ! curl -fs "${IRONFLOW_URL}/health" >/dev/null 2>&1; then
+if ! curl -fs "${IRONFLOW_SERVER_URL}/health" >/dev/null 2>&1; then
   err "server failed to come up"
   cat "${SERVER_LOG}" >&2 || true
   exit 2
@@ -139,11 +149,15 @@ if ! grep -q "Connected to server" "${WORKER_LOG}" 2>/dev/null; then
 fi
 
 # ── 4. fire the event ───────────────────────────────────────────
+if [[ -n "${DEMO_RECORD:-}" ]]; then
+  log "DEMO_RECORD: open ${IRONFLOW_SERVER_URL} and start recording; emitting in 20s"
+  sleep 20
+fi
 log "emitting doc.received docId=${DOC_ID}"
 (cd "${EXAMPLE_DIR}" && pnpm exec tsx scripts/trigger.ts "${DOC_ID}" "${IMAGE_URL}") >>"${WORKER_LOG}" 2>&1
 
 # ── 5. kill worker mid-OCR ──────────────────────────────────────
-log "sleeping ${KILL_AFTER_MS}ms then kill -9 worker #1 (mid-OCR)"
+log "sleeping ${KILL_AFTER_MS}ms then kill -9 worker #1 (${KILL_WHERE})"
 SLEEP_S=$(awk -v ms="${KILL_AFTER_MS}" 'BEGIN { printf "%f", ms / 1000 }')
 sleep "${SLEEP_S}"
 kill -9 -- "-${WORKER_PID}" 2>/dev/null || kill -9 "${WORKER_PID}" 2>/dev/null || true
@@ -174,6 +188,13 @@ fi
 log "verifying projection contains docId=${DOC_ID}"
 if (cd "${EXAMPLE_DIR}" && pnpm exec tsx scripts/verify.ts "${DOC_ID}"); then
   log "✅ doc-processor recovered after kill -9"
+  # The projection can see the doc before the run row is marked completed;
+  # holding lets a dashboard viewer watch the run finish.
+  if [[ -n "${DEMO_RECORD:-}" ]]; then
+    # Not `read`: the node children leave stdin non-blocking, so it fails with EAGAIN.
+    log "DEMO_RECORD: server stays up at ${IRONFLOW_SERVER_URL}; press Ctrl-C to stop"
+    while :; do sleep 1; done
+  fi
   exit 0
 else
   err "❌ projection never saw docId=${DOC_ID} after restart"

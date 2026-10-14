@@ -22,6 +22,7 @@ import {
   type IronflowProjection,
 } from "@ironflow/node";
 import { EVENTS, STREAM_EVENTS } from "./events";
+import { incrementVelocity } from "./velocity";
 
 // ── Types ───────────────────────────────────────────────────────
 // The shape of a transaction event as it arrives from the card network.
@@ -130,29 +131,8 @@ const evaluateFraud = createFunction(
           return await s.run(
             "velocity-check",
             async (): Promise<SignalResult> => {
-              const kv = client.kv();
-              const bucket = kv.bucket("fraud-velocity");
-
-              // Atomic read-increment via KV store CAS (check-and-set).
-              // Uses the revision number to prevent lost updates when
-              // two transactions for the same card race concurrently.
-              const key = `${tx.cardId}.1h`;
-              let count = 0;
-
-              try {
-                const entry = await bucket.get(key);
-                count =
-                  typeof entry.value === "number" ? entry.value : Number(entry.value) || 0;
-                // CAS: only succeeds if revision hasn't changed since our read
-                await bucket.update(key, count + 1, entry.revision);
-              } catch {
-                // Key doesn't exist yet — first transaction for this card.
-                // create() fails if another writer raced us; the step will
-                // retry on the next attempt with the correct revision.
-                await bucket.create(key, 1);
-              }
-
-              count = count + 1;
+              // Velocity counter in the KV Store, incremented with CAS.
+              const count = await incrementVelocity(client.kv().bucket("fraud-velocity"), tx.cardId);
 
               // More transactions in a short window = higher risk
               const riskContribution =
@@ -252,7 +232,8 @@ const evaluateFraud = createFunction(
     // Entity streams use explicit version tracking for optimistic
     // concurrency. expectedVersion: 0 means "stream must not exist"
     // (first write), then we increment for each subsequent append.
-    // This guarantees exactly-once semantics even if a step retries.
+    // A repeated append is rejected (version conflict), not duplicated, so a
+    // retried or duplicate-event run cannot double the history.
     const scoring = await step.run("score", async () => {
       const rawScore = signals.reduce(
         (sum, signal) => sum + signal.riskContribution,

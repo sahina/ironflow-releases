@@ -3,18 +3,7 @@ import { describe, expect, test } from "vitest";
 import { FRESH_HEARTBEAT_MS, heartbeatIsFresh, parseHeartbeat } from "@/lib/heartbeat";
 
 describe("the Python subscriber's heartbeat", () => {
-  test("reads the base64 value the REST entry carries", () => {
-    // Go marshals []byte as base64, so this is what /api/v1/kv returns.
-    const value = btoa(JSON.stringify({ service: "notifications-python", at: "2026-08-28T10:00:00Z" }));
-
-    expect(parseHeartbeat({ value })).toEqual({
-      service: "notifications-python",
-      at: "2026-08-28T10:00:00Z",
-    });
-  });
-
-  test("takes an already-decoded value as it is", () => {
-    // The browser SDK's KV client hands back the parsed object.
+  test("takes the value getJSON() decoded", () => {
     const beat = { service: "notifications-python", at: "2026-08-28T10:00:00Z" };
 
     expect(parseHeartbeat({ value: beat })).toEqual(beat);
@@ -24,6 +13,7 @@ describe("the Python subscriber's heartbeat", () => {
     expect(parseHeartbeat(undefined)).toBeUndefined();
     expect(parseHeartbeat({})).toBeUndefined();
     expect(parseHeartbeat({ value: "not base64 json" })).toBeUndefined();
+    expect(parseHeartbeat({ value: 1 })).toBeUndefined();
   });
 
   test("is fresh for the same window a worker heartbeat is", () => {

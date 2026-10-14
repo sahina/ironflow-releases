@@ -1,6 +1,6 @@
 ---
 name: ironflow-start
-version: 0.43.1
+version: 0.44.0
 description: |
   Adopt Ironflow — set up in a new or existing project and make architectural
   decisions. Triggers on: "set up ironflow", "install ironflow", "add ironflow to",
@@ -146,8 +146,8 @@ as `IRONFLOW_API_KEY`.
 
 That `<db-dir>` is `.ironflow/` under the cwd by default, and `serve` fills it with the
 SQLite db, the embedded NATS store and `blobs/`. Gitignore the whole directory before the
-first commit — the bootstrap key and `.ironflow_jwt_secret` beside it are live
-credentials. `ironflow init` templates already ignore it; an existing project won't.
+first commit — the bootstrap key, `.ironflow_jwt_secret` and `engine.json` beside it are live
+credentials (`engine.json` holds a copy of the key). `ironflow init` templates already ignore it; an existing project won't.
 
 Desktop users: the app runs an engine per workspace, so there's no `ironflow serve` to
 run. Point the SDK at the server URL the app shows.
@@ -164,9 +164,10 @@ Don't default. Show both:
 >
 > Which mode? You can add the other later."
 
-Pull is **HTTP polling** (`GET /api/v1/workers/{id}/jobs`), not gRPC. An opt-in
-ConnectRPC streaming worker exists at `@ironflow/node/worker-streaming`; it is not
-the default and not what `createWorker` does.
+Pull is **HTTP polling** (`GET /api/v1/workers/{id}/jobs`), not gRPC. Each SDK also has an
+opt-in ConnectRPC streaming worker: `@ironflow/node/worker-streaming` (Node),
+`ironflow.NewStreamingWorker` (Go) and `ironflow.worker.StreamingWorker` (Python). It is not
+the default and not what `createWorker`, `NewWorker` or `Worker` do.
 
 The 10s push ceiling is the **engine's**, not your host's: `PushTimeout` defaults to 10s
 and the effective budget is `min(function timeout_ms, PushTimeout)`. Raising the
@@ -262,6 +263,7 @@ export async function GET() {
     await client.registerFunction({
       id: fn.config.id,
       triggers: fn.config.triggers,
+      recording: fn.config.recording,
       endpointUrl: `${process.env.NEXT_PUBLIC_URL}/api/ironflow`,
     });
   }
@@ -271,14 +273,14 @@ export async function GET() {
 
 Two things to flag before the user builds on this:
 
-- **`registerFunction` does not carry `recording`.** Its payload is `id`, `name`,
+- **`registerFunction` sends only the fields you pass.** Its request takes `id`, `name`,
   `description`, `triggers`, `retry`, `timeoutMs`, `concurrency`, `debounce`,
-  `preferredMode`, `endpointUrl`, `actorKey`, `cancelOn` — nothing else. A push function
-  registered this way runs with `recording: false`, so `ironflow inspect` has no frames
-  to replay, no matter what the `createFunction` config says. `secrets` and `metadata`
-  are dropped the same way. Pull mode's `worker.start()` sends all three (`stepTimeout`
-  is enforced client-side by the worker in both modes).
-  If time-travel debugging matters, that's an argument for pull.
+  `preferredMode`, `endpointUrl`, `actorKey`, `cancelOn`, `secrets`, `recording`,
+  `recordingProfile`, `recordingRetention` and `metadata`. The sample above passes
+  `recording` through. Without it a push function runs with `recording: false`, so
+  `ironflow inspect` has no frames to replay, no matter what the `createFunction` config
+  says. Pull mode's `worker.start()` sends these fields for you (`stepTimeout` is enforced
+  client-side by the worker in both modes).
 - `serve()` returns `Promise<Response | void>` (it also accepts Node req/res). Next.js
   typed-route checking can reject that as a route export; cast if `next build` complains.
 
@@ -327,7 +329,7 @@ Create `.env.example`:
 
 ```env
 IRONFLOW_SERVER_URL=http://localhost:9123
-# IRONFLOW_API_KEY=ifkey_...              # REQUIRED unless the server runs with --dev
+# IRONFLOW_API_KEY=ifkey_...              # REQUIRED unless the server runs with --dev or .ironflow/engine.json supplies it
 
 # Push mode:
 # IRONFLOW_SIGNING_KEY=...                # pass as serve({ signingKey }) — the SDK never reads this env var itself
@@ -337,22 +339,20 @@ IRONFLOW_SERVER_URL=http://localhost:9123
 # IRONFLOW_DATABASE_URL=postgres://...    # production
 ```
 
-`IRONFLOW_URL` is a live alias, but only on some paths. `serve()` (push) and the
-`@ironflow/node/agent` module check it **before** `IRONFLOW_SERVER_URL`, so a stale
-`IRONFLOW_URL` in the shell silently wins over `.env`. `createWorker` and `createClient`
-ignore it entirely and read `IRONFLOW_SERVER_URL` only — so this explains a misrouted
-push handler, never a misrouted worker.
-
-Sharper still: webhook emit inside `serve()` falls back to `IRONFLOW_URL` **only**. Set
-just `IRONFLOW_SERVER_URL` with no explicit `serverUrl` and webhook events are silently
-not emitted.
+`IRONFLOW_SERVER_URL` is the only server-URL variable on every path: the CLI, the SDK
+clients and workers, `serve()` push and webhook emit, agent memory, and `exposeMcp`.
+The order is an explicit `serverUrl` first, then `IRONFLOW_SERVER_URL`, then
+`http://localhost:9123`. Blank values count as unset.
+Agent memory and `exposeMcp` have no localhost default: they need
+`IRONFLOW_SERVER_URL` or an explicit value.
 
 There is no `APP_URL` convention in Ironflow — for a non-Next framework, name your app's
 own URL variable whatever you like; only your registration code reads it.
 
 Ironflow's local files must stay out of version control: `serve` writes the SQLite db,
 embedded NATS store and `blobs/` under `.ironflow/`, alongside `.ironflow_bootstrap_key.json`
-(an admin API key) and `.ironflow_jwt_secret`; `.env` and `.env.local` hold credentials.
+(an admin API key), `.ironflow_jwt_secret` and `engine.json`; `.env` and `.env.local` hold
+credentials.
 Setting `spec.storage.path` moves the data to that file's directory, so ignore that path
 instead. If the project is in a Git work tree, review it and create or extend `.gitignore`
 for these and for everything else its stack generates, as `create-project.md` describes
@@ -392,9 +392,13 @@ expected output with a bounded wait; another completed run does not verify setup
 Empty array after an emit usually means the function never registered (push: did the
 GET run? pull: is the worker connected?), not that it failed.
 
-If these 401, the server is running without `--dev` — either restart it with `--dev` or
-export `IRONFLOW_API_KEY` from the bootstrap key file. The CLI reads the key only from
-that env var; there is no `--api-key` flag on `emit` or `run`.
+If these 401, the server is running without `--dev` and no key reached the CLI. Either
+restart the server with `--dev` or export `IRONFLOW_API_KEY` from the bootstrap key file.
+There is no `--api-key` flag on `emit` or `run`. The CLI and the SDKs read the key from
+`IRONFLOW_API_KEY`; only when `IRONFLOW_SERVER_URL` and `IRONFLOW_API_KEY`
+are all unset do they fall back to `.ironflow/engine.json`, which a local SQLite `serve`
+writes. A 401 therefore points to a remote or Postgres engine, a non-loopback `--host`, a
+different working directory, or `IRONFLOW_NO_DISCOVERY=1`.
 
 ### Step 9: Suggest next
 
@@ -402,6 +406,10 @@ that env var; there is no `--api-key` flag on `emit` or `run`.
 > - `/ironflow-code` to write your real functions, projections, workers, tests
 > - `/ironflow-start` (architecture mode) to choose patterns
 > - `/ironflow-ops` once you have failed runs to debug"
+
+If the user codes in Zed or a JetBrains IDE and is not already in the Ironflow agent, add one line:
+`@ironflow/agent` puts these skills in the editor's agent panel with their own model key
+(`npx -y @ironflow/agent login`). Setup: https://docs.ironflow.run/how-to-guides/ai-acp-agent/
 
 ---
 

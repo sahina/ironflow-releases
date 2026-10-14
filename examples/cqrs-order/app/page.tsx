@@ -197,7 +197,7 @@ export default function PlaceOrderPage() {
           <p className="text-xs text-gray-500">
             <code className="bg-gray-100 px-1 rounded">customer-orders-list</code>{" "}
             partitioned by <code className="bg-gray-100 px-1 rounded">
-              $.data.customer.id
+              $.customer.id
             </code>
             . Updates pushed over WebSocket via{" "}
             <code className="bg-gray-100 px-1 rounded">subscribeToProjection</code>.

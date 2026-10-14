@@ -537,7 +537,7 @@ scan_ts() {
       emit "$file" "$line" "INFO" "missing-types" "event.data cast as any — define interface"
     done
 
-  # INFO: bucket.get() outside a try block. Tracks real try-block extent by brace
+  # INFO: bucket.get() or bucket.getJSON() outside a try block. Tracks real try-block extent by brace
   # depth rather than looking back a fixed number of lines — a try body longer
   # than the window used to read as unguarded.
   awk '
@@ -548,8 +548,8 @@ scan_ts() {
         depth += gsub(/\{/, "{")
         depth -= gsub(/\}/, "}")
       }
-      if ($0 ~ /bucket\.get\(/ && !intry)
-        print FILENAME":"NR":INFO:kv-missing-try:bucket.get() without try/catch — throws on missing key"
+      if ($0 ~ /bucket\.get(JSON)?\(/ && !intry)
+        print FILENAME":"NR":INFO:kv-missing-try:bucket.get()/getJSON() without try/catch — throws on missing key"
       if (intry && depth <= 0) intry=0
     }
   ' "$file" 2>/dev/null

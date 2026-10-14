@@ -90,7 +90,7 @@ with no credential at all. That is a deliberate local-demo choice, labeled in th
 UI on every screen, and it is not a production pattern: a real application
 authenticates every call with a short-lived token from a trusted backend.
 
-Two things a browser reveals that no unit test does, both fixed here and worth
+Three things a browser reveals that no unit test does, all fixed here and worth
 knowing before you write a second Ironflow UI:
 
 - `configure()` tears the client down — transport, open subscriptions, the
@@ -221,8 +221,8 @@ Startup order is engine, then readiness, then services, then the web
 application. Each service reports ready by the strongest claim available to it:
 the ordering service by the schemas it registered, the payment worker by a live
 heartbeat on `GET /api/v1/workers`, and the Python subscriber by a timestamp it
-rewrites in a KV bucket. The last one has no alternative — the pinned Python SDK (0.33.1)
-ships no worker runtime (`ironflow.worker` first shipped in v0.40.0), so that process appears in no worker list, and a registered
+rewrites in a KV bucket. The last one is client-only on purpose — it uses no worker
+runtime (`ironflow.worker` exists in the pinned SDK, 0.43.1, and is not used here), so that process appears in no worker list, and a registered
 schema outlives the process that registered it.
 
 A child that exits before it is ready fails the whole start with a named reason
@@ -310,8 +310,8 @@ of the authorization key.
 ## The Python subscriber
 
 `services/notifications-python` is the odd one out on purpose: it is a
-**client-only** process. The pinned Python SDK (0.33.1) ships no worker runtime
-(`ironflow.worker` first shipped in v0.40.0), so it registers
+**client-only** process. It deliberately uses no worker runtime (the pinned SDK,
+0.43.1, ships `ironflow.worker`; this service does not use it), so it registers
 no function, executes no step and claims no worker slot. All it does is
 subscribe to a Pub/Sub topic over ConnectRPC, write one row per message to its
 own SQLite database, and emit `notification.sent`.
@@ -328,7 +328,7 @@ That shape forces three things worth copying:
 - Liveness is a KV timestamp. Nothing else can report on a process that owns no
   worker record and may legitimately deliver nothing for minutes.
 
-It pins `ironflow-py==0.33.1` from PyPI on purpose: this example proves the
+It pins `ironflow-py==0.43.1` from PyPI on purpose: this example proves the
 released wheel works. A contributor changing `sdk/python` can override it in
 their virtualenv with `pip install -e ../../../../sdk/python` after
 `make notifications-install`.

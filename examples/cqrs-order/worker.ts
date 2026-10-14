@@ -121,7 +121,9 @@ const orderDetail = createProjection<OrderDetailViewState>({
 const customerOrders = createProjection<CustomerOrdersListState>({
   name: "customer-orders-list",
   events: [STREAM_EVENTS.OrderPlaced, STREAM_EVENTS.OrderShipped, STREAM_EVENTS.OrderCancelled],
-  partitionKey: "$.data.customer.id",
+  // Rooted at the event payload, not an envelope: "$.data.customer.id" matches
+  // nothing and every order lands in the __global__ partition.
+  partitionKey: "$.customer.id",
   initialState: () => ({ orders: [] as OrderSummary[] }),
   handler: (state, event, ctx) => {
     const data = event.data as Record<string, unknown>;
@@ -160,7 +162,6 @@ const customerOrders = createProjection<CustomerOrdersListState>({
 // ─── Worker ─────────────────────────────────────────────────────
 
 const worker = createWorker({
-  serverUrl: process.env.IRONFLOW_SERVER_URL || "http://localhost:9123",
   functions: [placeOrder],
   projections: [orderDetail, customerOrders] as IronflowProjection[],
 });

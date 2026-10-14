@@ -22,6 +22,16 @@ Durable PR review agent. Fetches a diff, runs it through an LLM, waits for human
 - `approve()` is durable — kill -9 the worker, the run stays paused at the gate, restart and it keeps waiting
 - Replays inside the same run are cheap; the LLM call is paid for once
 
+## Real vs. simulated
+
+Everything external is simulated, so the example runs offline and needs no keys:
+
+- `fetch-diff` returns a hard-coded diff after a 500ms sleep. It never calls GitHub.
+- `llm.complete()` wraps `reviewWith()` in `src/llm.ts`, a keyword check on that diff (300ms sleep). No model is called.
+- `post-comment` only logs to the worker console and returns a fake `commentId`. Nothing is posted anywhere, and no `GITHUB_TOKEN` is read.
+
+What is real: the Ironflow run, the durable steps, the `approve()` pause, and the crash-resume behavior.
+
 ## Quick start
 
 ```bash
@@ -32,6 +42,7 @@ ironflow serve --dev
 pnpm -C ../../../sdk/js build
 
 # Install + run worker
+# Set IRONFLOW_SERVER_URL for the worker and scripts if the server runs elsewhere.
 pnpm install
 pnpm dev
 
@@ -39,11 +50,15 @@ pnpm dev
 pnpm trigger octocat/hello 42
 
 # `pnpm trigger` prints the runId (and the exact approve command). Approve it:
-pnpm approve <runId>
+pnpm run approve <runId>
 
-# Or reject:
-pnpm approve <runId> false "looks unsafe"
+# Or reject: the run completes with { posted: false, reason: "looks unsafe" }
+pnpm run approve <runId> false "looks unsafe"
 ```
+
+Approve only after the run is waiting (about a second after `pnpm trigger`, once `fetch-diff` and the LLM step finish; see it with `ironflow run get <runId>`). An approval event sent before the gate is reached is dropped, and the run then waits the full 24h. Send it again once the run shows `waiting`. An approval for an unknown or already finished run is accepted and ignored.
+
+If nobody answers within the 24h TTL, the run fails with `waitForEvent timed out` and nothing is posted. A late approval does not revive it.
 
 ## Crash-resilience callout
 
@@ -65,7 +80,7 @@ sleep 120
 pnpm dev
 
 # Approve it; the worker resumes, posts the comment.
-pnpm approve <runId>
+pnpm run approve <runId>
 ```
 
 This is the YC pitch in 30 seconds: **runs that span hours of human-time without burning a worker slot or losing context on restart.**
@@ -85,7 +100,9 @@ Pair both examples to see the full primitive surface.
 
 ## Swap the simulated LLM
 
-Edit `src/llm.ts`. The reference Anthropic implementation is in the comments — it returns the normalized `LLMCompleteResult` shape that `llm.complete()` expects. Set `ANTHROPIC_API_KEY` and you're live.
+Edit `src/llm.ts`. The reference Anthropic implementation is in the comments — it returns the normalized `LLMCompleteResult` shape that `llm.complete()` expects. Run `pnpm add @anthropic-ai/sdk` (the example does not depend on it) and set `ANTHROPIC_API_KEY`, and you're live. The reference code has not been run against the live API.
+
+Delivery of `post-comment` is at-least-once: a completed step is never re-run, but a crash after the real side effect and before the step is recorded would repeat it. Pass an idempotency key to the real GitHub call if that matters.
 
 ## Files
 

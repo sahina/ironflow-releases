@@ -14,7 +14,6 @@ if (!docIdArg) {
 }
 
 const client = new IronflowClient({
-  serverUrl: process.env.IRONFLOW_URL ?? "http://localhost:9123",
   apiKey: process.env.IRONFLOW_API_KEY,
 });
 

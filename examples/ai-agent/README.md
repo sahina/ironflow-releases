@@ -51,9 +51,8 @@ pnpm -C ../../sdk/js build
 # Install dependencies
 pnpm install
 
-# Agent memory needs the server URL in both environment variables.
-export IRONFLOW_URL=http://localhost:9123
-export IRONFLOW_SERVER_URL="$IRONFLOW_URL"
+# The worker, the agent memory client and `ironflow emit` all read this.
+export IRONFLOW_SERVER_URL=http://localhost:9123
 
 # Start the worker
 pnpm dev
@@ -63,6 +62,10 @@ ironflow emit agent.research --data '{"topic":"event sourcing best practices"}'
 ```
 
 ## What Happens
+
+This example is self-contained: the search tool and the summarizing LLM in `src/tools.ts` are
+**simulated** (canned results, no network, no API key). The durable steps, retries, recording and
+event-sourced memory are real. See [Customizing](#customizing) to plug in real services.
 
 1. The `agent.research` event triggers the research agent function
 2. The agent plans search queries based on the topic
@@ -83,6 +86,14 @@ ironflow inspect <run-id>
 # Query the agent's memory projection
 curl -s -X POST http://localhost:9123/ironflow.v1.ProjectionService/GetProjection -H 'Content-Type: application/json' -d '{"name":"agent-memory"}' | jq '.state'
 ```
+
+## Crash recovery
+
+Kill the worker mid-run (`kill -9`) and start it again: the run resumes on the restarted worker and
+replays completed tool and LLM steps from their recorded output instead of re-running them. The
+engine reassigns the run only after it notices the worker is gone (heartbeat timeout), so in
+`--dev` expect roughly one to two minutes before the run moves again. A step that was in flight when
+the worker died never finished recording, so it runs again.
 
 ## Customizing
 

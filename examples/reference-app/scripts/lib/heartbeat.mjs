@@ -1,8 +1,8 @@
 // The Python notification service's liveness signal, shared by the supervisor,
 // the live scripts and (in its own copy) the web application.
 //
-// Why KV and not a worker record: the Python SDK ships no worker runtime, so
-// that service claims no worker slot and appears nowhere in
+// Why KV and not a worker record: that service is client-only (it uses no
+// worker runtime), claims no worker slot and appears nowhere in
 // `GET /api/v1/workers`. And the last `notification.sent` is no substitute — a
 // system that has processed no orders would read as a dead subscriber.
 //

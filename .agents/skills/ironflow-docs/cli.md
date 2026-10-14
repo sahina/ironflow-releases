@@ -3,7 +3,7 @@
 Only two flags are **persistent** (available on every command): `--as-org <org>` and
 `-v/--verbose`. Everything else is per-command. `--json` is common but declared
 individually — check the command. `--env` exists on a handful only (`secret`, `apikey
-create`, `tenant`, `outbox dlq`, `capacity`, `debounce cancel`). There is **no
+create`, `tenant`, `outbox dlq`, `capacity`, `debounce cancel`, `circuit-breaker`). There is **no
 global `--project` flag** — the only `--project` in the CLI is on `env create`, and
 `projection wait-for-event --projection` is a different flag.
 
@@ -32,6 +32,7 @@ ironflow run list                                     # recent runs
 ironflow run list --status failed --limit 5 --json
 ironflow run list --function process-order
 ironflow run get <run-id> --json
+ironflow run wait <run-id> --timeout 10m --json       # block until terminal; exit 0 only if completed
 
 # Control a live run (MCP equivalents: ironflow_cancel_run, ironflow_resume_run, ...)
 ironflow run cancel <run-id> --reason "duplicate order"
@@ -73,6 +74,7 @@ ironflow function get process-order --json
 
 ironflow projection list --json
 ironflow projection get order-stats --json --partition cust_1
+ironflow projection history order-stats --json         # archived definitions (also: event schema history)
 ironflow projection status order-stats --json         # lag, errors, lastEventSeq
 ironflow projection rebuild order-stats --dry-run      # scope only, changes nothing
 ironflow projection rebuild order-stats                # DESTRUCTIVE: deletes + replays
@@ -96,7 +98,7 @@ ironflow projection durables prune --delete
 
 ### SQL projections
 
-Projections defined in SQL live entirely in the CLI — there is no SDK equivalent. The
+Projections defined in SQL live entirely in the CLI — there is no SDK equivalent. The engine drives them (no worker); while the status is `active`, `projection status` `Lag` 0 means no event is waiting for the engine. `projection rebuild` refuses `--from`, `--to` and `--partition` for them. The
 name becomes the table name: `^[a-z_][a-z0-9_]*$` (lowercase, underscores only — hyphens are rejected with a 400, unlike every other name in this file), ≤45 characters.
 
 ```bash
@@ -137,6 +139,7 @@ ironflow event schema list --json --event order.placed
 ironflow event schema get order.placed --version 2 --json
 ironflow event schema delete order.placed --version 1
 ironflow event schema check order.placed --json    # is enforcement actually enforcing?
+ironflow event schema history order.placed --version 2 --json   # --version is required
 ironflow event upcast order.placed --from 1 --to 2 --data '{"name":"a b"}' --json
 ironflow event redact <event-id> --yes             # irreversible; does not reach the runs it triggered (use `run redact`)
 ```
@@ -249,9 +252,15 @@ ironflow validate -f ironflow.yaml        # -f is required; there is no position
 Dashboard: http://localhost:9123
 
 `serve` writes local state to `.ironflow/` in the cwd: the SQLite db, the embedded NATS
-store, `blobs/`, plus `.ironflow_bootstrap_key.json` (an admin API key) and
-`.ironflow_jwt_secret`. Gitignore it — `ironflow init` templates already do. Setting
-`spec.storage.path` relocates all five to that file's directory.
+store, `blobs/`, plus `.ironflow_bootstrap_key.json` (an admin API key),
+`.ironflow_jwt_secret` and `engine.json`. Gitignore it — `ironflow init` templates already do.
+Setting `spec.storage.path` relocates all of them to that file's directory.
+
+`engine.json` is the discovery file (`--discovery-file`, ADR 0098). When
+`IRONFLOW_SERVER_URL` and `IRONFLOW_API_KEY` are both unset, the CLI and the SDKs read the
+nearest `.ironflow/engine.json` up the directory tree and take the URL and key from it. `serve`
+writes it for a SQLite engine on a loopback host, leaves the key out under `--dev`, and removes
+it on a clean shutdown. `IRONFLOW_NO_DISCOVERY=1` turns the lookup off.
 
 ## Projects & Environments
 
@@ -322,6 +331,14 @@ ironflow a2a --agent code-review --host 0.0.0.0 --public-url https://agents.exam
 
 The adapter calls the server with its own `IRONFLOW_API_KEY` (developer role). Default port 9124. An `approve()` gate stays hidden from callers unless `--caller-input` lists it. Callers reach only runs that the adapter started.
 
+## Conformance & Update
+
+```bash
+# Check your own push endpoint against the push protocol. No server needed.
+ironflow conformance push --url http://localhost:8080/ironflow --signing-key $KEY --level 1
+ironflow update check      # compare this binary with the latest release; downloads nothing
+```
+
 ## Circuit Breakers
 
 ```bash
@@ -352,40 +369,34 @@ ironflow audit auth-trail --org org_default --json   # auth decision trail
 ironflow role list --json
 ironflow role create admin --org org_abc123      # --org is required
 ironflow role get role_abc123 --json
-ironflow role assign-policy role_abc123 pol_xyz789
-ironflow role remove-policy role_abc123 pol_xyz789
 ironflow role delete role_abc123
 ```
 
-### Policies (Layer 2 CEL)
+### Policy set (Layer 2, Rego)
 
-**CEL policies are subtractive only.** Roles grant; policies can only narrow, deny-wins.
-`--effect allow` is rejected at write (#943, ADR 0016 T2) — grant with a role, then add
-conditional denies here.
+**A policy set can only deny.** Roles grant; the org's Rego set narrows them through
+`data.ironflow.authz.deny` (a set of reason strings). One set per org, edited as a directory
+of `.rego` files. A new set starts in `monitor` mode: it records `would_deny` audit rows and
+blocks nothing until you push with `--mode enforce`.
 
 ```bash
-ironflow policy list --json
-ironflow policy get pol_abc123 --json
-ironflow policy create --name deny-prod-delete --effect deny \
-  --actions "delete" --resources "irn:ironflow:org_acme:*:*:*:*" \
-  --condition 'request.environment == "production"'
+ironflow policy pull ./policies              # writes the .rego files + .ironflow-policy.json (version, decision, mode)
+ironflow policy pull ./policies --prune      # also delete local .rego files the server set lacks
+ironflow policy validate ./policies          # compile + type-check without saving
+ironflow policy dry-run ./policies --input request.json --explain
+ironflow policy push ./policies              # If-Match comes from .ironflow-policy.json; 412 means pull first
+ironflow policy push ./policies --mode enforce
+ironflow policy versions
+ironflow policy rollback 3 --dir ./policies  # restores v3's files + decision rule; the current mode is kept
 
-# Compile + evaluate without persisting. Use before create/update.
-ironflow policy test --condition 'subject.org == "acme"' \
-  --request '{"action":"read"}' --subject '{"id":"u1","roles":["admin"]}'
-ironflow policy test --policy-id pol_abc123 --request-file req.json --subject-file sub.json
+# Break-glass. The preflight refuses a push that would lock every admin out; the bypass is
+# audited and needs an API key (a stored login is a cookie session and cannot bypass).
+ironflow policy push ./policies --bypass-self-lockout-preflight --bypass-reason "incident 42"
 
-ironflow policy update pol_abc123 --condition "subject.org == 'acme'"
-ironflow policy update pol_abc123 --clear-condition     # removes the condition
-ironflow policy delete pol_abc123
-
-# History is append-only: rollback forward-saves the old snapshot as a new version.
-ironflow policy versions list pol_abc123 --json
-ironflow policy rollback pol_abc123 2
-
-# Bundles. A single bad condition or name collision rejects the whole install.
-ironflow policy template list --json
-ironflow policy template install tpl_admin_basics
+# Platform operators: --platform addresses the platform org's own set. force-monitor switches a
+# tenant's set to monitor when it denies everything, evaluated against the platform set.
+ironflow policy pull ./platform-policies --platform
+ironflow policy force-monitor org_acme --reason "set denies all requests"
 ```
 
 ### Platform operator surface
@@ -405,7 +416,7 @@ ironflow platform users create --email user@example.com --name "User" --role-ids
 ironflow platform users delete user_abc123
 
 ironflow platform roles list --json
-ironflow platform roles create my-role --policy-ids pol_abc
+ironflow platform roles create my-role
 ironflow platform roles delete role_abc123
 
 ironflow platform tenants list --json

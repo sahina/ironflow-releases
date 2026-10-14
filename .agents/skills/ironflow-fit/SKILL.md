@@ -1,6 +1,6 @@
 ---
 name: ironflow-fit
-version: 0.43.1
+version: 0.44.0
 description: |
   Analyze a codebase or workspace and produce a visual HTML report on whether and where
   Ironflow fits — event-driven readiness, ranked opportunities with file:line evidence,
@@ -236,7 +236,7 @@ is the deliverable.
 ## Edge cases
 
 - **Ironflow is already installed** (`@ironflow/node`, `@ironflow/browser`,
-  `ironflow-go`, an `ironflow` binary, or an `ironflow.yaml`). Say so up front and
+  `ironflow-go`, `ironflow-py`, an `ironflow` binary, or an `ironflow.yaml`). Say so up front and
   ask whether they want a usage review (`ironflow-code` audits anti-patterns) or a
   fit analysis of the parts *not* yet using it. Do not write a report that pitches
   something they already run.

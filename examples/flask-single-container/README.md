@@ -98,4 +98,4 @@ Only port 8000 is published. The engine API stays on loopback inside the contain
 
 ## Versions
 
-`ironflow-py` and the engine image are pinned to the same release (0.40.0). Move them together.
+`ironflow-py` and the engine image are pinned to the same release (0.43.1). Move them together.

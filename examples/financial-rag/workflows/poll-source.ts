@@ -4,15 +4,14 @@ import { randomUUID } from "node:crypto";
 import { createClient, createFunction } from "@ironflow/node";
 import { EVENTS, type IngestBatchClosed } from "../events.js";
 import {
+  buildSeenMap,
   diffChangedSet,
   hashContent,
   stableId,
   type SourceObject,
 } from "../src/hash.js";
 
-const client = createClient({
-  serverUrl: process.env.IRONFLOW_URL ?? "http://localhost:9123",
-});
+const client = createClient();
 
 const SOURCE_DIR = process.env.SOURCE_DIR ?? "./corpus";
 
@@ -81,14 +80,7 @@ export const pollSource = createFunction(
       const result = await client.sqlProjections.query("documents", {
         limit: 10000,
       });
-      const keyCol = result.columns.indexOf("source_key");
-      const hashCol = result.columns.indexOf("content_hash");
-      const seen = new Map<string, string>();
-      for (const row of result.rows) {
-        const k = row[keyCol];
-        const h = row[hashCol];
-        if (k !== undefined && h !== undefined) seen.set(k, h);
-      }
+      const seen = buildSeenMap(result.columns, result.rows);
       return diffChangedSet(source, seen);
     });
 

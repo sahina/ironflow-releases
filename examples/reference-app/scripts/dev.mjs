@@ -146,7 +146,7 @@ function readBootstrapKey() {
 
 /**
  * The environment every service child receives. Ambient values come first so a
- * developer's own settings survive; ours override so a stray IRONFLOW_URL in
+ * developer's own settings survive; ours override so a stray IRONFLOW_SERVER_URL in
  * their shell cannot point a child at a different engine.
  *
  * Exported for the supervisor tests and for later slices that add child rows.
@@ -159,9 +159,6 @@ export function buildChildEnv({ url, apiKey, dataDir = DATA_DIR, env = process.e
   for (const name of ["IRONFLOW_DATABASE_URL", "NATS_URL", "NATS_CREDS_FILE"]) delete ambient[name];
   return {
     ...ambient,
-    // Both names: the Go and JS SDKs read IRONFLOW_URL first and fall back to
-    // IRONFLOW_SERVER_URL, and the worker path reads the latter.
-    IRONFLOW_URL: url,
     IRONFLOW_SERVER_URL: url,
     IRONFLOW_API_KEY: apiKey,
     IRONFLOW_ENV: "default",
@@ -170,7 +167,7 @@ export function buildChildEnv({ url, apiKey, dataDir = DATA_DIR, env = process.e
     // own file inside it.
     REFERENCE_APP_DATA_DIR: dataDir,
     // The engine URL is not a secret; the API key never reaches browser code.
-    NEXT_PUBLIC_IRONFLOW_URL: url,
+    NEXT_PUBLIC_IRONFLOW_SERVER_URL: url,
   };
 }
 
@@ -235,7 +232,7 @@ async function waitForWorker({ url, apiKey, functionId, timeoutMs = 60_000 }) {
 /**
  * Wait until the Python notification service has written a fresh heartbeat.
  *
- * It is a client-only subscriber: the Python SDK ships no worker runtime, so it
+ * It is a client-only subscriber: it uses no worker runtime, so it
  * registers no function and claims no worker slot, and `waitForWorker` cannot
  * see it. `waitForSchema` cannot either — a registered schema outlives the
  * process that registered it, so after the first boot that probe is satisfied

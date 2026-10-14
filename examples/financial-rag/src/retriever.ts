@@ -3,9 +3,7 @@ import { getPool, readPointer } from "./db.js";
 import { embed, toVectorLiteral } from "./embed.js";
 import { buildHybridQuery, escapeLikePattern, escapeLiteral } from "./query.js";
 
-const client = createClient({
-  serverUrl: process.env.IRONFLOW_URL ?? "http://localhost:9123",
-});
+const client = createClient();
 
 export interface Hit {
   chunkId: string;

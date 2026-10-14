@@ -41,8 +41,8 @@ printf 'FROM scratch\nCOPY . .\n' | docker build -q -f - \
 [ -f "$TMP/export/keep" ] || fail "build-context probe did not copy files"
 [ -z "$(find "$TMP/export" -name '.env*' -print -quit)" ] || fail "credential file survived COPY . ."
 
-# The pinned engine image predates key seeding, so the seeded case needs the
-# engine under test. `make test-example-flask-container` builds it and sets this.
+# Optional: test against another engine build (`make test-example-flask-container` sets it to
+# the tree's own image). Unset, the Dockerfile's pinned release is used.
 ENGINE_IMAGE="${ENGINE_IMAGE:-}"
 build_args=()
 [ -n "$ENGINE_IMAGE" ] && build_args=(--build-arg "ENGINE_IMAGE=$ENGINE_IMAGE")
@@ -182,94 +182,90 @@ done
 [ "$(docker inspect -f '{{.State.ExitCode}}' "$NAME")" != 0 ] || fail "container exited 0 after the engine died"
 
 # --- Seeded key: the platform secret is the source of truth. ---
-if [ -n "$ENGINE_IMAGE" ]; then
-  SEED_PORT=$((PORT + 1))
-  KEY_A="ifkey_0123456789abcdef0123456789abcdef"
-  KEY_B="ifkey_fedcba9876543210fedcba9876543210"
-  SEED_PASS=seed-dashboard-pass
+SEED_PORT=$((PORT + 1))
+KEY_A="ifkey_0123456789abcdef0123456789abcdef"
+KEY_B="ifkey_fedcba9876543210fedcba9876543210"
+SEED_PASS=seed-dashboard-pass
 
-  run_seeded() { # $1 = key
-    docker rm -f "$SEED_NAME" >/dev/null 2>&1 || true
-    docker run -d --name "$SEED_NAME" -p "127.0.0.1:$SEED_PORT:8000" -v "$SEED_VOLUME:/data" \
-      -e "IRONFLOW_BOOTSTRAP_ADMIN_KEY=$1" -e "IRONFLOW_BOOTSTRAP_ADMIN_PASSWORD=$SEED_PASS" "$IMAGE" >/dev/null
-    wait_ready "http://127.0.0.1:$SEED_PORT" "$SEED_NAME"
-  }
-  # Sets SEEDED_RID. Not a $(...) caller: fail must exit the script, not a subshell.
-  seeded_order() { # $1 = order id
-    local code=000 status=unknown
-    code=$(curl --connect-timeout 1 --max-time 5 -s -o "$TMP/seed-order.json" -w '%{http_code}' -X POST "http://127.0.0.1:$SEED_PORT/orders" \
-      -H 'Content-Type: application/json' -d "{\"order_id\":\"$1\",\"amount\":100}") || fail "seeded order acceptance unknown; inspect state before resubmitting"
-    [ "$code" = 202 ] || fail "seeded POST /orders returned $code; not retried"
-    SEEDED_RID=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["run_id"])' "$TMP/seed-order.json")
-    seeded_status_is_completed "$SEEDED_RID" || fail "seeded run $SEEDED_RID did not complete"
-  }
-  seeded_status_is_completed() { # $1 = run id; polls up to 30s
-    local status=unknown
-    local deadline=$((SECONDS + 30))
-    while [ "$SECONDS" -lt "$deadline" ]; do
-      status=$(curl --connect-timeout 1 --max-time 2 -sf "http://127.0.0.1:$SEED_PORT/orders/$1" | python3 -c 'import sys,json; print(json.load(sys.stdin)["status"])') || status=unknown
-      [ "$status" = completed ] && [ "$SECONDS" -lt "$deadline" ] && return 0
-      [ "$status" = failed ] && fail "seeded run $1 failed"
-      sleep 1
+run_seeded() { # $1 = key
+  docker rm -f "$SEED_NAME" >/dev/null 2>&1 || true
+  docker run -d --name "$SEED_NAME" -p "127.0.0.1:$SEED_PORT:8000" -v "$SEED_VOLUME:/data" \
+    -e "IRONFLOW_BOOTSTRAP_ADMIN_KEY=$1" -e "IRONFLOW_BOOTSTRAP_ADMIN_PASSWORD=$SEED_PASS" "$IMAGE" >/dev/null
+  wait_ready "http://127.0.0.1:$SEED_PORT" "$SEED_NAME"
+}
+# Sets SEEDED_RID. Not a $(...) caller: fail must exit the script, not a subshell.
+seeded_order() { # $1 = order id
+  local code=000 status=unknown
+  code=$(curl --connect-timeout 1 --max-time 5 -s -o "$TMP/seed-order.json" -w '%{http_code}' -X POST "http://127.0.0.1:$SEED_PORT/orders" \
+    -H 'Content-Type: application/json' -d "{\"order_id\":\"$1\",\"amount\":100}") || fail "seeded order acceptance unknown; inspect state before resubmitting"
+  [ "$code" = 202 ] || fail "seeded POST /orders returned $code; not retried"
+  SEEDED_RID=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["run_id"])' "$TMP/seed-order.json")
+  seeded_status_is_completed "$SEEDED_RID" || fail "seeded run $SEEDED_RID did not complete"
+}
+seeded_status_is_completed() { # $1 = run id; polls up to 30s
+  local status=unknown
+  local deadline=$((SECONDS + 30))
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    status=$(curl --connect-timeout 1 --max-time 2 -sf "http://127.0.0.1:$SEED_PORT/orders/$1" | python3 -c 'import sys,json; print(json.load(sys.stdin)["status"])') || status=unknown
+    [ "$status" = completed ] && [ "$SECONDS" -lt "$deadline" ] && return 0
+    [ "$status" = failed ] && fail "seeded run $1 failed"
+    sleep 1
+  done
+  return 1
+}
+
+# Each negative check below is a function that returns 0 when it SEES the leak, and is
+# proved able to see one first. "grep -q && fail" alone cannot tell "clean" from "the
+# pipeline broke": under pipefail, grep -q exits early, docker logs takes SIGPIPE, and a
+# real match reads as no match. So capture to a file, then grep the file.
+logs_leak() { # $1 = ERE; 0 when a log line matches
+  docker logs "$SEED_NAME" >"$TMP/seed.log" 2>&1
+  grep -qE "$1" "$TMP/seed.log"
+}
+# Prints "<processes scanned> <processes whose environment holds the password>". There is
+# no pgrep in python:3.14-slim, so walk /proc as the dead-engine step below does. The
+# entrypoint sh's own /proc/<pid>/environ is its start-up environment, so match by comm.
+# `-u app`: the processes run as app after the entrypoint drops root, and a container's root
+# has no CAP_SYS_PTRACE, so it cannot read another uid's environ or /proc/<pid>/fd.
+env_scan() { # $1 = space-separated comm names to scan
+  docker exec -u app "$SEED_NAME" sh -c '
+    n=0; leaked=0
+    for p in /proc/[0-9]*; do
+      c=$(cat "$p/comm" 2>/dev/null) || continue
+      case " $1 " in *" $c "*) ;; *) continue ;; esac
+      n=$((n + 1))
+      if tr "\0" "\n" < "$p/environ" 2>/dev/null | grep -q "^IRONFLOW_BOOTSTRAP_ADMIN_PASSWORD="; then leaked=$((leaked + 1)); fi
     done
-    return 1
-  }
+    echo "$n $leaked"' sh "$1"
+}
 
-  # Each negative check below is a function that returns 0 when it SEES the leak, and is
-  # proved able to see one first. "grep -q && fail" alone cannot tell "clean" from "the
-  # pipeline broke": under pipefail, grep -q exits early, docker logs takes SIGPIPE, and a
-  # real match reads as no match. So capture to a file, then grep the file.
-  logs_leak() { # $1 = ERE; 0 when a log line matches
-    docker logs "$SEED_NAME" >"$TMP/seed.log" 2>&1
-    grep -qE "$1" "$TMP/seed.log"
-  }
-  # Prints "<processes scanned> <processes whose environment holds the password>". There is
-  # no pgrep in python:3.14-slim, so walk /proc as the dead-engine step below does. The
-  # entrypoint sh's own /proc/<pid>/environ is its start-up environment, so match by comm.
-  # `-u app`: the processes run as app after the entrypoint drops root, and a container's root
-  # has no CAP_SYS_PTRACE, so it cannot read another uid's environ or /proc/<pid>/fd.
-  env_scan() { # $1 = space-separated comm names to scan
-    docker exec -u app "$SEED_NAME" sh -c '
-      n=0; leaked=0
-      for p in /proc/[0-9]*; do
-        c=$(cat "$p/comm" 2>/dev/null) || continue
-        case " $1 " in *" $c "*) ;; *) continue ;; esac
-        n=$((n + 1))
-        if tr "\0" "\n" < "$p/environ" 2>/dev/null | grep -q "^IRONFLOW_BOOTSTRAP_ADMIN_PASSWORD="; then leaked=$((leaked + 1)); fi
-      done
-      echo "$n $leaked"' sh "$1"
-  }
+run_seeded "$KEY_A"
+seeded_order s-1
+first_rid=$SEEDED_RID
+# Nothing on the volume: the key was never written.
+docker exec "$SEED_NAME" test ! -e /data/.ironflow_bootstrap_key.json || fail "a seeded key left a key file on the volume"
 
-  run_seeded "$KEY_A"
-  seeded_order s-1
-  first_rid=$SEEDED_RID
-  # Nothing on the volume: the key was never written.
-  docker exec "$SEED_NAME" test ! -e /data/.ironflow_bootstrap_key.json || fail "a seeded key left a key file on the volume"
+# The dashboard password does not ride into the app's environment. The engine keeps it, so
+# it is the control: a scan that cannot find the password there proves nothing about the app.
+out=$(env_scan "ironflow") || fail "env scan failed to run"
+[ "$out" = "1 1" ] || fail "env scan cannot see the password in the engine (got '$out'): the app check is blind"
+out=$(env_scan "gunicorn python") || fail "env scan failed to run"
+read -r scanned leaked <<<"$out"
+[ "$scanned" -ge 2 ] || fail "env scan found $scanned app processes, want the web server and the worker"
+[ "$leaked" = 0 ] || fail "the dashboard password reached $leaked app process(es)"
 
-  # The dashboard password does not ride into the app's environment. The engine keeps it, so
-  # it is the control: a scan that cannot find the password there proves nothing about the app.
-  out=$(env_scan "ironflow") || fail "env scan failed to run"
-  [ "$out" = "1 1" ] || fail "env scan cannot see the password in the engine (got '$out'): the app check is blind"
-  out=$(env_scan "gunicorn python") || fail "env scan failed to run"
-  read -r scanned leaked <<<"$out"
-  [ "$scanned" -ge 2 ] || fail "env scan found $scanned app processes, want the web server and the worker"
-  [ "$leaked" = 0 ] || fail "the dashboard password reached $leaked app process(es)"
+# Root, privileged: the container's stdio pipes are root's, and PID 1 runs as app, so opening
+# its fd needs CAP_SYS_PTRACE, which a plain exec does not get.
+docker exec --privileged "$SEED_NAME" sh -c 'echo seed-canary-line > /proc/1/fd/2'
+for _ in $(seq 1 10); do logs_leak seed-canary-line && break; sleep 1; done
+logs_leak seed-canary-line || fail "log scan cannot see a planted line: the log checks are blind"
+if logs_leak "$KEY_A|$SEED_PASS"; then fail "a seeded secret is in the logs"; fi
 
-  # Root, privileged: the container's stdio pipes are root's, and PID 1 runs as app, so opening
-  # its fd needs CAP_SYS_PTRACE, which a plain exec does not get.
-  docker exec --privileged "$SEED_NAME" sh -c 'echo seed-canary-line > /proc/1/fd/2'
-  for _ in $(seq 1 10); do logs_leak seed-canary-line && break; sleep 1; done
-  logs_leak seed-canary-line || fail "log scan cannot see a planted line: the log checks are blind"
-  if logs_leak "$KEY_A|$SEED_PASS"; then fail "a seeded secret is in the logs"; fi
-
-  # Rotation: same volume, new key. The old run history survives, the new key works.
-  run_seeded "$KEY_B"
-  seeded_order s-2
-  seeded_status_is_completed "$first_rid" || fail "the run from before the rotation is gone"
-  docker exec "$SEED_NAME" test ! -e /data/.ironflow_bootstrap_key.json || fail "rotation left a key file on the volume"
-  if logs_leak "$KEY_A|$KEY_B|$SEED_PASS"; then fail "a seeded secret is in the logs after rotation"; fi
-else
-  echo "UNVERIFIED: seeded-key rotation, seeded credential isolation, and seeded persistence require ENGINE_IMAGE with key-seeding support"
-fi
+# Rotation: same volume, new key. The old run history survives, the new key works.
+run_seeded "$KEY_B"
+seeded_order s-2
+seeded_status_is_completed "$first_rid" || fail "the run from before the rotation is gone"
+docker exec "$SEED_NAME" test ! -e /data/.ironflow_bootstrap_key.json || fail "rotation left a key file on the volume"
+if logs_leak "$KEY_A|$KEY_B|$SEED_PASS"; then fail "a seeded secret is in the logs after rotation"; fi
 
 echo "PASS: flask-single-container checks executed"

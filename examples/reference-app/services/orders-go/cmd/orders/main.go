@@ -2,7 +2,7 @@
 //
 // It is a pull-mode Ironflow worker: it polls the engine for work, so it needs
 // no inbound port and no HTTP API of its own. The supervisor
-// (examples/reference-app/scripts/dev.mjs) starts it with IRONFLOW_URL and
+// (examples/reference-app/scripts/dev.mjs) starts it with IRONFLOW_SERVER_URL and
 // IRONFLOW_API_KEY already pointing at the engine it just booted.
 package main
 
@@ -16,7 +16,7 @@ import (
 	"syscall"
 
 	"github.com/sahina/ironflow/examples/reference-app/services/orders-go/internal/order"
-	"github.com/sahina/ironflow/sdk/go/ironflow"
+	"github.com/sahina/ironflow-go/ironflow"
 )
 
 // ownedSchemas are the messages this context publishes. Registering them is

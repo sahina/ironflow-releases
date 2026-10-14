@@ -14,9 +14,7 @@ import {
   type QuestionResult,
 } from "../src/scoring.js";
 
-const client = createClient({
-  serverUrl: process.env.IRONFLOW_URL ?? "http://localhost:9123",
-});
+const client = createClient();
 
 const GOLDEN_PATH = process.env.GOLDEN_PATH ?? "./evals/golden.yaml";
 

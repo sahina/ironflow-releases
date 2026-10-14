@@ -34,7 +34,7 @@ export type IronflowClient = {
   /**
    * The Python subscriber's KV liveness entry, raw.
    *
-   * It has no worker record to look up: the Python SDK ships no worker runtime.
+   * It has no worker record to look up: it is a client-only subscriber.
    * `lib/heartbeat.ts` reads the entry.
    */
   notificationsHeartbeat(): Promise<unknown>;

@@ -35,7 +35,12 @@ export const vectorIndex = createProjection<unknown, unknown>({
     const text = isProse ? data.text : data.summary;
     // A table summary is keyed by its table, not by a chunk id — it is the one
     // artifact that exists to make a table findable rather than to be an answer.
-    const chunkId = isProse ? data.chunkId : `summary:${data.tableId}`;
+    // docId is part of the key: tableId is model-invented per filing, so two
+    // filings can both emit "income-statement" and the second would be dropped
+    // by ON CONFLICT below.
+    const chunkId = isProse
+      ? data.chunkId
+      : `summary:${data.docId}:${data.tableId}`;
     const [vector] = await embed([text]);
 
     await getPool().query(

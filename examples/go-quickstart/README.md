@@ -112,6 +112,12 @@ cd examples/go-quickstart
 go run main.go
 ```
 
+On a port other than 9123, set `IRONFLOW_SERVER_URL` for the worker and the CLI.
+The engine repository uses local SDK `replace` directives. The
+[published example](https://github.com/sahina/ironflow-releases/tree/main/examples/go-quickstart)
+uses `github.com/sahina/ironflow-go/ironflow` and pins the matching SDK release;
+it builds without a monorepo checkout.
+
 You should see:
 
 ```text
@@ -134,9 +140,13 @@ curl -X POST http://localhost:9123/ironflow.v1.ProjectionService/GetProjection -
 
 ### 5. Inspect the run
 
+From the repository root (`inspect` opens a TUI, so it needs a real terminal):
+
 ```bash
 ./build/ironflow inspect <run_id>
 ```
+
+Get the run ID with `ironflow run list`.
 
 ## Next Steps
 

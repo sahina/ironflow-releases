@@ -65,7 +65,8 @@ services:
       POSTGRES_USER: ironflow
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ironflow}
     ports:
-      - "5432:5432"
+      # Set POSTGRES_HOST_PORT when a host PostgreSQL already holds 5432.
+      - "${POSTGRES_HOST_PORT:-5432}:5432"
     volumes:
       - postgres_cluster_data:/var/lib/postgresql/data
     healthcheck:

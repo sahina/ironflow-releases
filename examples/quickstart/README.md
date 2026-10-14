@@ -104,6 +104,10 @@ pnpm install
 pnpm tsx worker.ts
 ```
 
+The worker, `ironflow emit` and `ironflow inspect` all default to
+`http://localhost:9123`. On another port, set `IRONFLOW_SERVER_URL` for each of them,
+for example `IRONFLOW_SERVER_URL=http://localhost:20600 pnpm tsx worker.ts`.
+
 You should see:
 
 ```text
@@ -134,9 +138,14 @@ curl -X POST http://localhost:9123/ironflow.v1.ProjectionService/GetProjection -
 
 ### 5. Inspect the run
 
+From the repository root (`inspect` opens a TUI, so it needs a real terminal):
+
 ```bash
 ./build/ironflow inspect <run_id>
 ```
+
+Get the run ID with `ironflow run list`. Without a terminal, `ironflow run get <run_id>`
+prints the run summary.
 
 ## Next Steps
 

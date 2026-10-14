@@ -30,7 +30,7 @@ export const researchAgent = agent(
   {
     id: "research-agent",
     description:
-      "Durable AI research agent. Plans queries, searches the web across parallel durable steps, then summarizes findings via llm(). Resumes from the last completed step on failure.",
+      "Durable AI research agent. Plans queries, searches the web in sequential durable steps, then summarizes findings via llm(). Resumes from the last completed step on failure.",
     triggers: [{ event: EVENTS.AgentResearch }],
     memory: {
       streamId: "agent-memory",
@@ -62,8 +62,8 @@ export const researchAgent = agent(
       call: () => summarizeWith(topic, allResults),
     });
 
-    // Step 4: persist the run into the agent-memory projection so the
-    // next research task can reference past topics.
+    // Step 4: persist the run into the agent-memory projection. This
+    // handler only writes; it never reads past topics back.
     const summaryText = String(summary.content ?? "(no summary)");
     await memory.append("agent.research.completed", {
       topic,

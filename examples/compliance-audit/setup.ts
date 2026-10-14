@@ -5,15 +5,13 @@
  * end-to-end audit lineage in the Ironflow dashboard.
  *
  * Usage: pnpm tsx setup.ts
- * Requires: Ironflow server running at localhost:9123
+ * Requires: Ironflow server running at localhost:9123 (override with IRONFLOW_SERVER_URL)
  */
 
-import { createClient } from "@ironflow/node";
+import { createClient, getServerUrl } from "@ironflow/node";
 import { STREAM_EVENTS } from "./events";
 
-const client = createClient({
-  serverUrl: process.env.IRONFLOW_URL ?? "http://localhost:9123",
-});
+const client = createClient();
 
 const ENTITY_ID = "order-demo-001";
 const ENTITY_TYPE = "order";
@@ -79,6 +77,8 @@ const orderLifecycle = [
 async function main() {
   console.log("Setting up Compliance Audit Trail demo...\n");
 
+  let failed = 0;
+
   for (let i = 0; i < orderLifecycle.length; i++) {
     const event = orderLifecycle[i];
     try {
@@ -91,6 +91,7 @@ async function main() {
         `  [${i + 1}/${orderLifecycle.length}] ${event.name} → v${result.entityVersion}`,
       );
     } catch (err) {
+      failed++;
       console.error(`  Failed to append ${event.name}:`, err);
     }
 
@@ -100,8 +101,18 @@ async function main() {
     }
   }
 
-  console.log("\nDone! Open http://localhost:9123/compliance-audit");
+  if (failed > 0) {
+    // Most likely cause: ${ENTITY_ID} already exists from an earlier run. Use a fresh server.
+    console.error(`\n${failed} of ${orderLifecycle.length} appends failed — stream ${ENTITY_ID} is incomplete.`);
+    process.exitCode = 1;
+    return;
+  }
+
+  console.log(`\nDone! Open ${getServerUrl()}/compliance-audit`);
   console.log(`Select "${ENTITY_ID}" from the left panel to see the audit trail.`);
 }
 
-main().catch(console.error);
+main().catch((err) => {
+  console.error(err);
+  process.exitCode = 1;
+});

@@ -21,7 +21,6 @@ the retrieved context below.
 
 async function ingest() {
   const client = createClient({
-    serverUrl: process.env.IRONFLOW_URL ?? "http://localhost:9123",
     apiKey: process.env.IRONFLOW_API_KEY,
   });
   await client.emit(EVENTS.IngestRequested, {

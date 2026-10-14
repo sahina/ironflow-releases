@@ -351,7 +351,7 @@ stripe := ironflow.CreateWebhook(ironflow.WebhookConfig{
 handler := ironflow.Serve(ironflow.ServeConfig{
     Functions: []ironflow.Function{ProcessOrder},
     Webhooks:  []ironflow.Webhook{stripe},
-    ServerURL: os.Getenv("IRONFLOW_SERVER_URL"),   // REQUIRED. serve.go:285 guards the
+    ServerURL: os.Getenv("IRONFLOW_SERVER_URL"),   // REQUIRED. serve.go guards the
                                                    // emit on `serverURL != ""` and there
                                                    // is NO env fallback — leave it empty
                                                    // and the transformed event is

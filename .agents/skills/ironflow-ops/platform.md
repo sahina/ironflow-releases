@@ -177,7 +177,8 @@ features.
 
 ### Hetzner Cloud (production)
 
-Prereqs: `terraform` v1.9+, `HCLOUD_TOKEN` env var.
+Prereqs: `terraform` v1.9+, `HCLOUD_TOKEN` env var. `provision destroy` also needs the `hcloud`
+CLI, and `provision status` needs `kubectl` (it does not check that `kubectl` is installed).
 
 ```bash
 ironflow provision create --provider hetzner --template small --name ironflow

@@ -73,7 +73,7 @@ export const SERVICES: Service[] = [
     role: "Subscribes to the order-status topic and records one local delivery per message.",
     // The whole reason this row exists in its own shape.
     evidence:
-      "A KV heartbeat: the Python SDK ships no worker runtime, so this process registers no worker and appears in no worker list.",
+      "A KV heartbeat: this process is client-only and uses no worker runtime, so it registers no worker and appears in no worker list.",
     source: "services/notifications-python",
   },
   {

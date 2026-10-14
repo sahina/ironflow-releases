@@ -16,7 +16,7 @@ import { sweepDeadlines } from "./sweep.js";
 //
 // Approve or reject a case's outbound contact:
 //
-//   pnpm approve <runId> [true|false] [reason]
+//   pnpm run approve <runId> [true|false] [reason]
 //
 // Signal a counterparty reply:
 //

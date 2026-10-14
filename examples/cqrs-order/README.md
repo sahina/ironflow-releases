@@ -12,7 +12,7 @@ Every step in the tutorial maps to a file here so you can read the doc with the 
 - Event appended with `expectedVersion` optimistic concurrency
 - Two managed projections: a per-order detail view and a per-customer partitioned list
 - Real-time UI via `subscribeToProjection`
-- Command idempotency backed by an Ironflow KV bucket (first-writer-wins)
+- Command reservations and cached results backed by KV, with stream receipts for crash recovery
 
 ## Walkthrough step → file map
 
@@ -137,6 +137,34 @@ Open <http://localhost:3000>.
 
    State clears, replays from the event log, and the UI updates as events
    stream back through.
+
+## Command crash recovery
+
+A pending KV reservation is recoverable. The handler looks for `order.placed`
+with this command's `causationId` before enrichment. If there is no receipt, it
+appends with optimistic concurrency and the stable key
+`cqrs-order:place-order:<orderId>:<commandId>`, with each ID passed through
+`encodeURIComponent`. Event idempotency keys are unique across the environment, so
+the order ID keeps a reused command ID from matching another order's event. IDs may
+contain `:`, and encoding keeps `a:b` + `c` distinct from `a` + `b:c`. Every
+append attempt, including a successful acknowledgement, is followed by a receipt
+read. Only this command's committed `order.placed` finalizes success, because the
+engine's key index can acknowledge a non-entity event or another stream's event.
+Retries in the original run and in a new run converge on the same placement version. A losing retry never deletes another retry's result.
+
+The recipe covers one event per command. Keep the placement event and its
+causation metadata available for recovery after the KV cache expires. Multi-event
+commands and external side effects need their own recovery design. Step memoization
+does not make the handler's unrecorded effects atomic.
+
+If an older worker already completed a run with `dedup: true, entityVersion: 0`,
+resubmit the command with the same `commandId` in a new run after updating the
+worker. An already memoized successful step does not rerun automatically.
+
+Run `pnpm test` and `pnpm typecheck` for the handler regression suite. From the
+repo root, run `make embed build`, then `pnpm -C examples/cqrs-order test:live`
+to kill a real worker after claim and after append. The live test starts its own
+isolated engine, checks resumed and new-run retries, and tears down its processes.
 
 ## What it intentionally skips
 

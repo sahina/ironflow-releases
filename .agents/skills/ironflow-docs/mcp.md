@@ -41,9 +41,8 @@ picks) and `--port-file` control the bind; stdio ignores all three. streamable-h
 }
 ```
 
-`ironflow mcp` reads `IRONFLOW_API_KEY` but **not** `IRONFLOW_SERVER_URL` — unlike the
-rest of the CLI. Setting it in `env` is inert and the server silently talks to
-`http://localhost:9123`. Point at a non-default engine with `--server-url`.
+`ironflow mcp` reads `IRONFLOW_API_KEY` and `IRONFLOW_SERVER_URL` from `env`. An explicit
+`--server-url` wins; without either, the server talks to `http://localhost:9123`.
 
 ## Tools (read-only) — 25, always registered
 
@@ -54,7 +53,7 @@ rest of the CLI. Setting it in `env` is inert and the server silently talks to
 | `ironflow_overview` | Dashboard stats: function count, active runs, workers, recent events |
 | `ironflow_list_runs` | List runs, with `limit`/`offset` paging |
 | `ironflow_get_run` | Get run detail |
-| `ironflow_wait_for_run` | Block until a run finishes (`timeout_seconds`, default 30); never cancels it |
+| `ironflow_wait_for_run` | Block until a run finishes (`timeout_seconds`, default 30, max 300); never cancels it |
 | `ironflow_get_run_steps` | Get a run's step outputs |
 | `ironflow_list_functions` | List registered functions, with `limit`/`offset` paging |
 | `ironflow_get_function` | Get function config |
@@ -267,6 +266,20 @@ when `retryable` is `true`, after `retry_after` seconds when present. The CLI pr
 object with `--json` or `IRONFLOW_OUTPUT=json`, and its exit code names the class: 3 retry,
 4 bad input, 5 auth, 6 not found, 7 conflict.
 
+## Editor agent (Zed, JetBrains)
+<!-- derived-from: docs/how-to-guides/ai-acp-agent.md#ironflow-tools-and-dev-mode -->
+
+`@ironflow/agent` is an ACP coding agent for Zed and JetBrains with these skills built in. The
+editor starts it with `npx -y @ironflow/agent`; the user brings a model key
+(`npx -y @ironflow/agent login`, or `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `GEMINI_API_KEY` /
+`OPENROUTER_API_KEY` in the agent's `env` block).
+
+It starts one `ironflow mcp` (loopback streamable HTTP) for each workspace, so it has MCP tools
+under `serve --dev` when `ironflow` is on PATH. If that fails it tries the server's remote MCP endpoint
+(`/api/v1/mcp`), which needs `IRONFLOW_MCP_REMOTE=true`, no `--dev`, and `IRONFLOW_API_KEY` (and
+`IRONFLOW_SERVER_URL`) in its `env`. If neither works it uses the skills and the `ironflow` CLI; its
+first reply then says "Ironflow tools unavailable". Guide: https://docs.ironflow.run/how-to-guides/ai-acp-agent/
+
 ## When to Use MCP vs CLI
 
 - **MCP**: agent-driven workflows, integrated into AI sessions, programmatic access
@@ -280,3 +293,4 @@ Skills like `/ironflow-ops` use MCP tools when present and fall back to CLI othe
 
 - MCP server guide: https://docs.ironflow.run/how-to-guides/ai-mcp-server/
 - CLI vs MCP: https://docs.ironflow.run/how-to-guides/ai-cli-vs-mcp/
+- Ironflow agent for Zed and JetBrains: https://docs.ironflow.run/how-to-guides/ai-acp-agent/

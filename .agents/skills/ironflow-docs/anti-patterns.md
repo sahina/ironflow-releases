@@ -57,8 +57,8 @@ const notifier = createProjection({ mode: "external", handler: async (e) => send
 ### 3a. Non-deterministic managed reducer
 <!-- derived-from: docs/explanation/projections.md#1-deterministic -->
 
-Under #486, PG-backed rebuild and the live NATS tail can both call the reducer
-for the same event. Reading the wall clock, generating a random ID, or reading
+Under #486, a rebuild (which reads the `events` table) and the live NATS tail can both
+call the reducer for the same event. Reading the wall clock, generating a random ID, or reading
 an env var produces a different `newState` on each call — the rebuilt state
 disagrees with the live state, silently. No runtime check catches this.
 
@@ -136,13 +136,13 @@ ironflow.subscribeToProjection("name", { onUpdate: (state) => setState(state) })
 A timeout is **not** observable from the handler at all — not as `null`, not as a
 rejection. The return type is `Promise<IronflowEvent<T>>`; on expiry the scheduler
 marks the step `timed_out` and fails the whole run
-(`internal/engine/scheduler.go:427,450`). The handler is never resumed, so no line
+(`internal/engine/scheduler.go`). The handler is never resumed, so no line
 after the wait ever executes.
 
 Catching is worse than useless here — `try/catch` or a chained `.catch()`, same
 result. `waitForEvent` suspends the run by throwing an
 internal `YieldSignal` that the SDK catches at the handler boundary
-(`sdk/js/node/src/serve.ts:396`). A user `catch` swallows that signal, so the run does
+(`sdk/js/node/src/serve.ts`). A user `catch` swallows that signal, so the run does
 not suspend — it returns as if it had finished, and the wait silently never happens.
 
 ```typescript
@@ -200,9 +200,9 @@ reads. Crossing the streams defeats CQRS.
 ### 5b. Dual-emitting `streams.append` + `emit` for the same fact
 
 `streams.append` already reaches projections. One append writes **two** outbox rows in
-the same transaction (`internal/eventtrigger/helper.go:704`): one on the entity topic
+the same transaction (`internal/eventtrigger/helper.go`): one on the entity topic
 for stream subscribers, one on `BuildUserEventTopic(eventName)` — the exact subject a
-projection's durable filters on (`internal/projection/coordinator.go:92`). Emitting the
+projection's durable filters on (`internal/projection/coordinator.go`). Emitting the
 same fact again publishes it twice, so the reducer runs twice and every total silently
 double-counts.
 

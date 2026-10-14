@@ -120,7 +120,7 @@ await step.sleepUntil("wait-open", "2026-03-16T09:30:00Z");
 
 // Wait for an external event. Returns the matching event — NOT null, and
 // NOT a rejection you can catch. On expiry the scheduler marks the step
-// timed_out and fails the run (internal/engine/scheduler.go:427,450); your
+// timed_out and fails the run (internal/engine/scheduler.go); your
 // handler is never resumed, so no code after this line runs.
 const approval = await step.waitForEvent("wait-approval", {
   event: OrderEvents.APPROVED,
@@ -158,7 +158,7 @@ const stripeKey = ctx.secrets.get("stripe-key");
 
 `sleep`, `sleepUntil`, `waitForEvent`, `invoke` and `invokeAsync` suspend the run by
 **throwing an internal `YieldSignal`** (`sdk/js/node/src/internal/errors.ts`). The SDK catches it at
-the handler boundary and reports `status: "yielded"` (`sdk/js/node/src/serve.ts:396`).
+the handler boundary and reports `status: "yielded"` (`sdk/js/node/src/serve.ts`).
 
 ```typescript
 // WRONG — the catch swallows the YieldSignal. The run never suspends;
@@ -270,7 +270,7 @@ export async function GET() {
 ```typescript
 import { ironflow } from "@ironflow/browser";
 
-ironflow.configure({ serverUrl: process.env.NEXT_PUBLIC_IRONFLOW_URL! });
+ironflow.configure({ serverUrl: process.env.NEXT_PUBLIC_IRONFLOW_SERVER_URL! });
 await ironflow.connect();   // for real-time
 
 // One-time read — returns an envelope; the reducer state is `.state`
@@ -291,7 +291,7 @@ Opt in with `createClient` when the app must keep working without a network. Wri
 import { createClient } from "@ironflow/browser";
 
 const app = await createClient({
-  serverUrl: process.env.NEXT_PUBLIC_IRONFLOW_URL!,
+  serverUrl: process.env.NEXT_PUBLIC_IRONFLOW_SERVER_URL!,
   offlineQueue: { identity: currentUser.id },   // identity is required
 });
 
@@ -343,13 +343,15 @@ const bucket = kv.bucket("user-settings");
 await bucket.put("user-123", { theme: "dark" });
 let entry;
 try {
-  entry = await bucket.get("user-123");                     // throws on a missing key
+  entry = await bucket.getJSON("user-123");                 // decoded JSON and revision; throws on a missing key
 } catch { /* missing key */ }
 await bucket.create("user-456", { theme: "light" });        // create-if-not-exists
 if (entry) await bucket.update("user-123", { theme: "light" }, entry.revision);  // CAS
 const keys = await bucket.listKeys();                        // string[]; optional filter arg
 await bucket.delete("user-123");
 ```
+
+`get()` returns the stored bytes as base64. `getJSON()` preserves metadata and returns parsed UTF-8 JSON in `value`, typed as `unknown`. Validate its shape before use. Invalid base64, UTF-8, or JSON throws `IronflowError` with code `INVALID_KV_JSON`.
 
 **Watch is available in both `@ironflow/node` and `@ironflow/browser`** — the reads and
 writes above are REST, but `watch` upgrades to a WebSocket. The callback takes one event

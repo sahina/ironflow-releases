@@ -193,33 +193,38 @@ interface HoldArgs {
  * conflict, so the seat cannot be sold twice.
  *
  * ponytail: optimistic concurrency on the whole stream, not per seat. Two
- * bookings for the *same* flight always serialise, even when there is plenty of
- * room — one of them just retries. Fine at demo scale; move to per-seat
- * reservation records if a real system needs concurrent holds on one flight.
+ * bookings for the *same* flight always collide, even when there is plenty of
+ * room — the loser re-reads and tries again (bounded), and only reports sold
+ * out once the fold says no capacity is left. Fine at demo scale; move to
+ * per-seat reservation records if a real system needs concurrent holds on one
+ * flight.
  */
+const HOLD_ATTEMPTS = 8;
+
 async function holdInventory(args: HoldArgs): Promise<void> {
-  const info = await ironflow.streams.getInfo(args.streamId);
-  if (!info) {
-    throw new NonRetryableError(`Inventory stream ${args.streamId} is missing — run the seeder.`);
-  }
+  for (let attempt = 1; attempt <= HOLD_ATTEMPTS; attempt++) {
+    const info = await ironflow.streams.getInfo(args.streamId);
+    if (!info) {
+      throw new NonRetryableError(`Inventory stream ${args.streamId} is missing — run the seeder.`);
+    }
 
-  const state = await foldStream(args.streamId);
-  if (!args.hasCapacity(state)) {
-    throw new NonRetryableError(args.soldOutMessage);
-  }
-
-  try {
-    await ironflow.streams.append(
-      args.streamId,
-      { entityType: args.entityType, name: args.heldEvent, data: args.data },
-      { expectedVersion: info.version },
-    );
-  } catch (err) {
-    if (isVersionConflict(err)) {
+    const state = await foldStream(args.streamId);
+    if (!args.hasCapacity(state)) {
       throw new NonRetryableError(args.soldOutMessage);
     }
-    throw err;
+
+    try {
+      await ironflow.streams.append(
+        args.streamId,
+        { entityType: args.entityType, name: args.heldEvent, data: args.data },
+        { expectedVersion: info.version },
+      );
+      return;
+    } catch (err) {
+      if (!isVersionConflict(err)) throw err;
+    }
   }
+  throw new NonRetryableError(args.soldOutMessage);
 }
 
 interface ReleaseArgs {

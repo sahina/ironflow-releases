@@ -4,10 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { ironflow } from "@ironflow/browser";
 
 const SERVER_URL =
-  process.env["NEXT_PUBLIC_IRONFLOW_URL"] ?? "http://localhost:9123";
+  process.env["NEXT_PUBLIC_IRONFLOW_SERVER_URL"] ?? "http://localhost:9123";
 const AGENT_ID = process.env["NEXT_PUBLIC_AGENT_ID"] ?? "doc-processor";
 
-type Status = "idle" | "invoking" | "running" | "completed" | "failed" | "cancelled";
+type Status = "idle" | "invoking" | "completed" | "failed" | "cancelled";
 
 interface StepRow {
   stepId: string;
@@ -41,6 +41,7 @@ export default function Home() {
   const abortRef = useRef<AbortController | null>(null);
   const idemRef = useRef<string>("");
   const currentRunIdRef = useRef<string | null>(null);
+  const watchSubRef = useRef<{ unsubscribe(): void } | null>(null);
 
   /**
    * Read the agent's memory projection. Eventual consistency: poll
@@ -96,9 +97,11 @@ export default function Home() {
     });
     void ironflow.connect();
 
-    // Tab close / unmount fires abort, which causes ironflow.agents.invoke
-    // to call cancelRun(runId) on the server. Without this, an in-flight
-    // agent keeps running after the user navigates away.
+    // Tab close / unmount fires abort, which drops the in-flight
+    // InvokeFunctionSync request; the server reads the abandoned caller and
+    // cancels the run itself (ADR 0067). beforeunload/pagehide do not
+    // guarantee the page goes away (mailto:, bfcache), so the step replay
+    // closes only on unmount.
     const onUnload = () => abortRef.current?.abort();
     window.addEventListener("beforeunload", onUnload);
     window.addEventListener("pagehide", onUnload);
@@ -106,13 +109,64 @@ export default function Home() {
     return () => {
       window.removeEventListener("beforeunload", onUnload);
       window.removeEventListener("pagehide", onUnload);
-      abortRef.current?.abort();
+      onUnload();
+      currentRunIdRef.current = null;
+      watchSubRef.current?.unsubscribe();
+      watchSubRef.current = null;
       ironflow.disconnect();
     };
   }, []);
 
+  /**
+   * Replay the run's step events. subscribe() resolves before the replay
+   * arrives, so the subscription stays open until the replay delivers the
+   * run's terminal event, the next run starts, or the page unmounts.
+   */
+  async function watchSteps(rid: string): Promise<void> {
+    currentRunIdRef.current = rid;
+    setRunId(rid);
+    let sub: { unsubscribe(): void } | null = null;
+    let closed = false;
+    const close = () => {
+      closed = true;
+      sub?.unsubscribe();
+      if (sub && watchSubRef.current === sub) watchSubRef.current = null;
+    };
+    try {
+      sub = await ironflow.agents.subscribe(rid, {
+        onStep: (e) => {
+          if (currentRunIdRef.current !== rid) return;
+          setSteps((prev) => {
+            const exists = prev.some(
+              (s) => s.stepId === e.stepId && s.type === e.type
+            );
+            return exists
+              ? prev
+              : [...prev, { stepId: e.stepId, type: e.type, topic: e.topic }];
+          });
+        },
+        // The replay ends with the terminal event; nothing follows it.
+        onComplete: close,
+        onFailed: close,
+        onCancelled: close,
+      });
+      if (closed || currentRunIdRef.current !== rid) {
+        sub.unsubscribe();
+      } else {
+        watchSubRef.current = sub;
+      }
+    } catch {
+      /* steps are best-effort; the invoke result is already displayed */
+    }
+  }
+
   async function run() {
-    if (status === "invoking" || status === "running") return;
+    if (status === "invoking") return;
+
+    abortRef.current?.abort();
+    currentRunIdRef.current = null;
+    watchSubRef.current?.unsubscribe();
+    watchSubRef.current = null;
 
     // Reset state.
     setStatus("invoking");
@@ -128,8 +182,6 @@ export default function Home() {
     const ac = new AbortController();
     abortRef.current = ac;
 
-    const watchSub = { current: null as { unsubscribe(): void } | null };
-
     try {
       const result = await ironflow.agents.invoke<{
         docId: string;
@@ -141,38 +193,10 @@ export default function Home() {
           idempotencyKey: idemRef.current,
           signal: ac.signal,
           timeoutMs: 60_000,
-          onRunStarted: async (rid) => {
-            currentRunIdRef.current = rid;
-            setRunId(rid);
-            setStatus("running");
-            // Attach a parallel subscription for live progress + step events.
-            // Replay (default 1000) inside agents.subscribe covers any
-            // events emitted between Trigger return and this attach.
-            try {
-              watchSub.current = await ironflow.agents.subscribe(rid, {
-                onStep: (e) => {
-                  // Drop late events from prior runs.
-                  if (currentRunIdRef.current !== rid) return;
-                  setSteps((prev) => {
-                    const exists = prev.some(
-                      (s) => s.stepId === e.stepId && s.type === e.type
-                    );
-                    return exists
-                      ? prev
-                      : [
-                          ...prev,
-                          { stepId: e.stepId, type: e.type, topic: e.topic },
-                        ];
-                  });
-                },
-              });
-            } catch {
-              /* progress is best-effort; invoke result still arrives */
-            }
-          },
         }
       );
 
+      if (ac.signal.aborted) return;
       setStatus("completed");
       setOutput(result.output);
       // Pull the agent's memory projection so the UI shows what was
@@ -180,8 +204,11 @@ export default function Home() {
       // run's final output payload. Reuses the run's AbortController
       // so an unmount/tab-close also stops the memory poll.
       void loadMemoryFor(docId, ac.signal);
+      void watchSteps(result.runId);
     } catch (err) {
-      const e = err as { name?: string; message?: string };
+      const e = err as { name?: string; message?: string; runId?: string };
+      // Failed and cancelled runs carry a runId; their steps show where it stopped.
+      if (e.runId && !ac.signal.aborted) void watchSteps(e.runId);
       if (e.name === "RunFailedError") {
         setStatus("failed");
         setError(e.message ?? "Run failed");
@@ -195,10 +222,6 @@ export default function Home() {
         setStatus("failed");
         setError(e.message ?? String(err));
       }
-    } finally {
-      // Clean up the parallel progress subscription. Invoke has already
-      // settled by the time this runs, so step events have been delivered.
-      watchSub.current?.unsubscribe();
     }
   }
 
@@ -238,18 +261,14 @@ export default function Home() {
       <div style={{ display: "flex", gap: 8 }}>
         <button
           onClick={run}
-          disabled={status === "invoking" || status === "running"}
+          disabled={status === "invoking"}
           style={btnPrimary}
         >
-          {status === "invoking"
-            ? "Starting…"
-            : status === "running"
-            ? "Running…"
-            : "Run agent"}
+          {status === "invoking" ? "Starting…" : "Run agent"}
         </button>
         <button
           onClick={cancel}
-          disabled={status !== "running" && status !== "invoking"}
+          disabled={status !== "invoking"}
           style={btnSecondary}
         >
           Cancel
@@ -409,7 +428,7 @@ function statusPill(s: Status): React.CSSProperties {
       ? "#ef4444"
       : s === "cancelled"
       ? "#f59e0b"
-      : s === "running" || s === "invoking"
+      : s === "invoking"
       ? "#3b82f6"
       : "#6b7280";
   return {

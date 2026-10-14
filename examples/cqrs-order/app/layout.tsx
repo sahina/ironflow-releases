@@ -20,7 +20,7 @@ export default function RootLayout({
           <p className="text-sm text-gray-500">
             A working implementation of{" "}
             <code className="bg-gray-100 px-1 rounded">
-              docs/tutorials/cqrs-walkthrough.md
+              docs/tutorials/cqrs-walkthrough.mdx
             </code>
           </p>
         </header>

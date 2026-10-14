@@ -24,15 +24,9 @@ import { docMemory } from "./memory.js";
 //
 // ────────────────────────────────────────────────────────────────
 
-// SDK reads IRONFLOW_SERVER_URL automatically; this preserves the
-// IRONFLOW_URL alias used by some demo runners. When both are set,
-// IRONFLOW_URL takes precedence (matches @ironflow/node agent runtime).
-const serverUrl = process.env.IRONFLOW_URL;
-
 const worker = createWorker({
   functions: [docProcessor],
   projections: [docMemory as IronflowProjection],
-  ...(serverUrl ? { serverUrl } : {}),
 });
 
 worker.start().then(() => {

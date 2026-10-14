@@ -5,9 +5,7 @@ import { stableId } from "../src/hash.js";
 import { planRanges, splitPdf } from "../src/pdf.js";
 import { extractRange } from "../src/extract.js";
 
-const client = createClient({
-  serverUrl: process.env.IRONFLOW_URL ?? "http://localhost:9123",
-});
+const client = createClient();
 
 const PAGES_PER_RANGE = 10;
 

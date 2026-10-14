@@ -124,7 +124,9 @@ contribution score (0.0 to 0.35):
   │ Signal               │ How it works                             │
   ├──────────────────────┼──────────────────────────────────────────┤
   │ velocity-check       │ Reads/increments counter in KV Store.    │
-  │                      │ > 5 txns/hr = 0.35 risk, > 3 = 0.15.     │
+  │                      │ > 5 txns = 0.35 risk, > 3 = 0.15.        │
+  │                      │ The demo bucket has no TTL, so the count │
+  │                      │ per card never resets.                   │
   │                      │ No Redis needed — built-in KV.           │
   ├──────────────────────┼──────────────────────────────────────────┤
   │ geo-check            │ Compares card country vs IP country vs   │
@@ -138,6 +140,25 @@ contribution score (0.0 to 0.35):
   │                      │ Jewelry, digital goods = 0.10 risk.      │
   └──────────────────────┴──────────────────────────────────────────┘
 ```
+
+### What is and is not exactly-once
+
+Memoization protects a step **after it completes**. A step that dies mid-way (worker
+killed after its side effect, before the engine records the result) runs again on
+resume, so side effects inside a step are at-least-once:
+
+- **Velocity counter** — the KV increment happens inside `velocity-check`. Verified:
+  `kill -9` the worker after the increment and before the step completes, and the
+  counter is incremented a second time on resume (2 → 3 → 4), so the stored
+  `velocity` signal for that transaction is one too high.
+- **Duplicate event, same `txnId`** — the second run increments the counter again,
+  then fails at `score` with `version conflict` (the stream already has events). The
+  stream, the alert topic and the projection are not touched twice. Emit with
+  `--idempotency-key` (or `idempotencyKey` in the SDK) to drop the duplicate before
+  any run starts.
+- **Entity stream appends** use `expectedVersion`, so a repeated append is rejected
+  rather than doubled. By the same logic a `score` step that crashed between its
+  two appends should fail on resume instead of finishing (not exercised).
 
 ### Entity Streams
 
@@ -239,8 +260,15 @@ transaction with the declined electronics transaction side by side.
 
 ### Step 5: Verify
 
+`verify.sh` calls the `ironflow` CLI, so put the binary on your `PATH` first (from
+this directory it is `../../build`). It checks the registered function and projection,
+the five completed runs, the entity streams, each seeded decision and the
+`fraud-alerts` count, and exits non-zero if any check fails. It also emits one extra
+transaction on `card_alice_1234` and checks that the card's velocity counter reaches
+at least 2, so run it after `pnpm seed`, not before.
+
 ```bash
-chmod +x verify.sh
+export PATH="$PWD/../../build:$PATH"
 ./verify.sh
 ```
 
@@ -333,9 +361,17 @@ declined, captured automatically.
 exact signals at the moment of scoring. Compare with an approved transaction.
 This is time travel.
 
-**Emit more transactions** — Run `pnpm seed` again. Watch the velocity counters
-increment in the KV store. Transactions from the same card will score higher
-as velocity increases.
+**Emit more transactions** — Do **not** re-run `pnpm seed`: it reuses the same
+`txnId`s, so every run fails at the `score` step with a `version conflict`
+(`fraud-eval:{txnId}` already exists), although the velocity counters still
+increment. Emit fresh transactions on one card instead. The velocity counter climbs and
+the risk rises (4th txn: 0.15, 6th txn: 0.35):
+
+```bash
+for i in 2 3 4 5 6; do
+  ironflow emit transaction.authorized --data '{"txnId":"txn_alice_v'$i'","cardId":"card_alice_1234","amount":10,"currency":"USD","merchantName":"Whole Foods","merchantMcc":"5411","merchantCountry":"US","cardCountry":"US","ipCountry":"US","deviceFingerprint":"fp_alice_iphone","isKnownDevice":true,"channel":"pos"}'
+done
+```
 
 **Check the topic** — Look at the `fraud-alerts` pub/sub topic in the
 dashboard. Declined and challenged transactions publish alerts here. In a

@@ -6,7 +6,7 @@ import { ServiceStatus } from "@/components/service-status";
 import { fakeIronflow, type FakeEngineState } from "@/test/fake-ironflow";
 
 const beating = (at = new Date().toISOString()) => ({
-  value: btoa(JSON.stringify({ service: "notifications-python", at })),
+  value: { service: "notifications-python", at },
 });
 
 const live: FakeEngineState = {

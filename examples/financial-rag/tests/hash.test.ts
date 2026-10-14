@@ -1,5 +1,10 @@
 import { describe, expect, test } from "vitest";
-import { diffChangedSet, hashContent, stableId } from "../src/hash.js";
+import {
+  buildSeenMap,
+  diffChangedSet,
+  hashContent,
+  stableId,
+} from "../src/hash.js";
 
 describe("hashContent", () => {
   test("is stable and hex-encoded", () => {
@@ -59,5 +64,16 @@ describe("stableId", () => {
     // contain spaces constantly ("Total revenue"), so this is a live risk,
     // not a theoretical one.
     expect(stableId("a b", "c")).not.toBe(stableId("a", "b c"));
+  });
+});
+
+describe("buildSeenMap", () => {
+  test("keys on the bare filename so an unchanged corpus diffs to nothing", () => {
+    // source_key is stored as SOURCE_DIR/name; the listing yields bare names.
+    const seen = buildSeenMap(
+      ["doc_id", "source_key", "content_hash"],
+      [["a", "./corpus/a.pdf", "h1"]],
+    );
+    expect(diffChangedSet([{ key: "a.pdf", hash: "h1" }], seen)).toEqual([]);
   });
 });

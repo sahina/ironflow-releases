@@ -8,7 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/sahina/ironflow/sdk/go/ironflow"
+	"github.com/sahina/ironflow-go/ironflow"
 )
 
 // ── Types ───────────────────────────────────────────────────────

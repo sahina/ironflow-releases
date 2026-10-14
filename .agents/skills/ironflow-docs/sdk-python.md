@@ -26,7 +26,7 @@ Wait timeout fails the run.
 `ironflow.projection.create_projection`) and `upcasters=` (an `ironflow.UpcasterRegistry`).
 
 For the full API and equivalent Go and TypeScript examples, see
-`docs/reference/api/python-sdk.md#pull-worker`.
+<https://docs.ironflow.run/reference/api/python-sdk/#pull-worker>.
 
 ## Push mode
 
@@ -58,7 +58,7 @@ asyncio.run(register([send_receipt], endpoint_url="https://api.example.com/ironf
 - Push or pull, not both: a pull `Worker` re-registers a function id as pull
   and silently undoes its push registration.
 
-See `docs/reference/api/python-sdk.md#push-mode`.
+See <https://docs.ironflow.run/reference/api/python-sdk/#push-mode>.
 
 ## Files
 

@@ -16,7 +16,7 @@ ironflow serve --dev
 In a second terminal:
 
 ```fish
-pip install ironflow-py
+pip install -r requirements.txt
 python worker.py
 ```
 
@@ -25,6 +25,8 @@ In a third terminal:
 ```fish
 python upload.py
 ```
+
+`requirements.txt` pins `ironflow-py` to 0.43.1, the release this example was checked against. Use an engine of the same release.
 
 Set `IRONFLOW_SERVER_URL` and `IRONFLOW_API_KEY` if the server is not `http://localhost:9123` in dev mode.
 

@@ -15,11 +15,10 @@ if (!Number.isInteger(pr) || pr <= 0) {
 }
 
 const client = new IronflowClient({
-  serverUrl: process.env.IRONFLOW_URL ?? "http://localhost:9123",
   apiKey: process.env.IRONFLOW_API_KEY,
 });
 
 const result = await client.emit(EVENTS.PrOpened, { repo, pr });
 console.log(`emitted ${EVENTS.PrOpened} eventId=${result.eventId} runIds=${result.runIds.join(",")}`);
 console.log(`runId: ${result.runIds[0]}`);
-console.log("approve with: pnpm approve " + result.runIds[0]);
+console.log("approve with: pnpm run approve " + result.runIds[0]);

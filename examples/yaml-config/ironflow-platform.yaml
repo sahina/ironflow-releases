@@ -6,6 +6,7 @@
 #   NATS_URL="nats://h1:4222" \
 #   IRONFLOW_NODE_ID="node-1" \
 #   IRONFLOW_MASTER_KEY="$(openssl rand -hex 32)" \
+#   IRONFLOW_BLOB_URL="s3://bucket?endpoint=https://s3.example.com" \
 #   ./build/ironflow serve -f examples/yaml-config/ironflow-platform.yaml
 apiVersion: ironflow/v1
 kind: Platform

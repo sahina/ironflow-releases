@@ -16,7 +16,7 @@ dependencies = [
   #   pip install -e ../../../../sdk/python
   # run AFTER the install below. That is a deliberate override, not the default
   # path — the example must keep proving the released wheel works.
-  "ironflow-py==0.33.1",
+  "ironflow-py==0.43.1",
   # Exact, like the SDK pin above: `make test-reference-app` is a gate, and a
   # gate whose dependency set moves under it fails for reasons that are not the
   # diff. There is no lockfile here; these three lines are it.

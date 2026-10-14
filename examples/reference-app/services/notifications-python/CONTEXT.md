@@ -32,8 +32,8 @@ It hosts no functions and executes no steps. Shared vocabulary is in
 1. **Notification delivery and notification facts have different guarantees.**
    A message ID identifies one delivery. Notification facts are at-least-once:
    a replay can add a second timeline entry while leaving the read model unchanged.
-2. **Liveness cannot be a worker record or a registered schema.** The Python SDK ships no
-   worker runtime, so this service appears nowhere in `GET /api/v1/workers`; and a
+2. **Liveness cannot be a worker record or a registered schema.** This service is client-only
+   and uses no worker runtime, so it appears nowhere in `GET /api/v1/workers`; and a
    registered schema outlives the process that registered it, so after the first boot
    that probe reports success for a service that is not running. It writes a timestamp
    into the `reference-app` KV bucket every few seconds instead, and the supervisor,

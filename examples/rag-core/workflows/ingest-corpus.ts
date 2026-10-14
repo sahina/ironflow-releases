@@ -9,7 +9,6 @@ import { stableId } from "../src/id.js";
 // createWorker picks IRONFLOW_API_KEY up from the environment on its own;
 // createClient does not, so pass it explicitly or every emit 401s.
 const client = createClient({
-  serverUrl: process.env.IRONFLOW_URL ?? "http://localhost:9123",
   apiKey: process.env.IRONFLOW_API_KEY,
 });
 

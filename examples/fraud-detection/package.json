@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test": "tsx verify-kv.mjs",
     "start": "pnpm tsx worker.ts",
     "dev": "pnpm tsx watch worker.ts",
     "seed": "pnpm tsx seed.ts"

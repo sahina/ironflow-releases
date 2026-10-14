@@ -19,8 +19,9 @@ interface PrOpened {
 //   approve()        — pause the run until a human says ship it; survives
 //                      restarts, holds for hours/days without burning a
 //                      worker slot
-//   tool(postComment)— durable side-effect; idempotency-key keeps the
-//                      same comment from being posted twice on retry
+//   tool(postComment)— durable side-effect; a completed step is never
+//                      re-run on resume (a crash before the step is
+//                      recorded still repeats it, so key a real call)
 //
 // All five primitives compose over step.run + step.waitForEvent. Crash
 // at any boundary, restart, the agent picks up at the next pending step.

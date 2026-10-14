@@ -24,7 +24,7 @@ describe("links into the Ironflow dashboard", () => {
   });
 
   test("survives a base URL with a trailing slash", () => {
-    // NEXT_PUBLIC_IRONFLOW_URL comes from the supervisor, and a presenter who
+    // NEXT_PUBLIC_IRONFLOW_SERVER_URL comes from the supervisor, and a presenter who
     // sets it by hand will type the slash.
     expect(dashboardRunUrl("http://127.0.0.1:49152/", "run_01H8")).toBe(
       "http://127.0.0.1:49152/runs/run_01H8",

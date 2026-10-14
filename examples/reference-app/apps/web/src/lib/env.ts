@@ -2,7 +2,7 @@
 
 /** The engine URL, discovered at boot and passed down by scripts/dev.mjs. */
 export function ironflowUrl(): string {
-  return process.env.NEXT_PUBLIC_IRONFLOW_URL ?? "http://127.0.0.1:9123";
+  return process.env.NEXT_PUBLIC_IRONFLOW_SERVER_URL ?? "http://127.0.0.1:9123";
 }
 
 /**

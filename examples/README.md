@@ -28,6 +28,7 @@ Every Ironflow application follows four pillars:
 | [reference-app/](./reference-app/)               | Polyglot order processing | Multi-language systems | Go, TypeScript and Python services on one Ironflow backend: entity streams, a durable wait, durable steps, Pub/Sub and crash recovery |
 | [file-upload/](./file-upload/)                   | File storage in Python    | Python developers     | Buckets, signed URLs, a worker on `ironflow.file.created` |
 | [flask-single-container/](./flask-single-container/) | App + engine as one deployable unit | Shipping a small app | Flask, a pull-mode worker and the engine in one container with one volume |
+| [deletion-redaction/](./deletion-redaction/)     | Customer data removal checks | Compliance-minded teams | A Python push app driven by an integration test: redact, delete and purge, and what each leaves behind |
 | [fraud-detection/](./fraud-detection/)           | Real-time risk pipeline   | Building real systems | `step.parallel()`, KV counters, pub/sub alerts |
 | [compliance-audit/](./compliance-audit/)         | Audit trail + execution proof | Regulated workloads | Entity-stream lineage in the Compliance dashboard |
 | [ai-agent/](./ai-agent/)                         | Durable AI research agent | AI engineers          | `agent()`, `tool()`, `llm()`, event-sourced memory |
@@ -42,12 +43,24 @@ Every Ironflow application follows four pillars:
 
 - Go 1.27+ (required to build Ironflow)
 - Node.js 22+ and pnpm (for TypeScript examples; `reference-app/` needs 24.2+)
-- Python 3.10+ (for `reference-app/`'s notification service only)
-- Docker (for `flask-single-container/` only)
+- Python 3.10+ (for `reference-app/`'s notification service, `file-upload/` and `deletion-redaction/`)
+- Docker (for `flask-single-container/` and `financial-rag/`)
+
+## Before you run
+
+- **Server URL.** Every command below assumes the engine on `localhost:9123`. On another port, set
+  `IRONFLOW_SERVER_URL` — the `ironflow` CLI, the SDKs and the example scripts read that variable.
+- **Simulated integrations.** The agent and RAG examples run without paid providers: tools, OCR,
+  triage and model replies are deterministic stand-ins, and outbound messages go to local files.
+  `financial-rag` needs `ANTHROPIC_API_KEY` (extraction fails without it); `rag-core` falls back
+  to an offline embedding and its `ask` prints the retrieved context instead of an answer. Each
+  README states exactly what is real.
+- **Crash-resume timing.** After a worker `kill -9`, an in-flight run resumes when its lease expires:
+  roughly 2–3 minutes with default settings, not instantly.
 
 ## Quick Reference
 
-> Every example is its own pnpm workspace that includes `../../sdk/js/*`, so the
+> Every TypeScript example is its own pnpm workspace that includes `../../sdk/js/*`, so the
 > `pnpm install` lines below re-point the **shared** SDK packages at that
 > example's store. Never `rm -rf node_modules` inside an example without
 > repairing the SDK afterwards — `rm -rf sdk/js/*/node_modules && pnpm install`
@@ -55,8 +68,8 @@ Every Ironflow application follows four pillars:
 > has the full note.
 
 ```bash
-# Build the binary and the embedded dashboard (does NOT build the JS SDK)
-make all
+# Build the binary with the embedded dashboard (does NOT build the JS SDK)
+make embed build
 
 # Start the server
 ./build/ironflow serve --dev
@@ -98,8 +111,7 @@ cd examples/compliance-audit && pnpm install && pnpm tsx worker.ts
 
 # Run the AI research agent
 cd examples/ai-agent && pnpm install
-export IRONFLOW_URL=http://localhost:9123
-export IRONFLOW_SERVER_URL="$IRONFLOW_URL"
+export IRONFLOW_SERVER_URL=http://localhost:9123
 pnpm dev
 # In another terminal: ironflow emit agent.research --data '{"topic":"event sourcing"}'
 
@@ -109,11 +121,11 @@ cd examples/agents/doc-processor-agent && pnpm install && pnpm dev
 
 cd examples/agents/code-review-agent && pnpm install && pnpm dev
 # In another terminal: pnpm trigger octocat/hello 42
-# Then approve the runId it prints: pnpm approve <runId>
+# Then approve the runId it prints: pnpm run approve <runId>
 
 cd examples/agents/reconciliation-agent && pnpm install && pnpm dev
 # In another terminal: pnpm trigger, then pnpm exec tsx scripts/find-pending.ts
-# Approve a case: pnpm approve <runId> true
+# Approve a case: pnpm run approve <runId> true
 # Then signal the counterparty's reply: pnpm reply <caseId> "..."
 
 # Run the RAG part 1 example (no Docker; needs a bootstrap API key in .env)
@@ -125,6 +137,11 @@ cd examples/rag-core && pnpm install && pnpm run setup && pnpm start
 cd examples/financial-rag && pnpm install && docker compose up -d --wait
 # Then put the engine bootstrap key in .env and run: pnpm run setup && pnpm seed-corpus && pnpm start
 # In another terminal: pnpm poll, then pnpm ask "..."
+# Known issue on v0.43.1: the pipeline stalls after pnpm poll, because its SQL projections
+# do not advance on their own (#2753). See financial-rag/README.md step 6.
+
+# Check customer data removal end to end (Go and Python 3; starts its own server)
+go test ./tests/integration -run '^TestDeletionBlogCustomerApp$' -count=1 -v
 
 # Validate the YAML configuration examples (no install needed)
 ./build/ironflow validate -f examples/yaml-config/ironflow.yaml

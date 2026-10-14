@@ -22,11 +22,8 @@ const _dedup: CommandDedup<DedupEntry> =
 export const commandDedup = {
   /**
    * Atomic claim. Returns null when the caller wins the race (proceed).
-   * Returns the prior entry when another request already claimed this
-   * commandId (dedup hit — return the prior result to the caller).
-   *
-   * The returned entry may have entityVersion undefined if the winner
-   * has not yet called finalize(). Use `?? 0` as a safe fallback.
+   * A prior entry can be pending. Only a completed entry is a cached result;
+   * the handler reconciles pending claims against the stream.
    */
   async tryClaim(commandId: string, claim: DedupEntry): Promise<DedupEntry | null> {
     return _dedup.tryClaim(commandId, claim);
@@ -38,13 +35,5 @@ export const commandDedup = {
    */
   async finalize(commandId: string, entry: DedupEntry): Promise<void> {
     return _dedup.finalize(commandId, entry);
-  },
-
-  /**
-   * Release the claim so an honest retry can proceed after a handler failure.
-   * Only call this in a catch block — never after finalize() succeeds.
-   */
-  async release(commandId: string): Promise<void> {
-    return _dedup.release(commandId);
   },
 };

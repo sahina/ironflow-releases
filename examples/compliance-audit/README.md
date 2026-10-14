@@ -38,17 +38,25 @@ An order goes through a full lifecycle: Created → Confirmed → Packed → Shi
    pnpm tsx setup.ts
    ```
 
+   The seeder is not re-runnable: `order-demo-001` already exists, so every append
+   fails with a version conflict and the script exits non-zero. Start a fresh server
+   (or change `ENTITY_ID`) to seed again. To point the seeder at another server, set
+   `IRONFLOW_SERVER_URL`.
+
 4. Open the dashboard at `http://localhost:9123/compliance-audit`
 
 5. Select the `order-demo-001` entity from the left panel to see:
    - Full entity timeline with every state change
-   - Workflow execution proof (runs + steps) for each event
+   - Workflow execution proof (runs + steps) on the two events that trigger a function:
+     `OrderCreated` (`process-order-created`: `validate-order`, `reserve-inventory`) and
+     `OrderShipped` (`process-order-shipped`: `notify-customer`, `update-tracking`).
+     The other three events are recorded in the stream with no run attached.
    - Export to JSON or CSV for compliance review
 
 ## Compliance Features Demonstrated
 
 - **Entity-level audit trail**: Every state change is an immutable event
-- **Execution proof**: Each event shows which workflow ran and its step-by-step execution
+- **Execution proof**: An event that triggers a function shows which workflow ran and its step-by-step execution
 - **Timestamp filtering**: Filter the timeline by date range
 - **Export**: Download the full audit trail as JSON or CSV
 - **Print-ready**: Use browser print (Ctrl+P) for audit committee review

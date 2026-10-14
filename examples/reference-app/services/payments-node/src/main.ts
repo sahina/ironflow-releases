@@ -2,7 +2,7 @@
 //
 // A pull-mode Ironflow worker: it polls the engine for work, so it needs no
 // inbound port and no HTTP API of its own. The supervisor
-// (examples/reference-app/scripts/dev.mjs) starts it with IRONFLOW_URL,
+// (examples/reference-app/scripts/dev.mjs) starts it with IRONFLOW_SERVER_URL,
 // IRONFLOW_API_KEY and REFERENCE_APP_DATA_DIR already pointing at the engine and
 // data directory it just created.
 //
@@ -315,7 +315,7 @@ function dataDir(): string {
 
 async function main(): Promise<void> {
   const contractsDir = findContractsDir();
-  const client = createClient({});
+  const client = createClient();
 
   // Registration comes before the worker starts, so the first released order
   // cannot race an unregistered schema.

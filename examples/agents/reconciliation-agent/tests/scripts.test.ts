@@ -37,13 +37,13 @@ afterAll(() => new Promise<void>((resolve) => server.close(() => resolve())));
 async function command(args: string[]) {
   return exec("pnpm", args, {
     cwd: fileURLToPath(new URL("..", import.meta.url)),
-    env: { ...process.env, IRONFLOW_URL: url },
+    env: { ...process.env, IRONFLOW_SERVER_URL: url },
     timeout: 10_000,
   });
 }
 
 it.each([{ separator: [] }, { separator: ["--"] }])("preserves an explicit rejection with separator %j", async ({ separator }) => {
-  await command(["approve", ...separator, "run-123", "false", "declined"]);
+  await command(["run", "approve", ...separator, "run-123", "false", "declined"]);
   expect(requests.at(-1)).toEqual({
     event: "agent.approve.contact",
     data: { runId: "run-123", approved: false, approver: "operator", reason: "declined" },
@@ -58,7 +58,7 @@ it.each([{ separator: [] }, { separator: ["--"] }])("routes the reply and its bo
 }, 10_000);
 it("rejects an invalid approval value without emitting", async () => {
   const before = requests.length;
-  await expect(command(["approve", "--", "run-123", "flase"])).rejects.toThrow();
+  await expect(command(["run", "approve", "--", "run-123", "flase"])).rejects.toThrow();
   expect(requests).toHaveLength(before);
 }, 10_000);
 

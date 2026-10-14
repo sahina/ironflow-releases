@@ -1,5 +1,5 @@
 // Domain + command types for the CQRS walkthrough example.
-// These are illustrative user code — not SDK types. See docs/tutorials/cqrs-walkthrough.md.
+// These are illustrative user code — not SDK types. See docs/tutorials/cqrs-walkthrough.mdx.
 
 export type LineItem = {
   productId: string;

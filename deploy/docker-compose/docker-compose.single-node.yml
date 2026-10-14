@@ -1,6 +1,6 @@
 # docker-compose.single-node.yml
 # Single-node Ironflow: one server (embedded NATS + SQLite by default), optional
-# PostgreSQL (`--profile postgres`) and Prometheus (`--profile monitoring`).
+# PostgreSQL (`--profile postgres`) and Prometheus + Grafana on :3000 (`--profile monitoring`).
 # Run with: docker compose -f docker-compose.single-node.yml up  (or `make docker-up`).
 # For multi-node clusters see deploy/docker-compose/cluster/.
 name: ironflow
@@ -71,6 +71,25 @@ services:
     depends_on:
       ironflow:
         condition: service_healthy
+
+  grafana:
+    image: grafana/grafana:13.0.2
+    profiles:
+      - monitoring
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    volumes:
+      - ./deploy/docker-compose/cluster/grafana/provisioning:/etc/grafana/provisioning:ro
+      # One file, not the directory: the provider loads every dashboard there, and
+      # single-node has no NATS exporter for nats-monitoring.json.
+      - ./deploy/docker-compose/cluster/grafana/dashboards/ironflow-performance.json:/var/lib/grafana/dashboards/ironflow-performance.json:ro
+    depends_on:
+      - prometheus
 
 volumes:
   ironflow-data:

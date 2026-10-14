@@ -8,7 +8,7 @@ package order
 import (
 	"strings"
 
-	"github.com/sahina/ironflow/sdk/go/ironflow"
+	"github.com/sahina/ironflow-go/ironflow"
 )
 
 // ProjectionName is the projection the shop and operations pages read.

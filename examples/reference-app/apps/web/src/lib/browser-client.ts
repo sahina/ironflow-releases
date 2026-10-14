@@ -75,7 +75,7 @@ export function browserIronflow({ serverUrl, apiKey }: { serverUrl: string; apiK
       return status === "ok" || status === "healthy";
     },
     async notificationsHeartbeat() {
-      return ironflow.kv().bucket(HEARTBEAT_BUCKET).get(NOTIFICATIONS_HEARTBEAT_KEY);
+      return ironflow.kv().bucket(HEARTBEAT_BUCKET).getJSON(NOTIFICATIONS_HEARTBEAT_KEY);
     },
     async getOrders() {
       const result = await ironflow.getProjection<OrdersProjection>(ORDERS_PROJECTION);

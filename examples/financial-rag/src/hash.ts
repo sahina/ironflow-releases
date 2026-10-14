@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { basename } from "node:path";
 
 export interface SourceObject {
   key: string;
@@ -41,4 +42,26 @@ export function diffChangedSet(
   seen: Map<string, string>,
 ): SourceObject[] {
   return source.filter((obj) => seen.get(obj.key) !== obj.hash);
+}
+
+/**
+ * The seen-set, keyed the way diffChangedSet looks it up.
+ *
+ * `source_key` in the documents projection is the full path (SOURCE_DIR/name),
+ * but the source listing yields bare filenames. Keying on the path means no
+ * file ever matches, so every poll re-opens a batch for an unchanged corpus.
+ */
+export function buildSeenMap(
+  columns: string[],
+  rows: string[][],
+): Map<string, string> {
+  const keyCol = columns.indexOf("source_key");
+  const hashCol = columns.indexOf("content_hash");
+  const seen = new Map<string, string>();
+  for (const row of rows) {
+    const k = row[keyCol];
+    const h = row[hashCol];
+    if (k !== undefined && h !== undefined) seen.set(basename(k), h);
+  }
+  return seen;
 }

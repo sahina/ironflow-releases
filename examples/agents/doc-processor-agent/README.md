@@ -54,14 +54,15 @@ The literal script behind `make demo-agent-crash-resume`:
 
 What it does:
 
-1. Starts the worker (`pnpm start`)
-2. Emits `doc.received` with a slow image URL (3-second OCR sleep)
-3. After 1.5 seconds — **mid-OCR** — sends `kill -9` to the worker
-4. Restarts the worker
-5. Polls the `doc-processor-memory` projection until `status="published"` shows up for the docId
-6. Tears down
+1. Starts a throwaway server (`--dev`) on a random HTTP port (override with `IRONFLOW_PORT`), an ephemeral NATS port and its own SQLite database
+2. Starts the worker (`pnpm start`)
+3. Emits `doc.received` with a slow image URL (3-second OCR sleep)
+4. After 1.5 seconds — **mid-OCR** — sends `kill -9` to the worker
+5. Restarts the worker
+6. Polls the `doc-processor-memory` projection until `status="published"` shows up for the docId
+7. Tears down
 
-Exit 0 ⇒ the agent recovered from the crash.
+Exit 0 ⇒ the agent recovered from the crash. Budget 2.5 to 3.5 minutes: a killed worker's run only resumes after its concurrency lease expires (2m35s and 2m30s in two audit runs; see [Crash recovery](../../../docs/explanation/crash-recovery.md)). Because the kill lands mid-OCR, OCR runs again on the new worker; the worker logs show `[ocr]` once per worker. To see a finished step replayed from cache instead, kill after OCR (`DEMO_RECORD=1` kills mid-classify): the second worker logs no `[ocr]` line.
 
 ## Files
 
@@ -80,9 +81,11 @@ Exit 0 ⇒ the agent recovered from the crash.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `IRONFLOW_URL` | `http://localhost:9123` | Server endpoint (memory backend + scripts) |
+| `IRONFLOW_SERVER_URL` | `http://localhost:9123` | Server endpoint for workers, memory, and scripts |
 | `IRONFLOW_API_KEY` | unset | API key when server is not in `--dev` mode |
 | `DOC_PROCESSOR_OCR_MS` | `3000` | OCR sleep — shorten in tests, extend for filming |
+| `DOC_PROCESSOR_CLASSIFY_MS` | `200` | Classify sleep — `DEMO_RECORD` sets 5000 so the kill lands after OCR finished |
+| `DEMO_RECORD` | unset | `demo-crash-resume.sh` screen-recording mode: 20s pause before the event, kill mid-classify, server kept up until Ctrl-C |
 | `VERIFY_TIMEOUT_MS` | `210000` | `verify.ts` polling deadline. Crash-resume is gated on concurrency-lease expiry and takes 90s-3min; 210s leaves headroom. See the [tutorial](../../../docs/tutorials/agent-survives-crash.md) callout |
 
 ## Layering

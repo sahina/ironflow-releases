@@ -71,7 +71,7 @@ pnpm dev
 Open <http://localhost:3000>.
 
 > **Don't `rm -rf node_modules` here without repairing the SDK afterwards.**
-> Every example is its own little pnpm workspace that includes `../../sdk/js/*`,
+> Every TypeScript example is its own little pnpm workspace that includes `../../sdk/js/*`,
 > so `pnpm install` in this directory re-points the *shared* SDK packages at
 > **this example's** store — `sdk/js/core/node_modules/typescript` becomes a
 > symlink into `examples/travel-booking/node_modules/.pnpm/`. Delete that and the
@@ -87,7 +87,7 @@ Open <http://localhost:3000>.
 > pnpm install
 > ```
 >
-> This is how every example behaves, not something specific to this one.
+> This is how every TypeScript example behaves, not something specific to this one.
 
 `pnpm dev` runs two processes: the Next.js UI and a **separate** worker process,
 supervised by `scripts/dev.mjs`. The worker is separate on purpose — the best
@@ -192,10 +192,11 @@ process and one screen.
   outbox instead, stranding anything still pending in the old one until you
   rename back. A real app would key on a stable user id, not a nickname.
 - **Seat holds lock the whole flight stream, not one seat.** Two bookings on the
-  same flight always serialise, even when there is plenty of room. Fine at demo
-  scale; a real system would use per-seat reservation records. See the
-  `ponytail:` comment in `worker.ts`.
-- **The race loser fails rather than retrying.** A real airline would offer the
+  same flight always collide on the stream version, even when there is plenty of
+  room. The loser re-reads and retries (up to 8 times) and reports "sold out"
+  only when no capacity is left. Fine at demo scale; a real system would use
+  per-seat reservation records. See the `ponytail:` comment in `worker.ts`.
+- **The race loser fails once the inventory is gone.** A real airline would offer the
   next free seat. Failing cleanly is the clearer demo: no double-sell, no charge.
 - **Crash-resume takes ~2 minutes, not seconds.** See the beat 3 section above
   for the measured breakdown. The capacity lease (90s, not configurable from
@@ -210,5 +211,7 @@ process and one screen.
 Starts a throwaway server and worker, declines a card, and asserts both
 reservations were compensated and inventory came back to where it started.
 Exits non-zero if the saga leaks a seat or a room.
+It then races 6 bookings for the 4 seats on DL 318 (`scripts/verify-contention.ts`)
+and exits non-zero unless exactly 4 confirm, 2 are refused as sold out, and 4 holds land.
 
 Typecheck only: `pnpm typecheck`.

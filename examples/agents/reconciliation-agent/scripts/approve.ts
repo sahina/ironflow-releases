@@ -6,7 +6,7 @@ const args = process.argv.slice(2);
 if (args[0] === "--") args.shift();
 const [runId, approvedArg, reason] = args;
 if (!runId || (approvedArg !== undefined && approvedArg !== "true" && approvedArg !== "false")) {
-  console.error("usage: pnpm approve -- <runId> [true|false] [reason]");
+  console.error("usage: pnpm run approve -- <runId> [true|false] [reason]");
   process.exit(1);
 }
 

@@ -13,7 +13,6 @@ if (isOfflineEmbedding()) {
 const worker = createWorker({
   functions: [ingestCorpus],
   projections: [vectorIndex],
-  serverUrl: process.env.IRONFLOW_URL ?? "http://localhost:9123",
 });
 
 // Deliberately not awaited: worker.start() never resolves.
