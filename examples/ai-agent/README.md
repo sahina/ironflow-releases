@@ -91,8 +91,9 @@ curl -s -X POST http://localhost:9123/ironflow.v1.ProjectionService/GetProjectio
 
 Kill the worker mid-run (`kill -9`) and start it again: the run resumes on the restarted worker and
 replays completed tool and LLM steps from their recorded output instead of re-running them. The
-engine reassigns the run only after it notices the worker is gone (heartbeat timeout), so in
-`--dev` expect roughly one to two minutes before the run moves again. A step that was in flight when
+engine reassigns the run only after the dead worker's concurrency lease expires, so expect 90 seconds
+to 3 minutes before the run moves again, in `--dev` too (see
+[Crash recovery](../../docs/explanation/crash-recovery.md)). A step that was in flight when
 the worker died never finished recording, so it runs again.
 
 ## Customizing

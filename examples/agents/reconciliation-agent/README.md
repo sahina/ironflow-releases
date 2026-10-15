@@ -157,11 +157,11 @@ This example was built and run against a live server, not just typechecked. Ever
 below was found that way, and each is asserted or worked around in code — not left for a
 reader to discover.
 
-- **Redaction lives in application code, not the engine.** Ironflow's CEL policy layer
-  (`docs/explanation/policies.md`) is deny-only and subtractive — it cannot redact a
-  field — and the layered evaluator that would add authorization on top is wired by
-  tests only, not by the running server. `src/redact.ts` is the model boundary here, and
-  it exists because the engine has no equivalent. Do not read this example as a gesture
+- **Redaction lives in application code, not the engine.** Ironflow's Rego policy sets
+  (`docs/explanation/policies.md`) are deny-only and subtractive — they can deny a
+  request that RBAC allowed, but cannot redact a field in a payload — and enforcement is
+  opt-in. `src/redact.ts` is the model boundary here, and it exists because the engine
+  has no equivalent. Do not read this example as a gesture
   at an engine capability that exists.
 - **The sweep is a demo affordance, not production code.** It publishes into
   `agent.approve.contact` so a stuck approval can resolve without a human — which means

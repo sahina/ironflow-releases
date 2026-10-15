@@ -33,12 +33,21 @@ The `processOrder` function triggers on `order.placed` and runs three memoized s
 ```typescript
 // worker.ts — lines 19-62
 const processOrder = createFunction(
-  { id: "process-order", triggers: [{ event: "order.placed" }], recording: true },
+  {
+    id: "process-order",
+    description: "Validates an order, charges payment, and sends a confirmation email in three durable steps. Resumes from the last completed step if interrupted.",
+    triggers: [{ event: EVENTS.OrderPlaced }],
+    recording: true, // Enable audit recording (powers time-travel debugging)
+  },
   async ({ event, step }) => {
+    const data = event.data as OrderData;
+
     const order = await step.run("validate-order", async () => { ... });
     const payment = await step.run("process-payment", async () => { ... });
     await step.run("send-confirmation", async () => { ... });
     await step.publish("notifications.email", { ... });
+
+    return { order, payment };
   },
 );
 ```
@@ -53,14 +62,14 @@ The `orderStats` projection is a pure reducer that builds a read model from the 
 // worker.ts — lines 84-95
 const orderStats = createProjection({
   name: "order-stats",
-  events: ["order.placed"],
+  events: [EVENTS.OrderPlaced],
   initialState: () => ({ totalOrders: 0, totalRevenue: 0 }),
   handler: (
     state: { totalOrders: number; totalRevenue: number },
     event: { name: string; data: unknown },
   ) => ({
     totalOrders: state.totalOrders + 1,
-    totalRevenue: state.totalRevenue + ((event.data as { total: number }).total ?? 0),
+    totalRevenue: state.totalRevenue + ((event.data as OrderData).total ?? 0),
   }),
 });
 ```

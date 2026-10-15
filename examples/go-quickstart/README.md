@@ -32,11 +32,20 @@ The `ProcessOrder` function triggers on `order.placed` and runs three memoized s
 // main.go — lines 25-64
 var ProcessOrder = ironflow.CreateFunction(
     ironflow.FunctionConfig{
-        ID: "process-order", Mode: ironflow.PullMode,
+        ID:        "process-order",
+        Name:      "Process Order",
+        Mode:      ironflow.PullMode,
         Recording: true,
-        Triggers:  []ironflow.Trigger{{Event: "order.placed"}},
+        Triggers: []ironflow.Trigger{
+            {Event: "order.placed"},
+        },
     },
     func(ctx ironflow.Context) (any, error) {
+        var data OrderData
+        if err := ctx.Event.Data(&data); err != nil {
+            return nil, fmt.Errorf("failed to parse order data: %w", err)
+        }
+
         order, err := ironflow.Run(ctx, "validate-order", func() (map[string]any, error) { ... })
         payment, err := ironflow.Run(ctx, "process-payment", func() (map[string]any, error) { ... })
         _, err = ironflow.Run(ctx, "send-confirmation", func() (map[string]any, error) { ... })

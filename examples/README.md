@@ -137,8 +137,6 @@ cd examples/rag-core && pnpm install && pnpm run setup && pnpm start
 cd examples/financial-rag && pnpm install && docker compose up -d --wait
 # Then put the engine bootstrap key in .env and run: pnpm run setup && pnpm seed-corpus && pnpm start
 # In another terminal: pnpm poll, then pnpm ask "..."
-# Known issue on v0.43.1: the pipeline stalls after pnpm poll, because its SQL projections
-# do not advance on their own (#2753). See financial-rag/README.md step 6.
 
 # Check customer data removal end to end (Go and Python 3; starts its own server)
 go test ./tests/integration -run '^TestDeletionBlogCustomerApp$' -count=1 -v

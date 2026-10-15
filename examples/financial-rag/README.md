@@ -96,15 +96,7 @@ pnpm start
 Prints `financial-rag worker running`, plus a loud warning if `VOYAGE_API_KEY`
 is unset (see below).
 
-### 6. Known issue: SQL projections do not advance
-
-> **Step 7 stalls on the current engine (v0.43.1).** The three SQL projections only process
-> events when something calls `PollProjectionEvents` for them, and nothing does. `proj_documents`
-> stays empty (`ironflow projection status documents` shows `Lag: 2`), so `poll-source` waits on
-> `chunks > 0` for up to two hours and the output below never appears. Tracked in
-> [#2753](https://github.com/sahina/ironflow/issues/2753).
-
-### 7. Trigger the pipeline
+### 6. Trigger the pipeline
 
 Back in terminal 1. The cron fires every 15 minutes; this fires the same event
 now.
@@ -133,7 +125,7 @@ The whole chain is inspectable:
 ./build/ironflow inspect <run_id>    # run_id is in the worker log
 ```
 
-### 8. Ask a question
+### 7. Ask a question
 
 ```bash
 pnpm ask "What was ACME's total revenue in Q3 2024?"

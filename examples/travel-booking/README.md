@@ -31,7 +31,7 @@ booking.requested
 
 ## Prerequisites
 
-- Node.js 24+, pnpm
+- Node.js 22+, pnpm
 - Go 1.27+ (to build the Ironflow binary)
 
 No `.env` setup needed — both the browser and the worker default to

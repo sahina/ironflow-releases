@@ -7,7 +7,7 @@ Every step in the tutorial maps to a file here so you can read the doc with the 
 
 - Command shape split into `data` (domain) and `metadata` (plumbing)
 - Thin HTTP endpoint that dispatches a command and returns `202 Accepted`
-- Command handler orchestrating dedup → enrich → load → decide → append
+- Command handler orchestrating dedup → load → enrich → decide → append
 - "Aggregate" as a pure fold + decide pattern, no framework class
 - Event appended with `expectedVersion` optimistic concurrency
 - Two managed projections: a per-order detail view and a per-customer partitioned list

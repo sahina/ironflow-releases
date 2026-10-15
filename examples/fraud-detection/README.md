@@ -337,7 +337,7 @@ the score to exactly the decline threshold (0.50).
 ### Transaction 5: Tim Hortons ($6.50) — Challenge
 
 ```text
-  Signals: velocity=1 (0.00), geo=partial (0.15),
+  Signals: velocity=1 (0.00), geo=match (0.15),
            device=known (0.00), merchant=low (0.00)
   Score:   0.15
   Action:  CHALLENGE — cross-border merchant
