@@ -18,7 +18,7 @@ Works with Claude Code, Codex, Cursor, OpenCode and ~75 other agents.
 | `ironflow-start` | Set up Ironflow; push vs pull, entity streams vs events |
 | `ironflow-code` | Write functions, projections, workers, sagas; audit for anti-patterns |
 | `ironflow-ops` | Debug failed runs, migrate SDK versions, deploy and scale |
-| `ironflow-docs` | SDK, CLI and MCP reference the others read from |
+| `ironflow-docs` | Router to the hosted docs pages for SDK, CLI and MCP reference |
 
 If you already run the engine, `ironflow skills sync` writes the same set from the
 binary — use that instead, and it stays in step with your upgrades.

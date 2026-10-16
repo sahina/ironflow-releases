@@ -1,6 +1,6 @@
 ---
 name: ironflow
-version: 0.45.2
+version: 0.46.0
 description: |
   Universal entry point for Ironflow AI assistance. Classifies user intent and dispatches
   to the right specialized skill. Use when the user mentions "ironflow", "help with ironflow",
@@ -163,5 +163,5 @@ Gemini CLI identically.
 /ironflow-start   setup + scaffold + architecture decisions
 /ironflow-code    write code + tests + audit
 /ironflow-ops     debug + migrate + deploy/scale (index + sub-files)
-/ironflow-docs    SDK / CLI / MCP reference (index + topic files)
+/ironflow-docs    SDK / CLI / MCP reference (router to docs.ironflow.run pages)
 ```
