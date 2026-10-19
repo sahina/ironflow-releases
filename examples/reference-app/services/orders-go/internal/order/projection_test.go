@@ -196,3 +196,30 @@ func TestProjectionSubscribesToFactsOnly(t *testing.T) {
 		t.Fatal("the order read model is not a managed projection")
 	}
 }
+
+// A redelivered order.released (the live gate replays one) arrives after the
+// outcome. It must not move a paid or failed order back to processing_payment:
+// the replayed payment run finds the attempt recorded and emits no new outcome,
+// so nothing would ever move it forward again.
+func TestRedeliveredReleaseDoesNotUndoTheOutcome(t *testing.T) {
+	released := projectionEvent(EventOrderReleased, map[string]any{"releasedAt": "2026-03-04T05:07:00Z"}, Producer)
+	replay := projectionEvent(EventOrderReleased, map[string]any{"releasedAt": "2026-03-04T05:09:00Z"}, Producer)
+	for _, tc := range []struct {
+		outcome ironflow.ProjectionEvent
+		want    Status
+	}{
+		{projectionEvent(EventOrderPaid, map[string]any{"captureId": "cap_1"}, Producer), StatusPaid},
+		{projectionEvent(EventOrderPaymentFailed, map[string]any{"reason": "declined"}, Producer), StatusPaymentFailed},
+	} {
+		outcome, want := tc.outcome, tc.want
+		t.Run(string(want), func(t *testing.T) {
+			order := projected(t, reduce(t, placedEvent(), released, outcome, replay), testOrderID)
+			if order["status"] != string(want) {
+				t.Fatalf("status = %v after a redelivered release, want %s", order["status"], want)
+			}
+			if order["releasedAt"] != "2026-03-04T05:07:00Z" {
+				t.Fatalf("releasedAt = %v, want the first release's time", order["releasedAt"])
+			}
+		})
+	}
+}

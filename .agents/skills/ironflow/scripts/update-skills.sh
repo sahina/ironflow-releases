@@ -23,10 +23,10 @@ if [ -d ".agents/skills/ironflow" ]; then
   ironflow skills sync --local
 elif [ -d "$HOME/.agents/skills/ironflow" ]; then
   echo "Updating global skills (~/.agents/skills)..."
-  ironflow skills sync
+  ironflow skills sync --global
 else
-  echo "No existing Ironflow skills install detected. Installing globally..."
-  ironflow skills sync
+  echo "No existing Ironflow skills install detected. Installing into this project..."
+  ironflow skills sync --local
 fi
 
 echo ""

@@ -8,12 +8,8 @@
 import { createFunction, createWorker } from "@ironflow/node";
 import { EVENTS } from "./events";
 
-// Retention is "7y" because this demo models a compliance audit trail — in
-// most jurisdictions (SOX, HIPAA, PCI-DSS, GDPR as relevant) financial and
-// personal-data records must be retained for multiple years. Setting an
-// explicit retention on every function makes the policy decision visible
-// at the code boundary instead of inheriting a shorter default.
-const COMPLIANCE_RETENTION = "7y";
+// Audit retention is global: set IRONFLOW_AUDIT_RETENTION_DAYS on the server
+// to match your compliance window (a trail like this often needs years).
 
 const processOrderCreated = createFunction(
   {
@@ -21,7 +17,6 @@ const processOrderCreated = createFunction(
     description: "Validates a newly created order and reserves inventory. Each step is permanently recorded for compliance audit trails.",
     triggers: [{ event: EVENTS.OrderCreated }],
     recording: true,
-    recordingRetention: COMPLIANCE_RETENTION,
   },
   async ({ event, step }) => {
     const validation = await step.run("validate-order", async () => {
@@ -47,7 +42,6 @@ const processOrderShipped = createFunction(
     description: "Sends a shipping notification and updates order tracking when an order ships. Each step is permanently recorded for compliance audit trails.",
     triggers: [{ event: EVENTS.OrderShipped }],
     recording: true,
-    recordingRetention: COMPLIANCE_RETENTION,
   },
   async ({ event, step }) => {
     await step.run("notify-customer", async () => {

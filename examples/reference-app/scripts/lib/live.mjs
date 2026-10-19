@@ -5,16 +5,36 @@
 // ordering path, scripts/test-crash-resume.mjs proves durable replay across a
 // killed worker — and neither is allowed to invent a second way to start the
 // system. Both go through scripts/dev.mjs, the same launcher a presenter runs.
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 
 import { APP_DIR } from "./control.mjs";
 
 const DEV = fileURLToPath(new URL("../dev.mjs", import.meta.url));
+const REPO_ROOT = join(APP_DIR, "..", "..");
+
+// LIVE_DB=postgres (#2967): one throwaway database in the test container per
+// supervisor, made with the same helper as the Makefile live targets.
+const livedb = (...args) =>
+  execFileSync("go", ["run", "./tests/livedb/cmd/livedb", ...args], { cwd: REPO_ROOT, encoding: "utf8" }).trim();
+
+function dropLiveDb(name) {
+  try {
+    livedb("verify", name);
+  } catch (err) {
+    process.stderr.write(`livedb verify failed, so the engine did not run on PostgreSQL: ${err.stderr || err}\n`);
+    process.exitCode = 1;
+  }
+  try {
+    livedb("drop", name);
+  } catch (err) {
+    process.stderr.write(`livedb drop ${name} failed: ${err.stderr || err}\n`);
+  }
+}
 
 /** One safe Ironflow subject segment — the shape common.v1 calls an entityId. */
 export const newId = () => randomUUID().replaceAll("-", "");
@@ -77,9 +97,21 @@ export function checker(write = (line) => process.stdout.write(line)) {
  */
 export async function startSupervisor({ dataDir, readyTimeoutMs = 180_000, env = {} }) {
   let output = "";
+  let liveDb;
+  if (process.env.LIVE_DB === "postgres") {
+    const [name, url] = livedb("create", `ref_${basename(dataDir)}`).split(" ");
+    liveDb = { name, url };
+    process.stderr.write(`livedb ${name}\n`);
+  }
   const dev = spawn(process.execPath, [DEV], {
     cwd: APP_DIR,
-    env: { ...process.env, REFERENCE_APP_DATA_DIR: dataDir, NO_COLOR: "1", ...env },
+    env: {
+      ...process.env,
+      REFERENCE_APP_DATA_DIR: dataDir,
+      NO_COLOR: "1",
+      ...(liveDb ? { REFERENCE_APP_DATABASE_URL: liveDb.url } : {}),
+      ...env,
+    },
     stdio: ["ignore", "pipe", "pipe"],
     detached: true,
   });
@@ -88,6 +120,8 @@ export async function startSupervisor({ dataDir, readyTimeoutMs = 180_000, env =
   // "close", not "exit": exit can fire before the last stdout chunk arrives, and
   // the ready loop below would then report a ready supervisor as having died.
   const exited = new Promise((resolve) => dev.on("close", (code) => resolve(code)));
+  // Registered first, so it runs before the signal handler below re-raises.
+  if (liveDb) exited.then(() => dropLiveDb(liveDb.name));
 
   const supervisor = {
     dev,

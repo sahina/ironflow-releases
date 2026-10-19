@@ -38,7 +38,7 @@
 // terminal, every notification delivered exactly once, no silently dropped
 // publish. Timings are printed as a table and asserted on by nothing. A timing
 // gate needs a committed baseline, building one duplicates
-// tests/loadtest/baseline.json, and it would flake on a loaded laptop.
+// tests/loadtest/baseline-*.json, and it would flake on a loaded laptop.
 //
 // SQLite, single writer, and `--dev` — see the header the report prints.
 import { strict as assert } from "node:assert";

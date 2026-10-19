@@ -27,6 +27,7 @@ SERVER_DB="${LOG_DIR}/ironflow.db"
 LEDGER="${LOG_DIR}/contact-ledger.jsonl"
 
 IRONFLOW_BIN="${IRONFLOW_BIN:-${REPO_ROOT}/build/ironflow}"
+[[ "${IRONFLOW_BIN}" = /* ]] || IRONFLOW_BIN="${PWD}/${IRONFLOW_BIN}"
 SERVER_PORT="${IRONFLOW_PORT:-$((30000 + RANDOM % 30000))}"
 # Always the server this script starts, never a shell IRONFLOW_SERVER_URL.
 IRONFLOW_SERVER_URL="http://localhost:${SERVER_PORT}"
@@ -94,7 +95,10 @@ fi
 # randomizing --port alone is not isolation. --nats-store-dir derives from
 # --db, which is already unique per run.
 log "starting server (port ${SERVER_PORT}, db ${SERVER_DB})"
-"${IRONFLOW_BIN}" serve --dev --port "${SERVER_PORT}" --nats-port -1 --db "${SERVER_DB}" >"${SERVER_LOG}" 2>&1 &
+# Run from LOG_DIR: on PostgreSQL (IRONFLOW_DATABASE_URL set, e.g. by
+# `LIVE_DB=postgres make demo-reconciliation-crash`) the engine writes its JWT
+# secret to the working directory rather than next to --db.
+(cd "${LOG_DIR}" && exec "${IRONFLOW_BIN}" serve --dev --port "${SERVER_PORT}" --nats-port -1 --db "${SERVER_DB}") >"${SERVER_LOG}" 2>&1 &
 SERVER_PID=$!
 for _ in $(seq 1 60); do curl -fs "${IRONFLOW_SERVER_URL}/health" >/dev/null 2>&1 && break; sleep 0.5; done
 if ! curl -fs "${IRONFLOW_SERVER_URL}/health" >/dev/null 2>&1; then

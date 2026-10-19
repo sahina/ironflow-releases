@@ -78,8 +78,13 @@ func applyFact(order map[string]any, event ironflow.ProjectionEvent) {
 	case EventOrderApproved:
 		copyFields(order, data, "approvedBy", "approvedAt")
 	case EventOrderReleased:
-		order["status"] = string(StatusProcessingPayment)
-		order["releasedAt"] = data["releasedAt"]
+		// A redelivered release can arrive after the outcome. Its payment run
+		// finds the attempt recorded and emits nothing new, so moving the status
+		// back here would leave a paid order "taking payment" for good.
+		if order["status"] == string(StatusPendingApproval) {
+			order["status"] = string(StatusProcessingPayment)
+			order["releasedAt"] = data["releasedAt"]
+		}
 	case EventOrderPaid:
 		order["status"] = string(StatusPaid)
 		copyFields(order, data, "captureId", "paidAt")

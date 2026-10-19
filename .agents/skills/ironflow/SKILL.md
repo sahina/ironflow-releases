@@ -1,6 +1,6 @@
 ---
 name: ironflow
-version: 0.47.0
+version: 0.48.0
 description: |
   Universal entry point for Ironflow AI assistance. Classifies user intent and dispatches
   to the right specialized skill. Use when the user mentions "ironflow", "help with ironflow",
@@ -26,7 +26,7 @@ or when the request is ambiguous.
 > **Path convention.** Paths are shown as `~/.agents/skills/...` (global install), and here they
 > are real files on disk: this router is deliberately NOT bundled into the desktop agent (see
 > `bundledSkills.ts`), so it never runs as a packaged resource. The directory is not fixed,
-> though — `ironflow skills sync --local` vendors to `./.agents/skills/`, and `npx skills add`
+> though — `ironflow skills sync` writes to `./.agents/skills/` unless given `--global`, and `npx skills add`
 > installs under the agent's own skills directory. If a path here does not resolve, find the
 > sibling skill under this file's own directory, or activate it by name; never guess a prefix.
 >
@@ -49,7 +49,7 @@ If `OUTDATED:<version>`, surface this to the user once, then continue with class
 
 > "Heads up: Ironflow v<version> is available (run `ironflow version` for the installed one). Upgrade the binary
 > (`brew upgrade ironflow`, or pull the latest Docker image), then run
-> `ironflow skills sync` to update your skills."
+> `ironflow skills sync` (add `--global` for a global install) to update your skills."
 
 Skills ship inside the `ironflow` binary, so `ironflow skills sync` always installs the
 version matching your binary. If `ironflow` is not on PATH the skills came from

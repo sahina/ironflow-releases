@@ -15,7 +15,7 @@ import { fileURLToPath } from "node:url";
 import { setTimeout as sleep } from "node:timers/promises";
 
 import { sendControl } from "./lib/control.mjs";
-import { buildChildEnv } from "./dev.mjs";
+import { buildChildEnv, engineEnv } from "./dev.mjs";
 
 const DEV = fileURLToPath(new URL("./dev.mjs", import.meta.url));
 
@@ -172,6 +172,22 @@ test("buildChildEnv overrides ambient engine settings and keeps the rest", () =>
   assert.equal(env.IRONFLOW_ENV, "default");
   assert.equal(env.REFERENCE_APP_DATA_DIR, "/tmp/data");
   assert.equal(env.EDITOR, "vim"); // the developer's own settings survive
+});
+
+test("engineEnv drops an ambient IRONFLOW_DATABASE_URL", () => {
+  const env = engineEnv({ PATH: "/bin", IRONFLOW_DATABASE_URL: "postgres://prod/db" });
+  assert.equal(env.IRONFLOW_DATABASE_URL, undefined);
+  assert.equal(env.PATH, "/bin");
+});
+
+test("engineEnv passes REFERENCE_APP_DATABASE_URL to the engine as IRONFLOW_DATABASE_URL", () => {
+  const env = engineEnv({
+    PATH: "/bin",
+    IRONFLOW_DATABASE_URL: "postgres://prod/db",
+    REFERENCE_APP_DATABASE_URL: "postgres://localhost:5433/ironflow_live_ref_x",
+  });
+  assert.equal(env.IRONFLOW_DATABASE_URL, "postgres://localhost:5433/ironflow_live_ref_x");
+  assert.equal(env.REFERENCE_APP_DATABASE_URL, undefined);
 });
 
 test("the API key never reaches a NEXT_PUBLIC_ variable", () => {

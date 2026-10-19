@@ -84,12 +84,15 @@ const log = (message) => process.stderr.write(`[dev]        ${message}\n`);
 
 // The engine gets a scrubbed environment, not the developer's. An ambient
 // IRONFLOW_DATABASE_URL or NATS_URL in their shell would otherwise silently
-// point this demo at their real database or cluster.
-function engineEnv() {
+// point this demo at their real database or cluster. The one way in is the
+// explicit REFERENCE_APP_DATABASE_URL, which `LIVE_DB=postgres` live runs set
+// to a throwaway database (#2967).
+export function engineEnv(env = process.env) {
   const out = {};
   for (const name of ["PATH", "HOME", "TMPDIR", "USER", "LANG", "TERM"]) {
-    if (process.env[name]) out[name] = process.env[name];
+    if (env[name]) out[name] = env[name];
   }
+  if (env.REFERENCE_APP_DATABASE_URL) out.IRONFLOW_DATABASE_URL = env.REFERENCE_APP_DATABASE_URL;
   return out;
 }
 
@@ -119,7 +122,9 @@ function engineRow() {
       "--dev",
       "--bootstrap-key-file", BOOTSTRAP_KEY_FILE,
     ],
-    cwd: APP_DIR,
+    // On PostgreSQL the engine writes its JWT secret to the working directory,
+    // not next to --db, so keep it in the data dir.
+    cwd: process.env.REFERENCE_APP_DATABASE_URL ? DATA_DIR : APP_DIR,
     env: engineEnv(),
     ready: async () => {
       const { http_port: port } = await waitForJsonFile(PORT_FILE, { timeoutMs: PORT_FILE_TIMEOUT_MS });
