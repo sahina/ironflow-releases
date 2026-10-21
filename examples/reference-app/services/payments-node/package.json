@@ -12,7 +12,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@ironflow/node": "workspace:*"
+    "@ironflow/node": "link:../../../../sdk/js/node"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",

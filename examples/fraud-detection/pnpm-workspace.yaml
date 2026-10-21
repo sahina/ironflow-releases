@@ -1,5 +1,2 @@
-packages:
-  - '../../sdk/js/core'
-  - '../../sdk/js/node'
 allowBuilds:
   esbuild: true

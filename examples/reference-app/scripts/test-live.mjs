@@ -236,9 +236,14 @@ async function main() {
     // one: a client-only ConnectRPC subscriber, no worker runtime, resuming
     // from a cursor it persists itself.
     await check("the Python subscriber records one delivery and announces it", async () => {
+      // The read model keeps only the latest notification, and the earlier
+      // statuses land first, so wait for the last one rather than any one.
       const order = await waitFor(
-        "notification.sent to reach the read model",
-        async () => (await api.projectedOrder(orderId))?.notification,
+        "the paid notification.sent to reach the read model",
+        async () => {
+          const notification = (await api.projectedOrder(orderId))?.notification;
+          return notification?.status === "paid" ? notification : undefined;
+        },
       );
       assert.equal(order.status, "paid");
       assert.equal(order.channel, "local-log");
@@ -246,15 +251,21 @@ async function main() {
       // Ordering announces every status it reaches, so a happy-path order
       // produces three messages. Each is in the log exactly once, and each emit
       // was acknowledged — the two halves of the crash window between them.
-      const logged = deliveries(orderId);
+      // The subscriber marks a row emitted only after the engine acknowledges the
+      // emit, so the projection can see the fact a moment before the log says so.
+      const logged = await waitFor("every notification.sent to be acknowledged", async () => {
+        const rows = deliveries(orderId);
+        if (!rows.every((row) => row.emitted === 1)) {
+          throw new Error(
+            `a delivery was committed but its notification.sent was never acknowledged: ${JSON.stringify(rows)}`,
+          );
+        }
+        return rows;
+      });
       assert.deepEqual(
         logged.map((row) => row.status),
         ["pending_approval", "processing_payment", "paid"],
         `unexpected delivery log: ${JSON.stringify(logged)}`,
-      );
-      assert.ok(
-        logged.every((row) => row.emitted === 1),
-        `a delivery was committed but its notification.sent was never acknowledged: ${JSON.stringify(logged)}`,
       );
 
       // The timeline labels the fact with the service and language that made

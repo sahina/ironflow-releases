@@ -38,7 +38,7 @@ await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
 try {
   const kv = new KVClient({ serverUrl: `http://127.0.0.1:${server.address().port}`, timeout: 5000 });
   const bucket = kv.bucket("test");
-  await assert.rejects(bucket.getJSON("counter"), { code: "HTTP_404", status: 404 });
+  await assert.rejects(bucket.getJSON("counter"), { code: "not_found", status: 404 });
   await bucket.put("counter", 1);
   assert.equal((await bucket.get("counter")).value, "MQ==");
   const entry = await bucket.getJSON("counter");

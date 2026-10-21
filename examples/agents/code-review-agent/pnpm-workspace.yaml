@@ -1,6 +1,2 @@
-packages:
-  - '../../../sdk/js/core'
-  - '../../../sdk/js/browser'
-  - '../../../sdk/js/node'
 allowBuilds:
   esbuild: true

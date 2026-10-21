@@ -8,7 +8,7 @@
     "dev": "pnpm tsx watch worker.ts"
   },
   "dependencies": {
-    "@ironflow/node": "workspace:*"
+    "@ironflow/node": "link:../../sdk/js/node"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

@@ -10,7 +10,7 @@
     "test": "NODE_OPTIONS=--no-experimental-webstorage vitest run"
   },
   "dependencies": {
-    "@ironflow/browser": "workspace:*",
+    "@ironflow/browser": "link:../../../../sdk/js/browser",
     "next": "^15.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

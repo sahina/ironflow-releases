@@ -8,7 +8,7 @@
     "start": "tsx src/worker.ts"
   },
   "dependencies": {
-    "@ironflow/node": "workspace:*",
+    "@ironflow/node": "link:../../sdk/js/node",
     "zod": "^4.3.5"
   },
   "devDependencies": {

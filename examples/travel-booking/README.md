@@ -70,25 +70,6 @@ pnpm dev
 
 Open <http://localhost:3000>.
 
-> **Don't `rm -rf node_modules` here without repairing the SDK afterwards.**
-> Every TypeScript example is its own little pnpm workspace that includes `../../sdk/js/*`,
-> so `pnpm install` in this directory re-points the *shared* SDK packages at
-> **this example's** store — `sdk/js/core/node_modules/typescript` becomes a
-> symlink into `examples/travel-booking/node_modules/.pnpm/`. Delete that and the
-> SDK build breaks for the whole repo, with a confusing
-> `Cannot find module .../sdk/js/core/node_modules/typescript/bin/tsc`.
->
-> A plain root `pnpm install` does **not** fix it — pnpm sees the links as
-> current. Repair with:
->
-> ```bash
-> # from the repo root
-> rm -rf sdk/js/*/node_modules
-> pnpm install
-> ```
->
-> This is how every TypeScript example behaves, not something specific to this one.
-
 `pnpm dev` runs two processes: the Next.js UI and a **separate** worker process,
 supervised by `scripts/dev.mjs`. The worker is separate on purpose — the best
 moment in the demo is killing it, and you can't kill a worker embedded in your

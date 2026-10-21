@@ -9,8 +9,8 @@
     "seed": "pnpm tsx seed.ts"
   },
   "dependencies": {
-    "@ironflow/core": "workspace:*",
-    "@ironflow/node": "workspace:*"
+    "@ironflow/core": "link:../../sdk/js/core",
+    "@ironflow/node": "link:../../sdk/js/node"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

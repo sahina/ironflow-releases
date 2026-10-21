@@ -1,7 +1,3 @@
-packages:
-  - '../../sdk/js/core'
-  - '../../sdk/js/browser'
-  - '../../sdk/js/node'
 onlyBuiltDependencies:
   - esbuild
 allowBuilds:

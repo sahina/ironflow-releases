@@ -75,7 +75,7 @@ package directory under `go test`. Nothing is copied out of `contracts/`.
 | `cmd/orders/main.go` | Schema registration, then the pull-mode worker. |
 
 **`order.ErrConflict` wraps `ironflow.ErrConflict`.** A version conflict reaches
-the SDK as Connect `ABORTED`, surfaced as HTTP 409 and `ironflow.ErrConflict`.
+the SDK as Connect `aborted`, surfaced as HTTP 409 and `ironflow.ErrConflict`.
 `streams.go` re-wraps it as `order.ErrConflict` so the domain never imports the
 SDK's error set, and `IsConflict` is the only test. Payments should spell it the
 same way rather than inventing a third name.

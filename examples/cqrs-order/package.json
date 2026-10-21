@@ -14,9 +14,9 @@
     "test:live": "node --test tests/crash-recovery.live.mts"
   },
   "dependencies": {
-    "@ironflow/browser": "workspace:*",
-    "@ironflow/core": "workspace:*",
-    "@ironflow/node": "workspace:*",
+    "@ironflow/browser": "link:../../sdk/js/browser",
+    "@ironflow/core": "link:../../sdk/js/core",
+    "@ironflow/node": "link:../../sdk/js/node",
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3"

@@ -2,8 +2,8 @@
 #
 # Pre-built configurations are available per deployment template:
 #   terraform.small.tfvars   — 1 control + 1 worker
-#   terraform.medium.tfvars  — 3 control + 1 worker
-#   terraform.large.tfvars   — 3 control + 2 workers
+#   terraform.medium.tfvars  — 3 control + 2 workers (cpx22)
+#   terraform.large.tfvars   — 3 control + 2 workers (cpx32)
 #
 # Usage:
 #   terraform apply -var-file=terraform.small.tfvars

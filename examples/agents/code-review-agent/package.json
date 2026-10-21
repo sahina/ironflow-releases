@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@ironflow/node": "workspace:*",
+    "@ironflow/node": "link:../../../sdk/js/node",
     "zod": "^4.4.3"
   },
   "devDependencies": {

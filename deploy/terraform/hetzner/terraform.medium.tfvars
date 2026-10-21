@@ -1,4 +1,4 @@
-# Medium cluster — 3 control plane + 1 worker
+# Medium cluster — 3 control plane + 2 workers
 # Recommended for: Medium deployment template (production HA)
 #
 # Usage:

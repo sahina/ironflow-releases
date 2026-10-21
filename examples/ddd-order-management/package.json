@@ -10,9 +10,9 @@
     "worker": "tsx --env-file=.env.local worker.ts"
   },
   "dependencies": {
-    "@ironflow/browser": "workspace:*",
-    "@ironflow/core": "workspace:*",
-    "@ironflow/node": "workspace:*",
+    "@ironflow/browser": "link:../../sdk/js/browser",
+    "@ironflow/core": "link:../../sdk/js/core",
+    "@ironflow/node": "link:../../sdk/js/node",
     "clsx": "^2.1.1",
     "lucide-react": "^0.577.0",
     "next": "16.1.6",
