@@ -48,7 +48,7 @@ statement.received
       v  (one run per case)
 +---------------------------------------------------------+
 | case run                                                 |
-|  redact() -> llm() triage -> approve("contact")          |
+|  redact() -> llm() triage -> approve(ApproveContact)     |
 |                                    |                      |
 |                                    v                      |
 |                        tool(send, idempotencyKey)         |
@@ -164,7 +164,7 @@ reader to discover.
   has no equivalent. Do not read this example as a gesture
   at an engine capability that exists.
 - **The sweep is a demo affordance, not production code.** It publishes into
-  `agent.approve.contact` so a stuck approval can resolve without a human — which means
+  `reconciliation.contact.approved` so a stuck approval can resolve without a human — which means
   anything with permission to emit that event can settle *any* pending approval. A real
   deployment locks that subject down. `tests/sweep.test.ts` asserts the invariant that
   bounds the damage: the sweep can only ever emit `approved: false`, and because
@@ -193,11 +193,6 @@ reader to discover.
   residue line for that counterparty, whatever its actual cause. Defensible for an
   illustrative example — a human authorized the parameters at approval time — but the
   rule is broader than its name suggests.
-- **Renaming the approval breaks a link no test can catch.** `EVENTS.ApproveContact`
-  must equal the literal `"agent.approve."` plus the name string passed to `approve()`
-  in `src/agent.ts`. The SDK does not export `APPROVE_EVENT_PREFIX`, so nothing can
-  derive or assert the two agree — change one without the other and the sweep's
-  rejections silently stop matching.
 - **The counterparty pseudonym is unsalted SHA-256** over a small, guessable vendor set,
   so it is brute-forceable from the fixture data alone. Fine for illustrative fixture
   data, not a real anonymization scheme.

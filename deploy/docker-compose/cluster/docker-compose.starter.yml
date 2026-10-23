@@ -70,7 +70,7 @@ services:
 
   ironflow:
     restart: unless-stopped
-    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.49.0}
+    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.50.0}
     command: >
       serve
       --nats-url=nats://nats:4222

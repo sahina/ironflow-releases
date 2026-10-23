@@ -20,13 +20,10 @@ export const EVENTS = {
   // Trigger.event is required even on a cron-only trigger (types.ts) — this
   // is the tick the scheduler fires, not a domain event.
   SweepTick: "reconciliation.sweep.tick",
-  // NOT ours to choose freely: approve() derives this internally as
-  // APPROVE_EVENT_PREFIX + name (sdk/js/node/src/agent/approve.ts), where
-  // "name" is the string passed to approve() in src/agent.ts ("contact").
-  // Renaming that approval means changing this too. Both the cron sweep and
-  // the manual-approve script publish this same event name; one constant
-  // instead of two raw copies that can drift apart.
-  ApproveContact: "agent.approve.contact",
+  // The event approve() waits for in src/agent.ts. The cron sweep and the
+  // manual-approve script publish this same name; one constant instead of
+  // three raw copies that can drift apart.
+  ApproveContact: "reconciliation.contact.approved",
 } as const;
 
 export type EventName = (typeof EVENTS)[keyof typeof EVENTS];

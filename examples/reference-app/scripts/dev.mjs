@@ -166,7 +166,7 @@ export function buildChildEnv({ url, apiKey, dataDir = DATA_DIR, env = process.e
     ...ambient,
     IRONFLOW_SERVER_URL: url,
     IRONFLOW_API_KEY: apiKey,
-    IRONFLOW_ENV: "default",
+    IRONFLOW_ENV: "env_default",
     // Every service keeps its own SQLite file under this one directory, which is
     // the only path `make reference-app-reset` will delete. A service names its
     // own file inside it.

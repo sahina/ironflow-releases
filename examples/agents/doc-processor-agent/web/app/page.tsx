@@ -93,7 +93,7 @@ export default function Home() {
     ironflow.configure({
       serverUrl: SERVER_URL,
       transport: "connectrpc",
-      environment: "default",
+      environment: "env_default",
     });
     void ironflow.connect();
 

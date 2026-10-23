@@ -18,7 +18,7 @@ const server = createServer((req, res) => {
       return;
     }
     if (req.url?.endsWith("/GetRunSteps")) {
-      res.end(JSON.stringify({ steps: [{ stepId: `${payload.runId}:approve.contact:0`, status: "STEP_STATUS_WAITING" }] }));
+      res.end(JSON.stringify({ steps: [{ stepId: `${payload.runId}:approve.reconciliation.contact.approved:0`, status: "STEP_STATUS_WAITING" }] }));
       return;
     }
     requests.push(payload);
@@ -45,7 +45,7 @@ async function command(args: string[]) {
 it.each([{ separator: [] }, { separator: ["--"] }])("preserves an explicit rejection with separator %j", async ({ separator }) => {
   await command(["run", "approve", ...separator, "run-123", "false", "declined"]);
   expect(requests.at(-1)).toEqual({
-    event: "agent.approve.contact",
+    event: "reconciliation.contact.approved",
     data: { runId: "run-123", approved: false, approver: "operator", reason: "declined" },
   });
 }, 10_000);

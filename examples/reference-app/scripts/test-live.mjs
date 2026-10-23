@@ -328,7 +328,7 @@ async function main() {
     await check("the worker list is readable from the page's origin", async () => {
       assert.ok(webUrl, "the supervisor printed no web URL");
       const response = await fetch(`${url}/api/v1/workers`, {
-        headers: { ...api.headers, origin: webUrl, "x-ironflow-environment": "default" },
+        headers: { ...api.headers, origin: webUrl, "x-ironflow-environment-id": "env_default" },
       });
       assert.equal(response.status, 200);
       assert.ok(

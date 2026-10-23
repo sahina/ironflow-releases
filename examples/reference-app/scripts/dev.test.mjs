@@ -169,7 +169,7 @@ test("buildChildEnv overrides ambient engine settings and keeps the rest", () =>
   assert.equal(env.IRONFLOW_SERVER_URL, "http://127.0.0.1:5000");
   assert.equal(env.NEXT_PUBLIC_IRONFLOW_SERVER_URL, "http://127.0.0.1:5000");
   assert.equal(env.IRONFLOW_API_KEY, "ifkey_x");
-  assert.equal(env.IRONFLOW_ENV, "default");
+  assert.equal(env.IRONFLOW_ENV, "env_default");
   assert.equal(env.REFERENCE_APP_DATA_DIR, "/tmp/data");
   assert.equal(env.EDITOR, "vim"); // the developer's own settings survive
 });

@@ -3,7 +3,7 @@
 Durable PR review agent. Fetches a diff, runs it through an LLM, waits for human approval, posts a comment. Crash-resilient at every step.
 
 ```text
-   pr.opened ──► fetch-diff ──► llm.review ──► approve("post-review") ──► post-comment
+   pr.opened ──► fetch-diff ──► llm.review ──► approve("code-review.post-review.approved") ──► post-comment
                      │              │                 │                       │
                      │              │                 │                       │
                   step.run       step.run        step.waitForEvent         step.run
@@ -62,7 +62,7 @@ If nobody answers within the 24h TTL, the run fails with `waitForEvent timed out
 
 ## Crash-resilience callout
 
-`approve("post-review", { ttl: "24h" })` calls `step.waitForEvent` under the hood. The pause is **durable**:
+`approve("code-review.post-review.approved", { ttl: "24h" })` calls `step.waitForEvent` under the hood. You pick the event name; `pnpm run approve` emits it with `{ runId, approved }`. The pause is **durable**:
 
 ```bash
 # Trigger and watch the worker pause at the approval gate
@@ -112,4 +112,4 @@ Delivery of `post-comment` is at-least-once: a completed step is never re-run, b
 - `src/tools.ts` — fetch-diff, post-comment
 - `src/worker.ts` — pull-mode worker entrypoint
 - `scripts/trigger.ts` — emit a pr.opened event
-- `scripts/approve.ts` — emit the agent.approve.post-review event
+- `scripts/approve.ts` — emit the code-review.post-review.approved event

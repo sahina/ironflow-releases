@@ -15,13 +15,10 @@ const entry = (stage: string) => ({
 describe("the sweep emits the event its stage calls for", () => {
   it("emits a rejection for a case stuck awaiting approval", () => {
     const out = deadlineEventFor(entry("awaiting-approval"), NOW);
-    // Deliberately a literal, not EVENTS.ApproveContact: approve() derives
-    // this value internally as APPROVE_EVENT_PREFIX + name, and the prefix
-    // is not exported, so nothing can import the true value to compare
-    // against. If both sides of this assertion read the same constant, a
-    // typo or refactor of that constant leaves the test green while the
-    // emitted event silently stops matching the gate it exists to settle.
-    expect(out?.event).toBe("agent.approve.contact");
+    // Deliberately a literal, not EVENTS.ApproveContact: if both sides of this
+    // assertion read the same constant, a typo in that constant leaves the
+    // test green while the emitted event stops matching what approve() waits for.
+    expect(out?.event).toBe("reconciliation.contact.approved");
     // approve() correlates on runId, not caseId — without this the rejection
     // silently never matches and the run still dies on the engine TTL.
     expect(out?.data.runId).toBe("run-1");
@@ -51,7 +48,7 @@ describe("the sweep emits the event its stage calls for", () => {
 });
 
 describe("the sweep can never approve anything", () => {
-  // The sweep publishes into agent.approve.{name}, so anything that can emit
+  // The sweep publishes into reconciliation.contact.approved, so anything that can emit
   // that event can approve any pending approval. This test is what turns the
   // README's "lock this down" warning into a guarantee.
   it("never emits approved:true, at any stage, at any time", () => {

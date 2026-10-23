@@ -1,1 +1,3 @@
 ironflow-py==0.43.1
+# protobuf-py 0.7.0 breaks connectrpc 0.12.1 (removed protobuf.wkt.api_pb).
+protobuf-py<0.7

@@ -17,7 +17,7 @@ const client = createClient({ serverUrl });
 // is the same raw-history smell the design objects to, moved into the
 // operational path.
 //
-// DEMO AFFORDANCE, NOT PRODUCTION: this publishes into agent.approve.contact,
+// DEMO AFFORDANCE, NOT PRODUCTION: this publishes into reconciliation.contact.approved,
 // so anything with permission to emit that event can settle any pending
 // approval. A real deployment locks that subject down. tests/sweep.test.ts
 // asserts this can only ever emit approved:false, and approve() correlates

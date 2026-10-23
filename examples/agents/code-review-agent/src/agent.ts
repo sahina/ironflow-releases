@@ -51,7 +51,7 @@ export const codeReviewAgent = agent(
 
     const reviewText = String(review.content ?? "(no review content)");
 
-    const decision = await approve("post-review", {
+    const decision = await approve("code-review.post-review.approved", {
       ttl: "24h",
       payload: { repo, pr, reviewText },
     });

@@ -28,14 +28,14 @@ export function confirmedActionFor(signal: ResolutionSignal): string | null {
 
 // ── Reconciliation case agent ──────────────────────────────────
 //
-//   redact → llm triage → approve(contact) → send → wait for reply
+//   redact → llm triage → approve(EVENTS.ApproveContact) → send → wait for reply
 //                                                       ↓
 //                                        case.resolved | case.unresolved
 //
 // Two durable gates, both routed around the engine's wait-timeout behaviour
 // (a TTL elapse FAILS the run — the documented contract, agent/approve.ts):
 //
-//   approve("contact")  the sweep emits a genuine rejection before the TTL
+//   approve(contact)    the sweep emits a genuine rejection before the TTL
 //   waitForEvent        one event name carries reply AND timeout
 //
 // Neither gate may sit inside try/catch: the catch swallows the YieldSignal
@@ -83,7 +83,7 @@ export const reconciliationCaseAgent = agent(
     // the outbound contact is theatre — so the draft goes on the gate. The
     // payload is stored as the parked step's input, readable through
     // getRunSteps and the dashboard before anyone approves.
-    const decision = await approve("contact", {
+    const decision = await approve(EVENTS.ApproveContact, {
       ttl: "72h",
       payload: {
         caseId,

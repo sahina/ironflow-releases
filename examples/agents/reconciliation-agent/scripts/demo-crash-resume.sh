@@ -125,7 +125,7 @@ log "verifying case reuse across concurrent statements"
 
 # The case runs are detached, so wait for one to reach its approval gate,
 # then approve it by run id. scripts/find-pending.ts prints the first run id
-# sitting at approve.contact.
+# sitting at approve.reconciliation.contact.approved.
 log "waiting for a case to reach the approval gate"
 RUN_ID=""
 for _ in $(seq 1 120); do

@@ -1,4 +1,4 @@
-// Send the human-approval event so the agent's approve("post-review")
+// Send the human-approval event so the agent's approve("code-review.post-review.approved")
 // gate releases.
 //
 //   pnpm run approve <runId>                   # approve
@@ -19,7 +19,7 @@ const client = new IronflowClient({
   apiKey: process.env.IRONFLOW_API_KEY,
 });
 
-const eventName = "agent.approve.post-review";
+const eventName = "code-review.post-review.approved";
 await client.emit(eventName, {
   runId: runIdArg,
   approved,

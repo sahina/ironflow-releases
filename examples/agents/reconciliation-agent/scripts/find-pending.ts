@@ -1,5 +1,6 @@
 import { serverUrl } from "../src/config.js";
 import { createClient } from "@ironflow/node";
+import { EVENTS } from "../src/events.js";
 
 // Prints the run id of the first reconciliation-case run parked on the
 // contact-approval gate. Used by demo-crash-resume.sh to find something to
@@ -13,14 +14,14 @@ const { runs } = await client.listRuns({ functionId: "reconciliation-case", stat
 
 for (const run of runs) {
   const { steps } = await client.getRunSteps(run.id);
-  // The stored step id is `${runId}:approve.contact:${index}` (SDK
-  // generateStepId, internal/context.ts), not the bare "approve.contact"
-  // passed to approve() — match on the segment, not full equality.
-  if (steps.some((s) => s.stepId.includes(":approve.contact:") && s.status === "waiting")) {
+  // The stored step id is `${runId}:approve.${event}:${index}` (SDK
+  // generateStepId, internal/context.ts), not the bare "approve.${event}"
+  // — match on the segment, not full equality.
+  if (steps.some((s) => s.stepId.includes(`:approve.${EVENTS.ApproveContact}:`) && s.status === "waiting")) {
     console.log(run.id);
     process.exit(0);
   }
 }
 
-console.error("no run currently waiting on approve.contact");
+console.error(`no run currently waiting on approve.${EVENTS.ApproveContact}`);
 process.exit(1);
