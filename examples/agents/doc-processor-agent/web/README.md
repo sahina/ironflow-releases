@@ -51,11 +51,11 @@ The **Steps** panel replays step events after the run completes. `invoke()` retu
 
 ## Edge cases exercised
 
-- **Double-click submit** — `idempotencyKey` derived per click prevents duplicate runs
+- **Double-click submit** — the button is disabled while a run is in flight, and `run()` returns early on a second click. Each click gets its own `idempotencyKey`, so the server can drop a repeat of the same request. The key does not dedupe two clicks
 - **Tab close mid-invoke** — `AbortController` aborts the HTTP request; the server reads the abandoned caller and cancels the run itself (ADR 0067), no client-side `cancelRun`
 - **Network flap** — `SubscriptionManager` reconnects with replay
 - **Empty result** — UI renders `{}` cleanly without crashing
 
-Run `pnpm test` in `web/` to check delayed replay, terminal-event close, failed-run replay, subscription replacement, and unmount cleanup.
+Run `pnpm test` in `web/` to check delayed replay, terminal-event close, failed-run replay, a `beforeunload` that does not unload, subscription replacement, and unmount cleanup.
 
 See `sdk/js/browser/src/agents/spec.md` for the full contract.

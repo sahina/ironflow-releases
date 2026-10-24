@@ -66,8 +66,9 @@ engine is not running in `--dev` mode. The example scripts load `.env`.
 
 ### 4. Register projections and build the corpus
 
+In terminal 1, still in `examples/financial-rag`:
+
 ```bash
-cd examples/financial-rag
 pnpm run setup      # 3 SQL projections in Ironflow + the ragapp schema
 pnpm seed-corpus    # writes two synthetic filings into corpus/
 ```
@@ -94,7 +95,7 @@ pnpm start
 ```
 
 Prints `financial-rag worker running`, plus a loud warning if `VOYAGE_API_KEY`
-is unset (see below).
+is unset or still the `pa-...` placeholder from `.env.example` (see below).
 
 ### 6. Trigger the pipeline
 
@@ -113,7 +114,7 @@ parsed filing   { docId: 'ACME_2024-Q3_2025-02-14', ... }
 batch closed    { batchId: '...', parsed: 2 }
 scored          { id: 'revenue-restated', ... }        ← one per golden row
 eval complete   { indexVersion: 1, passed: true, ... }
-index promoted  { indexVersion: 1, previous: 0 }
+index promoted  { indexVersion: 1, previous: 0, hits: N }
 ```
 
 `index promoted` is the moment the data becomes queryable. Everything before it
@@ -122,7 +123,9 @@ runs against a shadow index that no query can reach.
 The whole chain is inspectable:
 
 ```bash
-./build/ironflow inspect <run_id>    # run_id is in the worker log
+# `ironflow` does not read .env, and this engine writes no discovery file: export the key.
+export IRONFLOW_API_KEY=$(jq -r .key /tmp/ironflow-financial-rag-bootstrap-key.json)
+../../build/ironflow inspect <run_id>    # run_id is in the worker log
 ```
 
 ### 7. Ask a question
@@ -147,7 +150,7 @@ The verdict names the failing question IDs. `run-eval` logs a `scored` line per
 row, so compare its `retrievalPassed` and `numericPassed` against the tiers
 table below to see which stage broke.
 
-**Running without `VOYAGE_API_KEY` makes this much more likely.** The offline
+**Running without a real `VOYAGE_API_KEY` makes this much more likely.** The offline
 fallback is a deterministic hash, not a semantic embedding, so the retrieval
 tier is close to meaningless. It exists to prove the pipeline runs end to end
 without a Voyage account, not to produce good answers.

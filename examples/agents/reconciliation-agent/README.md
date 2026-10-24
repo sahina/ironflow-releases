@@ -175,7 +175,7 @@ reader to discover.
   stage's deadline event on its own schedule, well before either wait's TTL could fire,
   so the run always resumes through its own code instead of dying on the engine timeout.
   `DEADLINE_HOURS` is 24 (`src/memory.ts`), so every tick inside a walkthrough logs
-  `sweep complete { emitted: 0 }` and the emit path never runs. The shipped code does not
+  `sweep complete { emitted: 0, skippedMissingRunId: 0 }` and the emit path never runs. The shipped code does not
   drive a deadline to expiry; `tests/sweep.test.ts` covers `deadlineEventFor` in
   isolation. The path was exercised once against a live server with `DEADLINE_HOURS`
   temporarily set to 0: the next cron tick rejected an unapproved case ("no approver

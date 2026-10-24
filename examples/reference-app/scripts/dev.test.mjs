@@ -436,6 +436,11 @@ test("the crash control restarts only the payment worker", async (t) => {
     rmSync(root, { recursive: true, force: true });
   });
   await dev.until(/\[dev]\s+ready\n/);
+  // Awaited, not read off the ready snapshot: a child's stdout can land just
+  // after the ready line (see the REFERENCE_APP_SKIP_WEB test).
+  for (const label of ["orders", "payments"]) {
+    await dev.until(new RegExp(`\\[${label}]\\s+fake service pid=`));
+  }
 
   const pidsOf = (label) =>
     [...dev.text().matchAll(new RegExp(`\\[${label}]\\s+fake service pid=(\\d+)`, "g"))].map((m) => Number(m[1]));

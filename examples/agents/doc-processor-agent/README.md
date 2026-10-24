@@ -56,7 +56,7 @@ What it does:
 
 1. Starts a throwaway server (`--dev`) on a random HTTP port (override with `IRONFLOW_PORT`), an ephemeral NATS port and its own SQLite database
 2. Starts the worker (`pnpm start`)
-3. Emits `doc.received` with a slow image URL (3-second OCR sleep)
+3. Emits `doc.received`; the OCR step sleeps 3 seconds (`DOC_PROCESSOR_OCR_MS`)
 4. After 1.5 seconds — **mid-OCR** — sends `kill -9` to the worker
 5. Restarts the worker
 6. Polls the `doc-processor-memory` projection until `status="published"` shows up for the docId
@@ -86,6 +86,11 @@ Exit 0 ⇒ the agent recovered from the crash. Budget 2.5 to 3.5 minutes: a kill
 | `DOC_PROCESSOR_OCR_MS` | `3000` | OCR sleep — shorten in tests, extend for filming |
 | `DOC_PROCESSOR_CLASSIFY_MS` | `200` | Classify sleep — `DEMO_RECORD` sets 5000 so the kill lands after OCR finished |
 | `DEMO_RECORD` | unset | `demo-crash-resume.sh` screen-recording mode: 20s pause before the event, kill mid-classify, server kept up until Ctrl-C |
+| `IRONFLOW_BIN` | `build/ironflow` in the repo root | Binary that `demo-crash-resume.sh` starts. Build it with `make embed build` |
+| `IRONFLOW_PORT` | random port from 30000 to 59999 | HTTP port of the demo's throwaway server |
+| `DEMO_DOC_ID` | `demo-crash-<epoch seconds>` | docId the demo emits and verifies |
+| `DEMO_IMAGE_URL` | `https://example.com/invoice.png` | imageUrl the demo emits |
+| `DEMO_KILL_AFTER_MS` | `1500`; `5500` with `DEMO_RECORD` | Delay between the emit and `kill -9` |
 | `VERIFY_TIMEOUT_MS` | `210000` | `verify.ts` polling deadline. Crash-resume is gated on concurrency-lease expiry and takes 90s-3min; 210s leaves headroom. See the [tutorial](../../../docs/tutorials/agent-survives-crash.md) callout |
 
 ## Layering

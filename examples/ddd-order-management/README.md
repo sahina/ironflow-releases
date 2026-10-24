@@ -20,7 +20,7 @@ Ironflow uses `emit()` for all messages — the infrastructure doesn't distingui
 | **Naming**           | Imperative: `create.order`, `fulfill.order` | Past tense: `order.placed`, `order.shipped` |
 | **Meaning**          | Intent — "I want this to happen"            | Fact — "This already happened"              |
 | **Can be rejected?** | Yes (validation may fail)                   | No (it's a recorded fact)                   |
-| **Stored in**        | Transient (triggers a function)             | Entity stream (permanent history)           |
+| **Stored in**        | Event log (triggers a function)             | Entity stream (permanent history)           |
 
 Both flow through the same `emit()` → function trigger pipeline.
 

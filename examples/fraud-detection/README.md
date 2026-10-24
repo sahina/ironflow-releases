@@ -50,12 +50,12 @@ change is captured automatically because the system is built on event sourcing.
   ├─────────────────────────────────────────────────────────┤
   │ Event 2: model_scored                                   │
   │   model: "fraud_v4.2", score: 0.55,                     │
-  │   breakdown: { geo: 0.30, device: 0.25,                 │
-  │                velocity: 0.00, merchant_risk: 0.00 }    │
+  │   signalBreakdown: { geo: 0.30, device: 0.25,           │
+  │     velocity: 0.00, merchant_risk: 0.00 }               │
   ├─────────────────────────────────────────────────────────┤
   │ Event 3: decision_made                                  │
-  │   action: "decline", reason: "score 0.55 exceeds        │
-  │   decline threshold 0.50"                               │
+  │   action: "decline", reason: "Score 0.55 exceeds        │
+  │   decline threshold 0.5"                                │
   └─────────────────────────────────────────────────────────┘
 ```
 
@@ -130,7 +130,8 @@ contribution score (0.0 to 0.35):
   │                      │ No Redis needed — built-in KV.           │
   ├──────────────────────┼──────────────────────────────────────────┤
   │ geo-check            │ Compares card country vs IP country vs   │
-  │                      │ merchant country. Mismatch = 0.30 risk.  │
+  │                      │ merchant country. Two mismatches = 0.30  │
+  │                      │ risk, one mismatch = 0.15 risk.          │
   ├──────────────────────┼──────────────────────────────────────────┤
   │ device-check         │ Is this a known device fingerprint?      │
   │                      │ Unknown device = 0.25 risk.              │
@@ -262,7 +263,7 @@ transaction with the declined electronics transaction side by side.
 
 `verify.sh` calls the `ironflow` CLI, so put the binary on your `PATH` first (from
 this directory it is `../../build`). It checks the registered function and projection,
-the five completed runs, the entity streams, each seeded decision and the
+at least three completed runs, the entity streams, each seeded decision and the
 `fraud-alerts` count, and exits non-zero if any check fails. It also emits one extra
 transaction on `card_alice_1234` and checks that the card's velocity counter reaches
 at least 2, so run it after `pnpm seed`, not before.
@@ -271,6 +272,8 @@ at least 2, so run it after `pnpm seed`, not before.
 export PATH="$PWD/../../build:$PATH"
 ./verify.sh
 ```
+
+`pnpm test` runs `verify-kv.mjs`, which checks the velocity counter's compare-and-set logic against a mock KV server. It does not need a running Ironflow server.
 
 ---
 

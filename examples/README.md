@@ -1,6 +1,6 @@
 # Ironflow Examples
 
-Ironflow is a **Continuous History** platform — record every change as an immutable event, react with durable workflows, derive read models automatically, and rewind to any moment.
+Ironflow is one binary for durable execution, pub/sub and event sourcing. Its **Continuous History** model: record changes as immutable events, react with durable workflows, derive read models, and rewind to a recorded moment.
 
 These examples demonstrate the core concepts and validate the SDK.
 
@@ -24,7 +24,7 @@ Every Ironflow application follows four pillars:
 | [cqrs-order/](./cqrs-order/)                     | CQRS walkthrough, runnable | Tutorial companion     | Implements `docs/tutorials/cqrs-walkthrough.mdx` step-by-step |
 | [go-quickstart/](./go-quickstart/)               | Go SDK validation         | Go developers         | Same CH flow in Go                          |
 | [todo-web/](./todo-web/)                         | Bare-bones Next.js todo   | Getting started       | Embedded worker, events, projections        |
-| [travel-booking/](./travel-booking/)             | The 90-second showcase demo | Anyone new to Ironflow | Saga rollback, crash-resume, a race for the last seat, time travel |
+| [travel-booking/](./travel-booking/)             | The 90-second demo | Anyone new to Ironflow | Saga rollback, crash-resume, a race for the last seat, time travel |
 | [reference-app/](./reference-app/)               | Polyglot order processing | Multi-language systems | Go, TypeScript and Python services on one Ironflow backend: entity streams, a durable wait, durable steps, Pub/Sub and crash recovery |
 | [file-upload/](./file-upload/)                   | File storage in Python    | Python developers     | Buckets, signed URLs, a worker on `ironflow.file.created` |
 | [flask-single-container/](./flask-single-container/) | App + engine as one deployable unit | Shipping a small app | Flask, a pull-mode worker and the engine in one container with one volume |
@@ -42,7 +42,7 @@ Every Ironflow application follows four pillars:
 ## Prerequisites
 
 - Go 1.27+ (required to build Ironflow)
-- Node.js 22+ and pnpm (for TypeScript examples; `reference-app/` needs 24.2+)
+- Node.js 22+ and pnpm (for TypeScript examples; `reference-app/` needs 24.2+). Building the SDK from this checkout (`pnpm -C sdk/js build`) is supported on the repo's Node 24.
 - Python 3.10+ (for `reference-app/`'s notification service, `file-upload/` and `deletion-redaction/`)
 - Docker (for `flask-single-container/` and `financial-rag/`)
 
@@ -50,7 +50,7 @@ Every Ironflow application follows four pillars:
 
 - **Server URL.** Every command below assumes the engine on `localhost:9123`. On another port, set
   `IRONFLOW_SERVER_URL` — the `ironflow` CLI, the SDKs and the example scripts read that variable.
-- **Simulated integrations.** The agent and RAG examples run without paid providers: tools, OCR,
+- **Simulated integrations.** The agent examples and `rag-core` run without paid providers: tools, OCR,
   triage and model replies are deterministic stand-ins, and outbound messages go to local files.
   `financial-rag` needs `ANTHROPIC_API_KEY` (extraction fails without it); `rag-core` falls back
   to an offline embedding and its `ask` prints the retrieved context instead of an answer. Each
@@ -91,7 +91,7 @@ cd examples/ddd-order-management && pnpm install && pnpm worker
 cd examples/cqrs-order && pnpm install && pnpm worker
 # In another terminal: pnpm dev
 
-# Run the travel-booking showcase (pnpm dev supervises the UI and the worker)
+# Run the travel-booking demo (pnpm dev supervises the UI and the worker)
 cd examples/travel-booking && pnpm install && pnpm dev
 
 # Run the Go quickstart
@@ -137,6 +137,13 @@ cd examples/rag-core && pnpm install && pnpm run setup && pnpm start
 cd examples/financial-rag && pnpm install && docker compose up -d --wait
 # Then put the engine bootstrap key in .env and run: pnpm run setup && pnpm seed-corpus && pnpm start
 # In another terminal: pnpm poll, then pnpm ask "..."
+
+# Run the Python file-storage example (needs a running server; worker and upload in separate terminals)
+cd examples/file-upload && pip install -r requirements.txt && python worker.py
+# In another terminal: python upload.py
+
+# Prove the single-container Flask example against its pinned engine release (needs Docker)
+cd examples/flask-single-container && ./test.sh
 
 # Check customer data removal end to end (Go and Python 3; starts its own server)
 go test ./tests/integration -run '^TestDeletionBlogCustomerApp$' -count=1 -v

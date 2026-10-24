@@ -7,18 +7,16 @@ Bare-bones todo app using Next.js + Ironflow. The Ironflow worker runs embedded 
 ```text
 todo.added / todo.toggled / todo.deleted   (browser emits events)
         │
-        ▼
-  ┌──────────────┐
-  │ process-todo │  (Ironflow function — durable, memoized steps)
-  └──────────────┘
-        │
-        ▼
-  ┌───────────┐
-  │ todo-list │  (Ironflow projection — pure reducer → read model)
-  └───────────┘
-        │
-        ▼
-  UI subscribes to projection updates (real-time push)
+        ├───────────────────────────────┐
+        ▼                               ▼
+  ┌──────────────┐               ┌───────────┐
+  │ process-todo │               │ todo-list │
+  └──────────────┘               └───────────┘
+  Ironflow function:             Ironflow projection:
+  durable, memoized steps        pure reducer → read model
+                                        │
+                                        ▼
+         UI subscribes to projection updates (real-time push)
 ```
 
 **Events:** `todo.added`, `todo.toggled`, `todo.deleted`

@@ -3,7 +3,7 @@
 Durable PR review agent. Fetches a diff, runs it through an LLM, waits for human approval, posts a comment. Crash-resilient at every step.
 
 ```text
-   pr.opened ──► fetch-diff ──► llm.review ──► approve("code-review.post-review.approved") ──► post-comment
+   pr.opened ──► fetch-diff ──► llm.turn   ──► approve("code-review.post-review.approved") ──► post-comment
                      │              │                 │                       │
                      │              │                 │                       │
                   step.run       step.run        step.waitForEvent         step.run
@@ -89,10 +89,10 @@ This is the YC pitch in 30 seconds: **runs that span hours of human-time without
 
 | Pattern                 | doc-processor | code-review               |
 | ----------------------- | ------------- | ------------------------- |
-| `tool()`                | ✅            | ✅                        |
-| `memory()` + projection | ✅            | —                         |
-| `llm()`                 | —             | ✅                        |
-| `approve()`             | —             | ✅                        |
+| `tool()`                | ✓             | ✓                         |
+| `memory()` + projection | ✓             | —                         |
+| `llm()`                 | —             | ✓                         |
+| `approve()`             | —             | ✓                         |
 | Slow-step kill window   | OCR (3s)      | LLM call (300ms) — short  |
 | Pause window            | none          | up to 24h via `approve()` |
 

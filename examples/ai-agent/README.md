@@ -35,7 +35,7 @@ Ironflow solves all three:
                     │  Steps:     │
                     │  1. plan          (in-handler — pure compute)
                     │  2. tool(search)  (×N, byArgs idempotent)
-                    │  3. llm.summarize (memoized — no re-bill on crash)
+                    │  3. llm.complete  (memoized — no re-bill on crash)
                     │  4. memory.append (event → projection)
                     └─────────────┘
 ```

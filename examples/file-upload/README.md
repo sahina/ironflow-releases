@@ -2,7 +2,7 @@
 
 File storage with the Python SDK: create buckets, upload directly and through a signed URL, react to `ironflow.file.created` in a durable worker, and share a file with a signed download URL.
 
-- `worker.py` runs `process-upload` on every file written to the `inbox` bucket. It reads the file, counts bytes and lines, and writes a JSON report to the `reports` bucket.
+- `worker.py` runs `process-upload` on every new file written to the `inbox` bucket. It reads the file, counts bytes and lines, and writes a JSON report to the `reports` bucket.
 - `upload.py` creates both buckets, uploads two files (API key and signed URL), waits for the reports, and fetches one through a signed download URL.
 
 `reports` has `emitEvents` off, so writing a report cannot trigger the function again.

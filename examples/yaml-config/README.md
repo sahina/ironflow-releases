@@ -58,7 +58,7 @@ IRONFLOW_MASTER_KEY="abc123" \
 ./build/ironflow validate -f examples/yaml-config/ironflow-platform.yaml
 ```
 
-`validate` checks syntax and `${VAR}` references only. The values above are placeholders: `abc123` is not a usable master key.
+`validate` checks syntax, schema, `${VAR}` references and kind-specific rules (for example, `Cluster` needs PostgreSQL, external NATS and a `nodeId`). It does not check the values themselves. The values above are placeholders: `abc123` is not a usable master key.
 
 ## Booting the cluster and platform configs
 

@@ -82,13 +82,15 @@ Two conventions worth knowing before you read the schemas:
 `/shop` is the customer view, `/operations` the operator's, and `/system`
 explains the architecture: a system map, live service status, the two sequences
 and a link to each service's source. The browser sends `place.order` and `approve.order`
-and reads the `orders` projection — it never folds a raw stream, and there is no
+(plus `demo.payment.continue` for the crash scenario) and reads the `orders` projection — it never folds a raw stream, and there is no
 business HTTP API between the browser and the services.
 
-The engine runs with authentication disabled, so the page talks to it directly
-with no credential at all. That is a deliberate local-demo choice, labeled in the
-UI on every screen, and it is not a production pattern: a real application
-authenticates every call with a short-lived token from a trusted backend.
+The engine runs with authentication disabled, so nothing checks the credential
+the page sends. The Next server reads the bootstrap key and hands it to the page
+anyway, so dropping `--dev` needs no change in the web app. That is a deliberate
+local-demo choice, labeled in the UI on every screen, and it is not a production
+pattern: a real application authenticates every call with a short-lived token
+from a trusted backend.
 
 Three things a browser reveals that no unit test does, all fixed here and worth
 knowing before you write a second Ironflow UI:
@@ -130,8 +132,8 @@ and no `.env` to write.
 
 ### From the repository root
 
-Run these from the **repository root**; the two that start a server build the
-engine first.
+Run these from the **repository root**; the three that start a server build the
+engine first (`make reference-app`, `make test-reference-app-live` and `make load-reference-app`).
 
 ```bash
 make reference-app                 # build and start the whole system; Ctrl-C stops it
@@ -219,7 +221,7 @@ configuration to edit.
 
 Startup order is engine, then readiness, then services, then the web
 application. Each service reports ready by the strongest claim available to it:
-the ordering service by the schemas it registered, the payment worker by a live
+the ordering service and the payment worker by a registered schema plus a live
 heartbeat on `GET /api/v1/workers`, and the Python subscriber by a timestamp it
 rewrites in a KV bucket. The last one is client-only on purpose — it uses no worker
 runtime (`ironflow.worker` exists in the pinned SDK, 0.43.1, and is not used here), so that process appears in no worker list, and a registered
@@ -258,13 +260,16 @@ and refuses to run at all while the supervisor is alive.
 ## When it does not start
 
 The supervisor fails loudly: a child that dies before it is ready takes the whole
-start down and names itself. These are the six failures that are not its fault.
+start down and names itself. These are the failures that are not its fault.
 
 | What you see | What it means |
 | ------------ | ------------- |
 | `no engine binary at ... — run make embed build` | You started `pnpm dev` directly. `make reference-app` builds the engine first. |
 | `embedded dashboard missing (static/index.html not found)` | The binary exists but was built by a bare `make build`, which bakes in whatever is already in `internal/server/static`. `make embed build`. |
 | `no ordering binary at ...` / `no payment worker at ...` / `no notifications interpreter at ...` | Same cause, one service down: the build step did not run. `make -C examples/reference-app orders-build payments-build notifications-install`. |
+| `no web toolchain at ... — run pnpm -C examples/reference-app install` | The web app's dependencies are not installed. Run `pnpm install` in this directory. |
+| `no bootstrap key at ... — the engine writes it on first boot` | `.data/` was left half-initialized, for example by an engine that died during its first boot. Run `make reference-app-reset`, then start again. |
+| `another reference app is already running (pid N) using ...` | A second `make reference-app` against the same `.data/`. Stop the first one with Ctrl-C. |
 | `<service> exited before it was ready` | That child died during startup. Its own output is above the line, tagged with its name. |
 | `ERR_PNPM_OUTDATED_LOCKFILE` | A manifest changed without its lockfile. Run `pnpm install` in this directory and commit `pnpm-lock.yaml`. |
 | `the reference app is running (pid N) — stop it before resetting` | `make reference-app-reset` will not delete data underneath a live system. Stop it with Ctrl-C first. |
@@ -351,7 +356,7 @@ the web application last. Each step below is one sitting.
    client-only subscriber: `store.py` for the cursor and the duplicate guard,
    `notifications.py` for what happens to one message.
 5. **`apps/web/src/`** — `lib/orders.ts` is the read model's shape,
-   `components/shop.tsx` and `components/operations.tsx` send the two commands,
+   `components/shop.tsx` and `components/operations.tsx` send the commands,
    and `components/app-shell.tsx` is the one place the SDK is configured.
 
 `scripts/` is worth a sixth sitting only if you are copying the launcher:

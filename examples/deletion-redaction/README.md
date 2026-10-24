@@ -68,7 +68,7 @@ go test -tags integration_s3 ./internal/store -run '^TestBlobRedactionSweepS3$' 
 | Run deletion keeps events, deployments, audit payloads and child runs | App deletion scenario |
 | Tombstone remains after purge; active runs block purge; retry works | App purge scenario, `TestSQLiteStore_PurgeRefusesActiveRuns`, ConnectRPC stream deletion tests |
 | Retention skips pinned events and live entity streams | SQLite and PostgreSQL retention suites, server retention jobs |
-| Retention defaults off, has a seven-day floor, and runs nightly | Server retention configuration tests, audit pruner tests; startup reads the windows in `internal/server/server.go` |
+| Run and event retention windows default to disabled, need at least seven days, and run nightly | Server retention configuration tests, audit pruner tests; startup reads the windows in `internal/server/server.go`. The audit window is separate and defaults to 90 days |
 | Rebuild and dry run refuse an older replay window | `internal/projection/retention_horizon_test.go`, including full, partial, entity-only, young-environment, and fully-pruned-filter cases |
 | Run redaction does not authorize step artifact cleanup | Blob redaction acceptance and contract tests on SQLite and PostgreSQL |
 | Late uploads and failed sweeps get revisited | `TestBlobRedactionAcceptance`, `TestBlobRedactionRecovery`, `TestBlobRedactionCleaner`, `TestBlobOverflowRedactionCoordination` |
