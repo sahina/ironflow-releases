@@ -9,7 +9,7 @@
 
 location            = "fsn1"
 
-control_plane_type  = "cpx22"    # 3 vCPU, 4GB RAM
+control_plane_type  = "cpx22"    # 2 vCPU, 4GB RAM
 control_plane_count = 3
 
 worker_type         = "cpx32"    # 4 vCPU, 8GB RAM

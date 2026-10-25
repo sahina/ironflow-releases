@@ -1,7 +1,7 @@
 # Ironflow Docker Compose
 
-Deploy artifacts for Ironflow v0.51.0. Each compose file runs the
-`ghcr.io/sahina/ironflow-releases:0.51.0` image unless you set `IRONFLOW_IMAGE`.
+Deploy artifacts for Ironflow v0.52.0. Each compose file runs the
+`ghcr.io/sahina/ironflow-releases:0.52.0` image unless you set `IRONFLOW_IMAGE`.
 Needs Docker Compose v2.23.1 or later.
 
 ## Sizes
@@ -18,7 +18,7 @@ Needs Docker Compose v2.23.1 or later.
 ## Start a cluster size
 
 ```bash
-git clone --branch v0.51.0 https://github.com/sahina/ironflow-releases.git
+git clone --branch v0.52.0 https://github.com/sahina/ironflow-releases.git
 cd ironflow-releases/deploy/docker-compose/cluster
 ./init-env.sh                                     # writes .env with generated keys; keep a copy
 docker compose -f docker-compose.starter.yml up -d  # or cluster / ha
