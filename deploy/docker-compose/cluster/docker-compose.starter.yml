@@ -7,7 +7,10 @@ services:
   nats:
     restart: unless-stopped
     image: nats:2.12.5-alpine
-    command: ["-js", "-sd=/data", "-m=8222"]
+    configs:
+      - source: nats_conf
+        target: /etc/nats/nats.conf
+    command: ["-c=/etc/nats/nats.conf", "-js", "-sd=/data", "-m=8222"]
     ports:
       - "127.0.0.1:4222:4222"
       - "127.0.0.1:8222:8222"
@@ -70,7 +73,7 @@ services:
 
   ironflow:
     restart: unless-stopped
-    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.52.0}
+    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.53.0}
     command: >
       serve
       --nats-url=nats://nats:4222
@@ -113,6 +116,14 @@ services:
 
 # The S3 identity comes from .env, so no key sits in a file in this tree.
 configs:
+  # fsync every JetStream write before the ack (ADR 0134). nats-server has no
+  # flag for it, and its default acks first and fsyncs every 2 minutes. No
+  # store_dir here: -sd sets it, and nats-server rejects the pair as a duplicate.
+  nats_conf:
+    content: |
+      jetstream {
+        sync_interval: always
+      }
   seaweedfs_s3:
     content: |
       {"identities": [{"name": "ironflow",

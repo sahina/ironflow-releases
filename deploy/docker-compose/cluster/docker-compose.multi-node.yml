@@ -4,7 +4,10 @@
 services:
   nats:
     image: nats:2.12.5-alpine
-    command: ["-js", "-m", "8222"]
+    configs:
+      - source: nats_conf
+        target: /etc/nats/nats.conf
+    command: ["-c=/etc/nats/nats.conf", "-js", "-m", "8222"]
     ports:
       - "4222:4222"
       - "8222:8222"
@@ -219,6 +222,16 @@ services:
     command: ["-varz", "-connz", "-subz", "-routez", "-port=7777", "http://nats:8222"]
     depends_on:
       - nats
+
+configs:
+  # fsync every JetStream write before the ack (ADR 0134). nats-server has no
+  # flag for it, and its default acks first and fsyncs every 2 minutes. No
+  # store_dir here: -sd sets it, and nats-server rejects the pair as a duplicate.
+  nats_conf:
+    content: |
+      jetstream {
+        sync_interval: always
+      }
 
 volumes:
   postgres_data:
