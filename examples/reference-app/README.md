@@ -224,7 +224,7 @@ application. Each service reports ready by the strongest claim available to it:
 the ordering service and the payment worker by a registered schema plus a live
 heartbeat on `GET /api/v1/workers`, and the Python subscriber by a timestamp it
 rewrites in a KV bucket. The last one is client-only on purpose — it uses no worker
-runtime (`ironflow.worker` exists in the pinned SDK, 0.43.1, and is not used here), so that process appears in no worker list, and a registered
+runtime (`ironflow.worker` exists in the pinned SDK, 0.53.0, and is not used here), so that process appears in no worker list, and a registered
 schema outlives the process that registered it.
 
 A child that exits before it is ready fails the whole start with a named reason
@@ -316,7 +316,7 @@ of the authorization key.
 
 `services/notifications-python` is the odd one out on purpose: it is a
 **client-only** process. It deliberately uses no worker runtime (the pinned SDK,
-0.43.1, ships `ironflow.worker`; this service does not use it), so it registers
+0.53.0, ships `ironflow.worker`; this service does not use it), so it registers
 no function, executes no step and claims no worker slot. All it does is
 subscribe to a Pub/Sub topic over ConnectRPC, write one row per message to its
 own SQLite database, and emit `notification.sent`.
@@ -333,7 +333,7 @@ That shape forces three things worth copying:
 - Liveness is a KV timestamp. Nothing else can report on a process that owns no
   worker record and may legitimately deliver nothing for minutes.
 
-It pins `ironflow-py==0.43.1` from PyPI on purpose: this example proves the
+It pins `ironflow-py==0.53.0` from PyPI on purpose: this example proves the
 released wheel works. A contributor changing `sdk/python` can override it in
 their virtualenv with `pip install -e ../../../../sdk/python` after
 `make notifications-install`.

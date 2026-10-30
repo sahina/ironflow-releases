@@ -103,15 +103,16 @@ export async function startSupervisor({ dataDir, readyTimeoutMs = 180_000, env =
     liveDb = { name, url };
     process.stderr.write(`livedb ${name}\n`);
   }
+  const childEnv = {
+    ...process.env,
+    REFERENCE_APP_DATA_DIR: dataDir,
+    NO_COLOR: "1",
+    ...(liveDb ? { REFERENCE_APP_DATABASE_URL: liveDb.url } : {}),
+    ...env,
+  };
   const dev = spawn(process.execPath, [DEV], {
     cwd: APP_DIR,
-    env: {
-      ...process.env,
-      REFERENCE_APP_DATA_DIR: dataDir,
-      NO_COLOR: "1",
-      ...(liveDb ? { REFERENCE_APP_DATABASE_URL: liveDb.url } : {}),
-      ...env,
-    },
+    env: childEnv,
     stdio: ["ignore", "pipe", "pipe"],
     detached: true,
   });
@@ -195,7 +196,10 @@ export async function startSupervisor({ dataDir, readyTimeoutMs = 180_000, env =
   const deadline = Date.now() + readyTimeoutMs;
   let running = true;
   exited.then(() => (running = false));
-  while (!/\[dev]\s+ready\n/.test(output)) {
+  const announcedWebUrl = () => output.match(/web\s+(http:\/\/127\.0\.0\.1:\d+)\/shop/)?.[1];
+  // dev.mjs prints ready before its URL banner. Pipe chunks can split there,
+  // so ready alone does not guarantee the web address has arrived yet.
+  while (!/\[dev]\s+ready\n/.test(output) || (childEnv.REFERENCE_APP_SKIP_WEB !== "1" && !announcedWebUrl())) {
     if (!running) throw new Error(`the supervisor exited before it was ready:\n${redact(output)}`);
     if (Date.now() > deadline) {
       await supervisor.stop();
@@ -215,7 +219,7 @@ export async function startSupervisor({ dataDir, readyTimeoutMs = 180_000, env =
     supervisor.url = `http://127.0.0.1:${port}`;
     // The web port is chosen by the supervisor and announced once. A presenter
     // reads it off the same line.
-    supervisor.webUrl = output.match(/web\s+(http:\/\/127\.0\.0\.1:\d+)\/shop/)?.[1];
+    supervisor.webUrl = announcedWebUrl();
     supervisor.apiKey = JSON.parse(readFileSync(join(dataDir, "bootstrap-key.json"), "utf8")).key;
   } catch (error) {
     await supervisor.stop();

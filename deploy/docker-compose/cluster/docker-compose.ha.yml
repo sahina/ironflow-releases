@@ -214,7 +214,7 @@ services:
 
   nats-1:
     restart: unless-stopped
-    image: nats:2.12.5-alpine
+    image: nats:2.15.2-alpine
     configs:
       - source: nats_conf
         target: /etc/nats/nats.conf
@@ -240,7 +240,7 @@ services:
 
   nats-2:
     restart: unless-stopped
-    image: nats:2.12.5-alpine
+    image: nats:2.15.2-alpine
     configs:
       - source: nats_conf
         target: /etc/nats/nats.conf
@@ -263,7 +263,7 @@ services:
 
   nats-3:
     restart: unless-stopped
-    image: nats:2.12.5-alpine
+    image: nats:2.15.2-alpine
     configs:
       - source: nats_conf
         target: /etc/nats/nats.conf
@@ -286,7 +286,7 @@ services:
 
   nats-4:
     restart: unless-stopped
-    image: nats:2.12.5-alpine
+    image: nats:2.15.2-alpine
     configs:
       - source: nats_conf
         target: /etc/nats/nats.conf
@@ -309,7 +309,7 @@ services:
 
   nats-5:
     restart: unless-stopped
-    image: nats:2.12.5-alpine
+    image: nats:2.15.2-alpine
     configs:
       - source: nats_conf
         target: /etc/nats/nats.conf
@@ -362,7 +362,7 @@ services:
 
   ironflow-1:
     restart: unless-stopped
-    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.53.0}
+    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.54.0}
     command: >
       serve
       --nats-url=nats://nats-1:4222,nats://nats-2:4222,nats://nats-3:4222,nats://nats-4:4222,nats://nats-5:4222
@@ -384,7 +384,7 @@ services:
       # One copy of each stream and KV bucket on 3 of the 5 NATS servers.
       NATS_STREAM_REPLICAS: ${NATS_STREAM_REPLICAS:-3}
       IRONFLOW_METRICS_ENABLED: ${IRONFLOW_METRICS_ENABLED:-true}
-      IRONFLOW_OTEL_ENDPOINT: ${IRONFLOW_OTEL_ENDPOINT:-jaeger:4317}
+      IRONFLOW_OTEL_ENDPOINT: ${IRONFLOW_OTEL_ENDPOINT-jaeger:4317}
       IRONFLOW_OTEL_SAMPLE_RATE: ${IRONFLOW_OTEL_SAMPLE_RATE:-1.0}
       IRONFLOW_OTEL_SERVICE_NAME: ${IRONFLOW_OTEL_SERVICE_NAME:-ironflow}
       # Offload is off until IRONFLOW_ARTIFACT_THRESHOLD is set and the
@@ -410,7 +410,7 @@ services:
 
   ironflow-2:
     restart: unless-stopped
-    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.53.0}
+    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.54.0}
     command: >
       serve
       --nats-url=nats://nats-1:4222,nats://nats-2:4222,nats://nats-3:4222,nats://nats-4:4222,nats://nats-5:4222
@@ -432,7 +432,7 @@ services:
       # One copy of each stream and KV bucket on 3 of the 5 NATS servers.
       NATS_STREAM_REPLICAS: ${NATS_STREAM_REPLICAS:-3}
       IRONFLOW_METRICS_ENABLED: ${IRONFLOW_METRICS_ENABLED:-true}
-      IRONFLOW_OTEL_ENDPOINT: ${IRONFLOW_OTEL_ENDPOINT:-jaeger:4317}
+      IRONFLOW_OTEL_ENDPOINT: ${IRONFLOW_OTEL_ENDPOINT-jaeger:4317}
       IRONFLOW_OTEL_SAMPLE_RATE: ${IRONFLOW_OTEL_SAMPLE_RATE:-1.0}
       IRONFLOW_OTEL_SERVICE_NAME: ${IRONFLOW_OTEL_SERVICE_NAME:-ironflow}
       # Offload is off until IRONFLOW_ARTIFACT_THRESHOLD is set and the
@@ -461,7 +461,7 @@ services:
 
   ironflow-3:
     restart: unless-stopped
-    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.53.0}
+    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.54.0}
     command: >
       serve
       --nats-url=nats://nats-1:4222,nats://nats-2:4222,nats://nats-3:4222,nats://nats-4:4222,nats://nats-5:4222
@@ -483,7 +483,7 @@ services:
       # One copy of each stream and KV bucket on 3 of the 5 NATS servers.
       NATS_STREAM_REPLICAS: ${NATS_STREAM_REPLICAS:-3}
       IRONFLOW_METRICS_ENABLED: ${IRONFLOW_METRICS_ENABLED:-true}
-      IRONFLOW_OTEL_ENDPOINT: ${IRONFLOW_OTEL_ENDPOINT:-jaeger:4317}
+      IRONFLOW_OTEL_ENDPOINT: ${IRONFLOW_OTEL_ENDPOINT-jaeger:4317}
       IRONFLOW_OTEL_SAMPLE_RATE: ${IRONFLOW_OTEL_SAMPLE_RATE:-1.0}
       IRONFLOW_OTEL_SERVICE_NAME: ${IRONFLOW_OTEL_SERVICE_NAME:-ironflow}
       # Offload is off until IRONFLOW_ARTIFACT_THRESHOLD is set and the
@@ -599,6 +599,7 @@ configs:
     content: |
       jetstream {
         sync_interval: always
+        limits { default_max_consumers: -1 }
       }
   seaweedfs_s3:
     content: |

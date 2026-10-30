@@ -1,6 +1,6 @@
 # The engine is one static binary. Copy it into the app's own base image; the
 # engine image itself is Alpine and has no Python.
-ARG ENGINE_IMAGE=ghcr.io/sahina/ironflow-releases:0.43.1
+ARG ENGINE_IMAGE=ghcr.io/sahina/ironflow-releases:0.53.0
 FROM ${ENGINE_IMAGE} AS engine
 
 FROM python:3.14-slim

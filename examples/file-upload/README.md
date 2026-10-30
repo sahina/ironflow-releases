@@ -26,7 +26,7 @@ In a third terminal:
 python upload.py
 ```
 
-`requirements.txt` pins `ironflow-py` to 0.43.1, the release this example was checked against. Use an engine of the same release.
+`requirements.txt` pins `ironflow-py` to 0.53.0, the release this example was checked against. Use an engine of the same release.
 
 Set `IRONFLOW_SERVER_URL` and `IRONFLOW_API_KEY` if the server is not `http://localhost:9123` in dev mode.
 

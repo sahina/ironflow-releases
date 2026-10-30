@@ -1,0 +1,21 @@
+{
+  "name": "ironflow-slack-approvals",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/main.ts",
+    "test": "tsx --test tests/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "worker": "tsx src/worker.ts",
+    "trigger": "tsx scripts/trigger.ts"
+  },
+  "dependencies": {
+    "@ironflow/node": "link:../../../sdk/js/node"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "@types/node": "^22.0.0"
+  }
+}

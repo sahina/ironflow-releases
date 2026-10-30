@@ -34,6 +34,8 @@ Every Ironflow application follows four pillars:
 | [ai-agent/](./ai-agent/)                         | Durable AI research agent | AI engineers          | `agent()`, `tool()`, `llm()`, event-sourced memory |
 | [agents/doc-processor-agent/](./agents/doc-processor-agent/) | Crash-resume proof | AI engineers      | `kill -9` mid-pipeline and resume; browser demo in [`web/`](./agents/doc-processor-agent/web/) |
 | [agents/code-review-agent/](./agents/code-review-agent/) | Human-in-the-loop gate | AI engineers    | `approve()` pausing a run for up to 24h     |
+| [notifier/](./notifier/) | Failure notifications | Operators | Public system subscriptions, KV rules, restart dedupe and optional Slack webhooks |
+| [agents/slack-approvals/](./agents/slack-approvals/) | Approval buttons | AI engineers | Durable gates answered through a local inbox or signed Slack interactions |
 | [agents/reconciliation-agent/](./agents/reconciliation-agent/) | Durable exception resolution | AI engineers | A deterministic pass before the model, a reply from outside the org, idempotent outbound contact |
 | [financial-rag/](./financial-rag/)               | RAG with an eval gate     | AI engineers          | Shadow index, golden-set eval, promote-or-rollback saga |
 | [rag-core/](./rag-core/)                         | RAG part 1: event-sourced index | AI engineers    | Zero-Docker RAG: durable ingest, embeddings in events, sqlite-vec projection |
@@ -127,6 +129,15 @@ cd examples/agents/reconciliation-agent && pnpm install && pnpm dev
 # In another terminal: pnpm trigger, then pnpm exec tsx scripts/find-pending.ts
 # Approve a case: pnpm run approve <runId> true
 # Then signal the counterparty's reply: pnpm reply <caseId> "..."
+
+# Run the notifier (console alerts; Slack webhook optional)
+cd examples/notifier && pnpm install && pnpm start
+# In another terminal from that directory: pnpm demo
+
+# Run the approvals worker and inbox in separate terminals
+cd examples/agents/slack-approvals && pnpm install && pnpm worker
+# In another terminal from that directory: pnpm start
+# Then: pnpm trigger, open http://127.0.0.1:9138 and choose Approve or Reject
 
 # Run the RAG part 1 example (no Docker; needs a bootstrap API key in .env)
 cd examples/rag-core && pnpm install && pnpm run setup && pnpm start
