@@ -7,13 +7,13 @@ export const TRIGGER_EVENT = 'slack-demo.requested';
 export interface Decision { runId: string; stepId: string; approved: boolean }
 export interface Gate { runId: string; stepId: string; title: string }
 type Run = { id: string; functionId: string; status: string };
-type Step = { runId: string; stepId: string; status: string; stepType: string; waitEventName?: string; waitTimeout?: string; input?: unknown };
+type Step = { runId: string; stepId: string; status: string; stepType: string; waitEventName?: string; waitTimeout?: Date; input?: unknown };
 const object = (v: unknown): Record<string, unknown> => v !== null && typeof v === 'object' && !Array.isArray(v) ? v as Record<string, unknown> : {};
 
 export function pendingGate(run: Run, steps: Step[]): Gate | undefined {
   if (run.functionId !== FUNCTION_ID || run.status !== 'waiting') return;
   const step = steps.find(s => s.runId === run.id && s.status === 'waiting' && s.stepType === 'wait_for_event' && s.waitEventName === GATE_EVENT && s.stepId.includes(`:approve.${GATE_EVENT}:`));
-  if (!step || (step.waitTimeout && Date.parse(step.waitTimeout) <= Date.now())) return;
+  if (!step || (step.waitTimeout && step.waitTimeout.getTime() <= Date.now())) return;
   const {title} = object(step.input);
   if (typeof title !== 'string' || !title.trim() || title.length > 500) return;
   return {runId:run.id,stepId:step.stepId,title};

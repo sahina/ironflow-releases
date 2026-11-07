@@ -2,8 +2,11 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
+rule_files:
+  - /etc/prometheus/rules/ironflow.yml
+
 scrape_configs:
   - job_name: "ironflow"
     static_configs:
-      - targets: ["ironflow:9123"]
+      - targets: ["ironflow:9223"]
     metrics_path: /metrics

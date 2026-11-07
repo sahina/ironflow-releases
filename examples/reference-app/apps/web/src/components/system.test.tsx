@@ -30,7 +30,7 @@ describe("the system page", () => {
 
     // The whole URL, not a substring: a wrong repository root or a missing
     // `examples/reference-app` segment still contains the path.
-    const base = "https://github.com/sahina/ironflow/tree/main/examples/reference-app";
+    const base = "https://github.com/sahina/ironflow-releases/tree/main/examples/reference-app";
     for (const path of [
       "services/orders-go",
       "services/payments-node",
@@ -41,7 +41,7 @@ describe("the system page", () => {
     }
     expect(screen.getByRole("link", { name: "the Ironflow engine" })).toHaveAttribute(
       "href",
-      "https://github.com/sahina/ironflow/tree/main",
+      "https://github.com/sahina/ironflow-releases",
     );
   });
 

@@ -7,7 +7,7 @@ name: ironflow-ha
 services:
   etcd-1:
     restart: unless-stopped
-    image: quay.io/coreos/etcd:v3.7.2
+    image: quay.io/coreos/etcd:v3.7.3
     command: ["/usr/local/bin/etcd"]
     environment:
       ETCD_NAME: etcd-1
@@ -31,7 +31,7 @@ services:
 
   etcd-2:
     restart: unless-stopped
-    image: quay.io/coreos/etcd:v3.7.2
+    image: quay.io/coreos/etcd:v3.7.3
     command: ["/usr/local/bin/etcd"]
     environment:
       ETCD_NAME: etcd-2
@@ -55,7 +55,7 @@ services:
 
   etcd-3:
     restart: unless-stopped
-    image: quay.io/coreos/etcd:v3.7.2
+    image: quay.io/coreos/etcd:v3.7.3
     command: ["/usr/local/bin/etcd"]
     environment:
       ETCD_NAME: etcd-3
@@ -333,15 +333,32 @@ services:
   # Shared S3 backend for blob overflow: one server, data on a volume.
   seaweedfs:
     restart: unless-stopped
-    image: chrislusf/seaweedfs:4.48
+    image: chrislusf/seaweedfs:4.52
+    # SeaweedFS syncs a write before it acks only under this rule, and 4.49 is the
+    # first release whose rule covers the index and the filer store, not only .dat
+    # (#3673). A write that S3 acks before the rule applies is not synced, so on
+    # first start S3 stays down until the rule is set and on disk. The marker
+    # records that. It is written only after the rule is flushed.
+    # dockerd restarts this container after a reboot without Compose, so this
+    # runs in its command and not in a one-shot service.
+    entrypoint: ["/bin/sh", "-c"]
     command:
-      [
-        "server",
-        "-dir=/data",
-        "-s3",
-        "-s3.config=/etc/seaweedfs/s3.json",
-        "-ip.bind=0.0.0.0",
-      ]
+      - |
+        if [ ! -e /data/.fsync-rule-set ]; then
+          /entrypoint.sh server -dir=/data -filer -ip.bind=0.0.0.0 &
+          pid=$$!
+          until curl -sf http://localhost:8888/etc/seaweedfs/filer.conf | tr -d ' \n' | grep -q '"locationPrefix":"/buckets/"[^}]*"fsync":true'; do
+            kill -0 "$$pid" || exit 1
+            echo "fs.configure -locationPrefix=/buckets/ -fsync=true -apply" | weed shell >/dev/null 2>&1
+            sleep 1
+          done
+          kill "$$pid"
+          wait "$$pid" || true
+          sync
+          touch /data/.fsync-rule-set
+          sync
+        fi
+        exec /entrypoint.sh server -dir=/data -s3 -s3.config=/etc/seaweedfs/s3.json -ip.bind=0.0.0.0
     ports:
       # Set S3_HOST_PORT when another service already holds 8333.
       - "127.0.0.1:${S3_HOST_PORT:-8333}:8333" # S3 API
@@ -354,19 +371,25 @@ services:
       test:
         [
           "CMD-SHELL",
-          "curl -sf http://localhost:9333/cluster/status >/dev/null",
+          "curl -sf http://localhost:9333/cluster/status >/dev/null && curl -sf http://localhost:8888/etc/seaweedfs/filer.conf | tr -d ' \\n' | grep -q '\"locationPrefix\":\"/buckets/\"[^}]*\"fsync\":true' && curl -s -o /dev/null http://localhost:8333/",
         ]
       interval: 2s
       timeout: 5s
       retries: 15
+      # S3 must answer, so a pass means the first start is over. It runs SeaweedFS twice.
+      start_period: 2m
 
   ironflow-1:
     restart: unless-stopped
-    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.54.0}
+    # Covers the worst-case shutdown drain. Docker's default 10s kills it mid-drain.
+    stop_grace_period: 100s
+    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.55.0}
     command: >
       serve
+      --bootstrap-key-file=/data/bootstrap-key.json
       --nats-url=nats://nats-1:4222,nats://nats-2:4222,nats://nats-3:4222,nats://nats-4:4222,nats://nats-5:4222
       --port=9123
+      --metrics-port=9223
       --node-id=node-1
     environment:
       # Every Postgres node is listed; pgx connects to whichever accepts writes,
@@ -383,6 +406,7 @@ services:
       NATS_CREDS_FILE:
       # One copy of each stream and KV bucket on 3 of the 5 NATS servers.
       NATS_STREAM_REPLICAS: ${NATS_STREAM_REPLICAS:-3}
+      NATS_FILE_STORAGE: "true"
       IRONFLOW_METRICS_ENABLED: ${IRONFLOW_METRICS_ENABLED:-true}
       IRONFLOW_OTEL_ENDPOINT: ${IRONFLOW_OTEL_ENDPOINT-jaeger:4317}
       IRONFLOW_OTEL_SAMPLE_RATE: ${IRONFLOW_OTEL_SAMPLE_RATE:-1.0}
@@ -394,27 +418,34 @@ services:
       AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:?set it in .env (new install - run ./init-env.sh)}
     ports:
       - "127.0.0.1:9123:9123"
+      - "127.0.0.1:9223:9223"
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9123/ready"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9123/health"]
       interval: 5s
       timeout: 5s
       retries: 30
     depends_on:
       pg-init: { condition: service_completed_successfully }
-      nats-1: { condition: service_healthy }
-      nats-2: { condition: service_healthy }
-      nats-3: { condition: service_healthy }
-      nats-4: { condition: service_healthy }
-      nats-5: { condition: service_healthy }
+      # Optional: a NATS server fails its healthcheck while one of its streams is
+      # stuck, and the engine must still start and report that.
+      nats-1: { condition: service_healthy, required: false }
+      nats-2: { condition: service_healthy, required: false }
+      nats-3: { condition: service_healthy, required: false }
+      nats-4: { condition: service_healthy, required: false }
+      nats-5: { condition: service_healthy, required: false }
       seaweedfs: { condition: service_healthy }
 
   ironflow-2:
     restart: unless-stopped
-    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.54.0}
+    # Covers the worst-case shutdown drain. Docker's default 10s kills it mid-drain.
+    stop_grace_period: 100s
+    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.55.0}
     command: >
       serve
+      --bootstrap-key-file=/data/bootstrap-key.json
       --nats-url=nats://nats-1:4222,nats://nats-2:4222,nats://nats-3:4222,nats://nats-4:4222,nats://nats-5:4222
       --port=9124
+      --metrics-port=9224
       --node-id=node-2
     environment:
       # Every Postgres node is listed; pgx connects to whichever accepts writes,
@@ -431,6 +462,7 @@ services:
       NATS_CREDS_FILE:
       # One copy of each stream and KV bucket on 3 of the 5 NATS servers.
       NATS_STREAM_REPLICAS: ${NATS_STREAM_REPLICAS:-3}
+      NATS_FILE_STORAGE: "true"
       IRONFLOW_METRICS_ENABLED: ${IRONFLOW_METRICS_ENABLED:-true}
       IRONFLOW_OTEL_ENDPOINT: ${IRONFLOW_OTEL_ENDPOINT-jaeger:4317}
       IRONFLOW_OTEL_SAMPLE_RATE: ${IRONFLOW_OTEL_SAMPLE_RATE:-1.0}
@@ -442,8 +474,9 @@ services:
       AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:?set it in .env (new install - run ./init-env.sh)}
     ports:
       - "127.0.0.1:9124:9124"
+      - "127.0.0.1:9224:9224"
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9124/ready"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9124/health"]
       interval: 5s
       timeout: 5s
       retries: 30
@@ -452,20 +485,24 @@ services:
       # 3-copy streams at once time out on a fresh cluster.
       ironflow-1: { condition: service_healthy }
       pg-init: { condition: service_completed_successfully }
-      nats-1: { condition: service_healthy }
-      nats-2: { condition: service_healthy }
-      nats-3: { condition: service_healthy }
-      nats-4: { condition: service_healthy }
-      nats-5: { condition: service_healthy }
+      nats-1: { condition: service_healthy, required: false }
+      nats-2: { condition: service_healthy, required: false }
+      nats-3: { condition: service_healthy, required: false }
+      nats-4: { condition: service_healthy, required: false }
+      nats-5: { condition: service_healthy, required: false }
       seaweedfs: { condition: service_healthy }
 
   ironflow-3:
     restart: unless-stopped
-    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.54.0}
+    # Covers the worst-case shutdown drain. Docker's default 10s kills it mid-drain.
+    stop_grace_period: 100s
+    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.55.0}
     command: >
       serve
+      --bootstrap-key-file=/data/bootstrap-key.json
       --nats-url=nats://nats-1:4222,nats://nats-2:4222,nats://nats-3:4222,nats://nats-4:4222,nats://nats-5:4222
       --port=9125
+      --metrics-port=9225
       --node-id=node-3
     environment:
       # Every Postgres node is listed; pgx connects to whichever accepts writes,
@@ -482,6 +519,7 @@ services:
       NATS_CREDS_FILE:
       # One copy of each stream and KV bucket on 3 of the 5 NATS servers.
       NATS_STREAM_REPLICAS: ${NATS_STREAM_REPLICAS:-3}
+      NATS_FILE_STORAGE: "true"
       IRONFLOW_METRICS_ENABLED: ${IRONFLOW_METRICS_ENABLED:-true}
       IRONFLOW_OTEL_ENDPOINT: ${IRONFLOW_OTEL_ENDPOINT-jaeger:4317}
       IRONFLOW_OTEL_SAMPLE_RATE: ${IRONFLOW_OTEL_SAMPLE_RATE:-1.0}
@@ -493,8 +531,9 @@ services:
       AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:?set it in .env (new install - run ./init-env.sh)}
     ports:
       - "127.0.0.1:9125:9125"
+      - "127.0.0.1:9225:9225"
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9125/ready"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9125/health"]
       interval: 5s
       timeout: 5s
       retries: 30
@@ -503,20 +542,28 @@ services:
       # 3-copy streams at once time out on a fresh cluster.
       ironflow-1: { condition: service_healthy }
       pg-init: { condition: service_completed_successfully }
-      nats-1: { condition: service_healthy }
-      nats-2: { condition: service_healthy }
-      nats-3: { condition: service_healthy }
-      nats-4: { condition: service_healthy }
-      nats-5: { condition: service_healthy }
+      nats-1: { condition: service_healthy, required: false }
+      nats-2: { condition: service_healthy, required: false }
+      nats-3: { condition: service_healthy, required: false }
+      nats-4: { condition: service_healthy, required: false }
+      nats-5: { condition: service_healthy, required: false }
       seaweedfs: { condition: service_healthy }
 
   nginx:
     restart: unless-stopped
-    image: nginx:alpine
+    image: nginx:1.30.6-alpine
     ports:
       - "9000:9000"
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    # The nodes read healthy even when nginx cannot reach them. This reports it, and
+    # repairs nothing: restart: unless-stopped ignores health.
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:9000/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
     depends_on:
       - ironflow-1
       - ironflow-2
@@ -529,13 +576,14 @@ services:
   # docs/how-to-guides/observability.mdx for example queries.
   prometheus:
     restart: unless-stopped
-    image: prom/prometheus:v3.2.1
+    image: prom/prometheus:v3.15.1
     profiles:
       - monitoring
     ports:
       - "127.0.0.1:9090:9090"
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../monitoring/rules:/etc/prometheus/rules:ro
     depends_on:
       - ironflow-1
       - ironflow-2
@@ -545,7 +593,7 @@ services:
   # ironflow node at :4317. UI at http://localhost:16686. See observability.mdx.
   jaeger:
     restart: unless-stopped
-    image: jaegertracing/jaeger:2.19.0
+    image: jaegertracing/jaeger:2.22.0
     profiles:
       - monitoring
     ports:
@@ -558,7 +606,7 @@ services:
   # GRAFANA_ADMIN_PASSWORD before exposing this stack beyond localhost.
   grafana:
     restart: unless-stopped
-    image: grafana/grafana:13.0.2
+    image: grafana/grafana:13.3.0
     profiles:
       - monitoring
     ports:
@@ -579,10 +627,10 @@ services:
   # on :7777, which Prometheus scrapes for the NATS Monitoring dashboard.
   nats-exporter:
     restart: unless-stopped
-    image: natsio/prometheus-nats-exporter:0.20.1
+    image: natsio/prometheus-nats-exporter:0.20.3
     profiles:
       - monitoring
-    command: ["-varz", "-connz", "-subz", "-routez", "-port=7777", "http://nats-1:8222", "http://nats-2:8222", "http://nats-3:8222", "http://nats-4:8222", "http://nats-5:8222"]
+    command: ["-varz", "-connz", "-subz", "-routez", "-jsz=all", "-port=7777", "http://nats-1:8222", "http://nats-2:8222", "http://nats-3:8222", "http://nats-4:8222", "http://nats-5:8222"]
     depends_on:
       - nats-1
       - nats-2

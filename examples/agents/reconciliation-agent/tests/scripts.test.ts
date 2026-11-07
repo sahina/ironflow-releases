@@ -14,11 +14,11 @@ const server = createServer((req, res) => {
     res.writeHead(200, { "content-type": "application/json" });
     if (req.url?.endsWith("/ListRuns")) {
       res.end(JSON.stringify({ runs: payload.functionId === "reconciliation-case" && payload.status === "RUN_STATUS_WAITING"
-        ? [{ id: "run-123", status: "RUN_STATUS_WAITING" }] : [] }));
+        ? [{ id: "run-123", status: "RUN_STATUS_WAITING", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }] : [] }));
       return;
     }
     if (req.url?.endsWith("/GetRunSteps")) {
-      res.end(JSON.stringify({ steps: [{ stepId: `${payload.runId}:approve.reconciliation.contact.approved:0`, status: "STEP_STATUS_WAITING" }] }));
+      res.end(JSON.stringify({ steps: [{ stepId: `${payload.runId}:approve.reconciliation.contact.approved:0`, status: "STEP_STATUS_WAITING", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }] }));
       return;
     }
     requests.push(payload);

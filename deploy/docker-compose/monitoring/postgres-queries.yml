@@ -1,0 +1,36 @@
+appliance_pg_connections:
+  query: |
+    SELECT (SELECT count(*) FROM pg_stat_activity WHERE backend_type = 'client backend') AS used,
+           current_setting('max_connections')::float8 AS max
+  metrics:
+    - used:
+        usage: GAUGE
+        description: Current PostgreSQL connections
+    - max:
+        usage: GAUGE
+        description: Configured maximum PostgreSQL connections
+appliance_pg_replication:
+  query: |
+    SELECT COALESCE(max(pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn)), 0)::float8 AS lag_bytes
+    FROM pg_stat_replication
+    WHERE NOT pg_is_in_recovery()
+  metrics:
+    - lag_bytes:
+        usage: GAUGE
+        description: Largest primary to replica WAL replay distance in bytes
+appliance_pg_transactions:
+  query: |
+    SELECT (SELECT COALESCE(sum(xact_commit), 0) FROM pg_stat_database)::float8 AS commit_total,
+           (SELECT COALESCE(sum(xact_rollback), 0) FROM pg_stat_database)::float8 AS rollback_total,
+           (SELECT COALESCE(max(EXTRACT(EPOCH FROM (clock_timestamp() - xact_start))), 0)
+            FROM pg_stat_activity WHERE pid <> pg_backend_pid())::float8 AS max_duration_seconds
+  metrics:
+    - commit_total:
+        usage: COUNTER
+        description: Committed transactions
+    - rollback_total:
+        usage: COUNTER
+        description: Rolled back transactions
+    - max_duration_seconds:
+        usage: GAUGE
+        description: Oldest open transaction age in seconds

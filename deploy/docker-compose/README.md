@@ -1,7 +1,7 @@
 # Ironflow Docker Compose
 
-Deploy artifacts for Ironflow v0.54.0. Each compose file runs the
-`ghcr.io/sahina/ironflow-releases:0.54.0` image unless you set `IRONFLOW_IMAGE`.
+Deploy artifacts for Ironflow v0.55.0. Each compose file runs the
+`ghcr.io/sahina/ironflow-releases:0.55.0` image unless you set `IRONFLOW_IMAGE`.
 Needs Docker Compose v2.23.1 or later.
 
 ## Sizes
@@ -13,12 +13,12 @@ Needs Docker Compose v2.23.1 or later.
 | Cluster | `cluster/docker-compose.cluster.yml` | 3 Ironflow behind nginx (`:9000`), 3 NATS, Postgres, SeaweedFS |
 | HA | `cluster/docker-compose.ha.yml` | 3 Ironflow behind nginx (`:9000`), 5 NATS, 3 Postgres with automatic failover (Patroni + etcd), SeaweedFS |
 
-`cluster/docker-compose.multi-node.yml` builds from source and needs the engine repo.
+`cluster/docker-compose.multi-node.yml` is a smaller development stack: 3 Ironflow behind nginx (`:9000`), 1 NATS, Postgres, SeaweedFS.
 
 ## Start a cluster size
 
 ```bash
-git clone --branch v0.54.0 https://github.com/sahina/ironflow-releases.git
+git clone --branch v0.55.0 https://github.com/sahina/ironflow-releases.git
 cd ironflow-releases/deploy/docker-compose/cluster
 ./init-env.sh                                     # writes .env with generated keys; keep a copy
 docker compose -f docker-compose.starter.yml up -d  # or cluster / ha

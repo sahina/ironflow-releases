@@ -31,7 +31,7 @@ const server = createServer(async (req, res) => {
   } else if (!previous) {
     res.writeHead(404).end(JSON.stringify({ error: "key not found" }));
   } else {
-    res.end(JSON.stringify({ key: id.split("/").at(-1), value: previous.bytes.toString("base64"), revision: previous.revision, created_at: "", operation: "put" }));
+    res.end(JSON.stringify({ key: id.split("/").at(-1), value: previous.bytes.toString("base64"), revision: previous.revision, created_at: new Date().toISOString(), operation: "put" }));
   }
 });
 await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));

@@ -17,9 +17,9 @@
     "@ironflow/browser": "link:../../sdk/js/browser",
     "@ironflow/core": "link:../../sdk/js/core",
     "@ironflow/node": "link:../../sdk/js/node",
-    "next": "16.1.6",
-    "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "next": "16.4.3",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.1",
@@ -27,7 +27,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "eslint": "^9.39.4",
-    "eslint-config-next": "16.1.6",
+    "eslint-config-next": "16.4.3",
     "tailwindcss": "^4.2.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"

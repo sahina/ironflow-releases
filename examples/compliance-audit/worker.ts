@@ -1,8 +1,8 @@
 /**
- * Compliance Audit Trail Demo Worker
+ * Entity Audit Trail Demo Worker
  *
  * Registers functions that process order lifecycle events.
- * These functions demonstrate durable execution proof in the compliance dashboard.
+ * These functions demonstrate durable execution proof on the Entity Audit dashboard page.
  */
 
 import { createFunction, createWorker } from "@ironflow/node";
@@ -14,7 +14,7 @@ import { EVENTS } from "./events";
 const processOrderCreated = createFunction(
   {
     id: "process-order-created",
-    description: "Validates a newly created order and reserves inventory. Each step is permanently recorded for compliance audit trails.",
+    description: "Validates a newly created order and reserves inventory. Each step is recorded.",
     triggers: [{ event: EVENTS.OrderCreated }],
     recording: true,
   },
@@ -39,7 +39,7 @@ const processOrderCreated = createFunction(
 const processOrderShipped = createFunction(
   {
     id: "process-order-shipped",
-    description: "Sends a shipping notification and updates order tracking when an order ships. Each step is permanently recorded for compliance audit trails.",
+    description: "Sends a shipping notification and updates order tracking when an order ships. Each step is recorded.",
     triggers: [{ event: EVENTS.OrderShipped }],
     recording: true,
   },
@@ -66,5 +66,5 @@ const worker = createWorker({
 });
 
 worker.start().then(() => {
-  console.log("Compliance audit demo worker started");
+  console.log("Entity audit demo worker started");
 });

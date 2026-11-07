@@ -94,7 +94,7 @@ Only port 8000 is published. The engine API stays on loopback inside the contain
 - **The dashboard is not reachable** from outside the container.
 - **The bootstrap key stays on the volume unless you seed it.** Set `IRONFLOW_BOOTSTRAP_ADMIN_KEY` (and `IRONFLOW_BOOTSTRAP_ADMIN_PASSWORD`) as secrets and the engine writes no key file. Seeding needs an engine release that supports it; check with `ironflow serve --help`.
 - **A restart stops the engine.** There is no zero-downtime deploy.
-- For more than one instance, use PostgreSQL and the [Docker Compose](https://docs.ironflow.run/how-to-guides/deployment/docker-compose/) or Helm path.
+- For more than one instance, use PostgreSQL and the [Docker Compose](https://docs.ironflow.run/how-to-guides/deployment/docker-compose/) path.
 
 ## Versions
 

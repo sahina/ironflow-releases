@@ -195,7 +195,7 @@ a budget of about 10 seconds. Pull mode holds the job open for as long as it tak
 
 An earlier version of this example had a second reason. The push executor stored
 steps by name, so the agent loop's repeated `step.run("llm.turn")` overwrote its own
-rows ([#1647](https://github.com/sahina/ironflow/issues/1647)). Release v0.29.0 fixed
+rows (#1647). Release v0.29.0 fixed
 that.
 
 ## The eval

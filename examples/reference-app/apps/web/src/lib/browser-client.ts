@@ -39,19 +39,24 @@ const RECENT_RUNS = 100;
 // connect completed" and a UI that never updates.
 let configuredFor: string | undefined;
 
-// One subscription for the whole page, fanned out to every listener.
-//
-// The SDK shares one consumer per pattern, so unsubscribing tears down the
-// consumer any other component on that pattern is using. React mounts effects
-// twice in development, and /shop and /operations both subscribe, so a
-// per-component subscription leaves a page whose read model never updates
-// again — the failure that looks like "the engine stopped publishing".
-const listeners = new Set<(state: OrdersProjection) => void>();
-let shared: Promise<{ unsubscribe(): void }> | undefined;
+// One subscription per page generation, shared until its last registration leaves.
+interface OrdersGeneration {
+  registrations: Set<(state: OrdersProjection) => void>;
+  promise: Promise<{ unsubscribe(): void }>;
+  subscription?: { unsubscribe(): void };
+}
+let shared: OrdersGeneration | undefined;
+
+function closeGeneration(generation: OrdersGeneration): void {
+  if (shared === generation) shared = undefined;
+  generation.registrations.clear();
+  generation.subscription?.unsubscribe();
+}
 
 export function browserIronflow({ serverUrl, apiKey }: { serverUrl: string; apiKey: string }): IronflowClient {
   const settings = `${serverUrl}|${apiKey}`;
   if (configuredFor !== settings) {
+    if (shared) closeGeneration(shared);
     ironflow.configure({ serverUrl, auth: { apiKey }, logger: false });
     configuredFor = settings;
   }
@@ -82,17 +87,42 @@ export function browserIronflow({ serverUrl, apiKey }: { serverUrl: string; apiK
       return result.state ?? { orders: {} };
     },
     async subscribeToOrders(onUpdate) {
-      listeners.add(onUpdate);
-      shared ??= ironflow.subscribeToProjection<OrdersProjection>(ORDERS_PROJECTION, {
-        onUpdate: (state) => {
-          for (const listener of listeners) listener(state ?? { orders: {} });
+      if (!shared) {
+        const generation: OrdersGeneration = {
+          registrations: new Set(),
+          promise: Promise.resolve().then(() => {
+            if (shared !== generation) throw new Error("orders subscription canceled by configure");
+            return ironflow.subscribeToProjection<OrdersProjection>(ORDERS_PROJECTION, {
+              onUpdate: (state) => {
+                for (const registration of generation.registrations) {
+                  registration(state ?? { orders: {} });
+                }
+              },
+            });
+          }).then((subscription) => {
+            if (shared !== generation) {
+              subscription.unsubscribe();
+              throw new Error("orders subscription canceled by configure");
+            }
+            generation.subscription = subscription;
+            return subscription;
+          }, (error: unknown) => {
+            closeGeneration(generation);
+            throw error;
+          }),
+        };
+        shared = generation;
+      }
+      const generation = shared;
+      const registration = (state: OrdersProjection) => onUpdate(state);
+      generation.registrations.add(registration);
+      await generation.promise;
+      return {
+        unsubscribe: () => {
+          generation.registrations.delete(registration);
+          if (generation.registrations.size === 0 && shared === generation) closeGeneration(generation);
         },
-      });
-      // Await it so a failure to connect reaches the caller's error state.
-      await shared;
-      // Dropping a listener never closes the shared subscription: the page
-      // keeps it for its lifetime, which is the whole demo.
-      return { unsubscribe: () => listeners.delete(onUpdate) };
+      };
     },
   };
 }

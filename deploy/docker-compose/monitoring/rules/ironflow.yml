@@ -1,0 +1,226 @@
+groups:
+- name: ironflow.critical
+  rules:
+  - alert: IronflowDown
+    expr: absent(up{job="ironflow"} == 1)
+    for: 2m
+    labels:
+      severity: critical
+    annotations:
+      summary: Ironflow is down
+      description: No Ironflow scrape target has been up for more than 2 minutes.
+      runbook_url: https://docs.ironflow.run/how-to-guides/deployment/docker-compose/
+  - alert: IronflowPolicySetCompileErrors
+    expr: max by (org) (ironflow_policy_set_compile_failed) == 1
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: Stored policy set does not compile
+      description: The policy set of org {{ $labels.org }} failed to compile on load. Layer 2 denies every
+        request for that org (enforce) or records would_deny (monitor) until the set is fixed.
+      runbook_url: https://docs.ironflow.run/how-to-guides/policies/emergency-bypass/#a-stored-set-stops-compiling
+  # The control plane emits the same HTTP metrics; scope both terms to the engine job.
+  - alert: HighErrorRate
+    expr: |
+      (
+        sum(rate(ironflow_http_requests_total{job="ironflow", status_code=~"5.."}[5m]))
+        /
+        (sum(rate(ironflow_http_requests_total{job="ironflow"}[5m])) > 0)
+      ) > 0.05
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: High HTTP error rate
+      description: More than 5% of HTTP requests are returning 5xx errors for the last 5 minutes.
+  - alert: HighLatency
+    expr: |
+      histogram_quantile(0.99, sum(rate(ironflow_http_request_duration_seconds_bucket[5m])) by (le))
+      > 2
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: High API latency
+      description: P99 HTTP request latency exceeds 2 seconds for the last 5 minutes.
+- name: ironflow.warning
+  rules:
+  - alert: HighRunFailureRate
+    expr: |
+      (
+        sum(rate(ironflow_runs_total{status="failed"}[15m]))
+        /
+        (sum(rate(ironflow_runs_total[15m])) > 0)
+      ) > 0.05
+    for: 15m
+    labels:
+      severity: warning
+    annotations:
+      summary: High run failure rate
+      description: More than 5% of runs are failing over the last 15 minutes.
+  # A new counter starts at one. increase() alone misses the first pause.
+  - alert: RunsPausedRetriesExhausted
+    expr: |
+      sum by (function_id, environment_id) (increase(ironflow_runs_paused_exhausted_total[15m])) > 0
+      or
+      sum by (function_id, environment_id) (ironflow_runs_paused_exhausted_total unless ironflow_runs_paused_exhausted_total offset 15m) > 0
+    for: 1m
+    labels:
+      severity: warning
+    annotations:
+      summary: Runs paused after exhausting their retries
+      description: '{{ $value }} run(s) of function {{ $labels.function_id }} in environment {{ $labels.environment_id
+        }} paused in the last 15 minutes after using up their retries. They stay paused until someone
+        runs `ironflow run resume <run-id>`.'
+  - alert: WorkerDisconnected
+    expr: |
+      (
+        ironflow_workers_connected == 0
+        and
+        increase(ironflow_workers_connected[1h]) > 0
+      )
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: No workers connected
+      description: No pull-mode workers have been connected for more than 5 minutes after previously having
+        workers.
+- name: ironflow.sre
+  rules:
+  - alert: JetStreamStreamFault
+    expr: max by (stream, fault) (ironflow_jetstream_stream_fault) == 1
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: A JetStream stream is not serviceable
+      description: The {{ $labels.stream }} stream reports "{{ $labels.fault }}". The API stays up and
+        /ready answers 503 naming the stream. While PUBSUB has no leader, topic publishes, subscriptions,
+        consumer groups, projection delivery and rebuilds do not work, and environment create and delete
+        answer 503. The engine applies its stream config and activates consumer groups on its own once a
+        leader returns. A missing or replaced stream other than EVENTS restarts the node; EVENTS needs the
+        stopped-writer procedure.
+      runbook_url: https://docs.ironflow.run/how-to-guides/deployment/recover-a-stuck-stream/
+  - alert: NATSPublishCircuitOpen
+    expr: ironflow_circuit_breaker_state{function_id="nats-publish",state="open"} > 0
+    for: 2m
+    labels:
+      severity: critical
+    annotations:
+      summary: NATS publish circuit breaker is open
+      description: The shared NATS publish circuit breaker has been open for more than 2 minutes. NATS
+        publishing is failing and events may be lost.
+  - alert: PushEndpointCircuitOpen
+    expr: ironflow_circuit_breaker_state{function_id!="nats-publish",state="open"} > 0
+    for: 2m
+    labels:
+      severity: critical
+    annotations:
+      summary: Push endpoint circuit breaker is open
+      description: The push endpoint circuit breaker for function {{ $labels.function_id }} in environment
+        {{ $labels.environment_id }} has been open for more than 2 minutes. That function's endpoint is
+        failing and its runs are being rejected at dispatch.
+  - alert: DLQBacklogGrowing
+    expr: increase(ironflow_dlq_writes_total[5m]) > 0
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: Dead letter queue is receiving messages
+      description: Dead letter queue has received {{ $value }} messages in the last 5 minutes from {{
+        $labels.source }}. For source outbox, a row's own publish failed up to its limit; a NATS outage
+        does not normally cause this, the outbox backlog alerts below cover it. Run `ironflow outbox dlq list --env <environment>`.
+  - alert: CodecEncodeErrorsHigh
+    expr: rate(ironflow_codec_encode_errors_total[5m]) > (1 / 60)
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: PUBSUB SubjectCodec encode error rate elevated
+      description: "Codec encode errors firing at {{ $value }}/s for reason {{ $labels.reason }} (sustained\
+        \ > 1/min for 5m). User-visible HTTP 400s on /events/trigger or programmatic publishers passing\
+        \ malformed input. See ADR 0006 \xA73."
+  - alert: CodecDecodeErrorsHigh
+    expr: rate(ironflow_codec_decode_errors_total[5m]) > (1 / 60)
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: PUBSUB SubjectCodec decode error rate elevated
+      description: "Codec decode errors firing at {{ $value }}/s for namespace={{ $labels.namespace }}\
+        \ reason={{ $labels.reason }} (sustained > 1/min for 5m). Silent message drop on the projection\
+        \ consumer path \u2014 projections will lag. Check for wire-format drift or upstream publishers\
+        \ writing non-canonical subjects. See ADR 0006 \xA73."
+  # Startup increments precede the first scrape; increase() would miss lost cron slots.
+  - alert: CronSlotsSkipped
+    expr: ironflow_cron_slots_skipped_total > 0
+    labels:
+      severity: warning
+    annotations:
+      summary: Scheduled function missed cron slots
+      description: "Function {{ $labels.function_id }} (env {{ $labels.environment_id }}) had {{ $value\
+        \ }} cron slot(s) produce no run \u2014 engine down, stalled across the slot, or the fire itself\
+        \ failed. Missed slots are never backfilled; re-run by hand if the job is not self-correcting.\
+        \ The engine WARN log carries the window and a verified flag. Alert on the condition, not the\
+        \ magnitude: every node reports the same gap independently. Latches until this process restarts.\
+        \ Not usable for daily/weekly schedules \u2014 see the observability guide. #1639."
+  # This tally changes nightly. A duration window cannot express two failed passes.
+  - alert: RetentionPruneFailing
+    expr: ironflow_retention_consecutive_failures > 1
+    labels:
+      severity: warning
+    annotations:
+      summary: Nightly retention prune is failing
+      description: "Retention job {{ $labels.retention_job }} has failed {{ $value }} nightly passes in\
+        \ a row. Rows are no longer being deleted and the table grows unbounded \u2014 check for a missing\
+        \ grant, a wedged blob backend, or lock contention in the engine log. #2352."
+- name: ironflow.lag
+  rules:
+  - alert: OutboxBacklogHigh
+    expr: max(ironflow_outbox_pending_count) > 1000
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: Outbox backlog exceeds 1000 entries
+      description: Pending events are waiting for publication. Check NATS connectivity and outbox worker
+        errors.
+  - alert: OutboxOldestEntryHigh
+    expr: max(ironflow_outbox_oldest_pending_age_seconds) > 60
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: Oldest outbox entry exceeds one minute
+      description: Outbox publication is delayed. Check worker health and NATS connectivity.
+  - alert: NATSConsumerLagHigh
+    expr: max by (stream) (ironflow_nats_consumer_lag) > 1000
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: NATS stream consumer lag exceeds 1000 messages
+      description: An engine stream has undelivered messages. Check consumer health and throughput.
+- name: ironflow.capacity
+  rules:
+  - alert: CapacityLeasesExpiringSustained
+    expr: sum by (environment_id, function_id) (rate(ironflow_capacity_leases_expired_total[5m])) > 0
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: Capacity leases expiring continuously
+      description: Function {{ $labels.function_id }} (env {{ $labels.environment_id }}) has expired leases
+        for >10m. Workers or push endpoints may be dying mid-execution, or lease refresh is broken.
+  - alert: CapacityQueueAgeHigh
+    expr: max by (environment_id, function_id) (ironflow_capacity_oldest_queue_age_seconds) > 300
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: Capacity queue age is high
+      description: "Function {{ $labels.function_id }} (env {{ $labels.environment_id }}) has work queued\
+        \ for over the configured age threshold for >10m. Capacity is starved \u2014 no free lane slots\
+        \ or no compatible workers."

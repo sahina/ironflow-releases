@@ -153,8 +153,7 @@ const evaluateFraud = createFunction(
 
         // ── Geo: does the cardholder's location match the transaction? ──
         // Compares three countries: where the card was issued, where the
-        // cardholder's IP is, and where the merchant is. A full mismatch
-        // (all three differ) is the highest risk signal.
+        // cardholder's IP is, and where the merchant is.
         async (s) => {
           return await s.run(
             "geo-check",

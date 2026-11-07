@@ -6,11 +6,19 @@
 name: ironflow
 services:
   ironflow:
-    image: ghcr.io/sahina/ironflow-releases:${VERSION:-0.54.0}
+    # Covers the worst-case shutdown drain. Docker's default 10s kills it mid-drain.
+    stop_grace_period: 100s
+    image: ghcr.io/sahina/ironflow-releases:${VERSION:-0.55.0}
     ports:
       - "${IRONFLOW_PORT:-9123}:9123"
+      - "127.0.0.1:${IRONFLOW_METRICS_HOST_PORT:-9223}:9223"
+    command: serve --bootstrap-key-file=/data/.ironflow/.ironflow_bootstrap_key.json --metrics-port=9223
     environment:
       - LOG_LEVEL=${LOG_LEVEL:-info}
+      - IRONFLOW_BLOB_URL=${IRONFLOW_BLOB_URL:-}
+      - IRONFLOW_JWT_SECRET=${IRONFLOW_JWT_SECRET:-}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
       - IRONFLOW_DATABASE_URL=${IRONFLOW_DATABASE_URL:-}
       - NATS_STORE_DIR=${NATS_STORE_DIR:-/data/nats}
       - IRONFLOW_MASTER_KEY=${IRONFLOW_MASTER_KEY:-}
@@ -47,33 +55,39 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
+      # Over TCP: the setup server at first start listens only on the local socket,
+      # so a socket probe can pass before the engine can connect.
       test:
         [
           "CMD-SHELL",
-          "pg_isready -U $${POSTGRES_USER:-ironflow} -d $${POSTGRES_DB:-ironflow}",
+          "pg_isready -h 127.0.0.1 -U $${POSTGRES_USER:-ironflow} -d $${POSTGRES_DB:-ironflow}",
         ]
       interval: 5s
       timeout: 5s
       retries: 5
+    configs:
+      - source: postgres_flush_hba
+        target: /docker-entrypoint-initdb.d/flush-hba.sh
 
   prometheus:
-    image: prom/prometheus:v3.2.1
+    image: prom/prometheus:v3.15.1
     profiles:
       - monitoring
     ports:
-      - "9090:9090"
+      - "127.0.0.1:9090:9090"
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/rules:/etc/prometheus/rules:ro
     depends_on:
       ironflow:
         condition: service_healthy
 
   grafana:
-    image: grafana/grafana:13.0.2
+    image: grafana/grafana:13.3.0
     profiles:
       - monitoring
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
@@ -86,6 +100,14 @@ services:
       - ./deploy/docker-compose/cluster/grafana/dashboards/ironflow-performance.json:/var/lib/grafana/dashboards/ironflow-performance.json:ro
     depends_on:
       - prometheus
+
+configs:
+  # The image appends its rule for TCP logins to pg_hba.conf at first start and does
+  # not flush it. A host reset then loses the rule while PG_VERSION survives, so init
+  # never runs again and every TCP login fails while the health check passes (#3715).
+  postgres_flush_hba:
+    content: |
+      sync
 
 volumes:
   ironflow-data:

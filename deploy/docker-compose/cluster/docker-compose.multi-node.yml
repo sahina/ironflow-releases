@@ -7,10 +7,12 @@ services:
     configs:
       - source: nats_conf
         target: /etc/nats/nats.conf
-    command: ["-c=/etc/nats/nats.conf", "-js", "-m", "8222"]
+    command: ["-c=/etc/nats/nats.conf", "-js", "-sd=/data", "-m", "8222"]
     ports:
-      - "4222:4222"
-      - "8222:8222"
+      - "127.0.0.1:4222:4222"
+      - "127.0.0.1:8222:8222"
+    volumes:
+      - nats_data:/data
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8222/healthz"]
       interval: 5s
@@ -24,48 +26,85 @@ services:
     environment:
       POSTGRES_DB: ironflow
       POSTGRES_USER: ironflow
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ironflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set it in .env (new install - run ./init-env.sh)}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ironflow"]
+      # Over TCP: the setup server at first start listens only on the local socket,
+      # so a socket probe can pass before the engine can connect.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ironflow"]
       interval: 5s
       timeout: 3s
       retries: 10
+    configs:
+      - source: postgres_flush_hba
+        target: /docker-entrypoint-initdb.d/flush-hba.sh
 
   # Shared S3 backend. A node started with --nats-url is multi-node, and the E5
   # gate (#411) requires a shared s3:// blob backend or it refuses to boot.
   # -ip.bind=0.0.0.0 binds loopback so the in-container healthcheck works.
   # MinIO rejected (registry+license); see ADR-0035.
   seaweedfs:
-    image: chrislusf/seaweedfs:4.48
+    image: chrislusf/seaweedfs:4.52
+    # SeaweedFS syncs a write before it acks only under this rule, and 4.49 is the
+    # first release whose rule covers the index and the filer store, not only .dat
+    # (#3673). A write that S3 acks before the rule applies is not synced, so on
+    # first start S3 stays down until the rule is set and on disk. The marker
+    # records that. It is written only after the rule is flushed.
+    entrypoint: ["/bin/sh", "-c"]
     command:
-      ["server", "-dir=/data", "-s3", "-s3.config=/etc/seaweedfs/s3.json", "-ip.bind=0.0.0.0"]
+      - |
+        if [ ! -e /data/.fsync-rule-set ]; then
+          /entrypoint.sh server -dir=/data -filer -ip.bind=0.0.0.0 &
+          pid=$$!
+          until curl -sf http://localhost:8888/etc/seaweedfs/filer.conf | tr -d ' \n' | grep -q '"locationPrefix":"/buckets/"[^}]*"fsync":true'; do
+            kill -0 "$$pid" || exit 1
+            echo "fs.configure -locationPrefix=/buckets/ -fsync=true -apply" | weed shell >/dev/null 2>&1
+            sleep 1
+          done
+          kill "$$pid"
+          wait "$$pid" || true
+          sync
+          touch /data/.fsync-rule-set
+          sync
+        fi
+        exec /entrypoint.sh server -dir=/data -s3 -s3.config=/etc/seaweedfs/s3.json -ip.bind=0.0.0.0
     ports:
-      - "8333:8333" # S3 API
+      - "127.0.0.1:8333:8333" # S3 API
+    configs:
+      - source: seaweedfs_s3
+        target: /etc/seaweedfs/s3.json
     volumes:
-      - ../seaweedfs-s3.json:/etc/seaweedfs/s3.json:ro
+      - seaweedfs_data:/data
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:9333/cluster/status >/dev/null"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:9333/cluster/status >/dev/null && curl -sf http://localhost:8888/etc/seaweedfs/filer.conf | tr -d ' \\n' | grep -q '\"locationPrefix\":\"/buckets/\"[^}]*\"fsync\":true' && curl -s -o /dev/null http://localhost:8333/"]
       interval: 5s
       timeout: 3s
       retries: 10
+      # S3 must answer, so a pass means the first start is over. It runs SeaweedFS twice.
+      start_period: 2m
 
   ironflow-1:
-    image: ${IRONFLOW_IMAGE:-ironflow:latest}
-    build:
-      context: ../../..
-      dockerfile: Dockerfile
-    command: serve --nats-url=nats://nats:4222 --port=9123 --node-id=node-1
+    # Covers the worst-case shutdown drain. Docker's default 10s kills it mid-drain.
+    stop_grace_period: 100s
+    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.55.0}
+    command: serve --nats-url=nats://nats:4222 --port=9123 --metrics-port=9223 --node-id=node-1 --bootstrap-key-file=/data/bootstrap-key.json
     environment:
-      IRONFLOW_DATABASE_URL: postgres://ironflow:${POSTGRES_PASSWORD:-ironflow}@postgres:5432/ironflow?sslmode=disable
-      IRONFLOW_MASTER_KEY:
+      IRONFLOW_JWT_SECRET: ${IRONFLOW_JWT_SECRET:?set it in .env (new install - run ./init-env.sh)}
+      IRONFLOW_DATABASE_URL: postgres://ironflow:${POSTGRES_PASSWORD:?set it in .env (new install - run ./init-env.sh)}@postgres:5432/ironflow?sslmode=disable
+      IRONFLOW_MASTER_KEY: ${IRONFLOW_MASTER_KEY:?set it in .env (new install - run ./init-env.sh)}
+      # First-boot admin key (init-env.sh writes one); unset = generated key file.
+      IRONFLOW_BOOTSTRAP_ADMIN_KEY: ${IRONFLOW_BOOTSTRAP_ADMIN_KEY:-}
+      # Dashboard password for admin@ironflow.local, set at first boot.
+      IRONFLOW_BOOTSTRAP_ADMIN_PASSWORD: ${IRONFLOW_BOOTSTRAP_ADMIN_PASSWORD:-}
       IRONFLOW_STALE_CLAIM_THRESHOLD:
       NATS_CREDS_FILE:
-      # Observability (profile: monitoring): expose Prometheus /metrics on the
-      # API port and export OTLP traces to the jaeger service. Traces default to
+      NATS_FILE_STORAGE: "true"
+      # Observability (profile: monitoring): serve Prometheus /metrics on
+      # --metrics-port, off the public port, and export OTLP traces to the jaeger
+      # service. Traces default to
       # jaeger:4317, which only exists under --profile monitoring; bare runs log
       # harmless connection retries — set IRONFLOW_OTEL_ENDPOINT= to silence.
       # prometheus scrapes all three nodes; grafana renders the dashboards.
@@ -77,28 +116,40 @@ services:
       # shared s3:// blob backend or it refuses to boot. Offload is off by
       # default (no IRONFLOW_ARTIFACT_THRESHOLD), so no bucket is needed to boot.
       IRONFLOW_BLOB_URL: s3://ironflow-dev-blobs?endpoint=http://seaweedfs:8333&region=us-east-1
-      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:-ironflowtest}
-      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:-ironflowtestsecret}
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:?set it in .env (new install - run ./init-env.sh)}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:?set it in .env (new install - run ./init-env.sh)}
     ports:
-      - "9123:9123"
+      - "127.0.0.1:9123:9123"
+      - "127.0.0.1:9223:9223"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9123/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
     depends_on:
       nats: { condition: service_healthy }
       postgres: { condition: service_healthy }
       seaweedfs: { condition: service_healthy }
 
   ironflow-2:
-    image: ${IRONFLOW_IMAGE:-ironflow:latest}
-    build:
-      context: ../../..
-      dockerfile: Dockerfile
-    command: serve --nats-url=nats://nats:4222 --port=9124 --node-id=node-2
+    # Covers the worst-case shutdown drain. Docker's default 10s kills it mid-drain.
+    stop_grace_period: 100s
+    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.55.0}
+    command: serve --nats-url=nats://nats:4222 --port=9124 --metrics-port=9224 --node-id=node-2 --bootstrap-key-file=/data/bootstrap-key.json
     environment:
-      IRONFLOW_DATABASE_URL: postgres://ironflow:${POSTGRES_PASSWORD:-ironflow}@postgres:5432/ironflow?sslmode=disable
-      IRONFLOW_MASTER_KEY:
+      IRONFLOW_JWT_SECRET: ${IRONFLOW_JWT_SECRET:?set it in .env (new install - run ./init-env.sh)}
+      IRONFLOW_DATABASE_URL: postgres://ironflow:${POSTGRES_PASSWORD:?set it in .env (new install - run ./init-env.sh)}@postgres:5432/ironflow?sslmode=disable
+      IRONFLOW_MASTER_KEY: ${IRONFLOW_MASTER_KEY:?set it in .env (new install - run ./init-env.sh)}
+      # First-boot admin key (init-env.sh writes one); unset = generated key file.
+      IRONFLOW_BOOTSTRAP_ADMIN_KEY: ${IRONFLOW_BOOTSTRAP_ADMIN_KEY:-}
+      # Dashboard password for admin@ironflow.local, set at first boot.
+      IRONFLOW_BOOTSTRAP_ADMIN_PASSWORD: ${IRONFLOW_BOOTSTRAP_ADMIN_PASSWORD:-}
       IRONFLOW_STALE_CLAIM_THRESHOLD:
       NATS_CREDS_FILE:
-      # Observability (profile: monitoring): expose Prometheus /metrics on the
-      # API port and export OTLP traces to the jaeger service. Traces default to
+      NATS_FILE_STORAGE: "true"
+      # Observability (profile: monitoring): serve Prometheus /metrics on
+      # --metrics-port, off the public port, and export OTLP traces to the jaeger
+      # service. Traces default to
       # jaeger:4317, which only exists under --profile monitoring; bare runs log
       # harmless connection retries — set IRONFLOW_OTEL_ENDPOINT= to silence.
       # prometheus scrapes all three nodes; grafana renders the dashboards.
@@ -110,28 +161,40 @@ services:
       # shared s3:// blob backend or it refuses to boot. Offload is off by
       # default (no IRONFLOW_ARTIFACT_THRESHOLD), so no bucket is needed to boot.
       IRONFLOW_BLOB_URL: s3://ironflow-dev-blobs?endpoint=http://seaweedfs:8333&region=us-east-1
-      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:-ironflowtest}
-      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:-ironflowtestsecret}
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:?set it in .env (new install - run ./init-env.sh)}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:?set it in .env (new install - run ./init-env.sh)}
     ports:
-      - "9124:9124"
+      - "127.0.0.1:9124:9124"
+      - "127.0.0.1:9224:9224"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9124/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
     depends_on:
       nats: { condition: service_healthy }
       postgres: { condition: service_healthy }
       seaweedfs: { condition: service_healthy }
 
   ironflow-3:
-    image: ${IRONFLOW_IMAGE:-ironflow:latest}
-    build:
-      context: ../../..
-      dockerfile: Dockerfile
-    command: serve --nats-url=nats://nats:4222 --port=9125 --node-id=node-3
+    # Covers the worst-case shutdown drain. Docker's default 10s kills it mid-drain.
+    stop_grace_period: 100s
+    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.55.0}
+    command: serve --nats-url=nats://nats:4222 --port=9125 --metrics-port=9225 --node-id=node-3 --bootstrap-key-file=/data/bootstrap-key.json
     environment:
-      IRONFLOW_DATABASE_URL: postgres://ironflow:${POSTGRES_PASSWORD:-ironflow}@postgres:5432/ironflow?sslmode=disable
-      IRONFLOW_MASTER_KEY:
+      IRONFLOW_JWT_SECRET: ${IRONFLOW_JWT_SECRET:?set it in .env (new install - run ./init-env.sh)}
+      IRONFLOW_DATABASE_URL: postgres://ironflow:${POSTGRES_PASSWORD:?set it in .env (new install - run ./init-env.sh)}@postgres:5432/ironflow?sslmode=disable
+      IRONFLOW_MASTER_KEY: ${IRONFLOW_MASTER_KEY:?set it in .env (new install - run ./init-env.sh)}
+      # First-boot admin key (init-env.sh writes one); unset = generated key file.
+      IRONFLOW_BOOTSTRAP_ADMIN_KEY: ${IRONFLOW_BOOTSTRAP_ADMIN_KEY:-}
+      # Dashboard password for admin@ironflow.local, set at first boot.
+      IRONFLOW_BOOTSTRAP_ADMIN_PASSWORD: ${IRONFLOW_BOOTSTRAP_ADMIN_PASSWORD:-}
       IRONFLOW_STALE_CLAIM_THRESHOLD:
       NATS_CREDS_FILE:
-      # Observability (profile: monitoring): expose Prometheus /metrics on the
-      # API port and export OTLP traces to the jaeger service. Traces default to
+      NATS_FILE_STORAGE: "true"
+      # Observability (profile: monitoring): serve Prometheus /metrics on
+      # --metrics-port, off the public port, and export OTLP traces to the jaeger
+      # service. Traces default to
       # jaeger:4317, which only exists under --profile monitoring; bare runs log
       # harmless connection retries — set IRONFLOW_OTEL_ENDPOINT= to silence.
       # prometheus scrapes all three nodes; grafana renders the dashboards.
@@ -143,17 +206,23 @@ services:
       # shared s3:// blob backend or it refuses to boot. Offload is off by
       # default (no IRONFLOW_ARTIFACT_THRESHOLD), so no bucket is needed to boot.
       IRONFLOW_BLOB_URL: s3://ironflow-dev-blobs?endpoint=http://seaweedfs:8333&region=us-east-1
-      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:-ironflowtest}
-      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:-ironflowtestsecret}
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:?set it in .env (new install - run ./init-env.sh)}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:?set it in .env (new install - run ./init-env.sh)}
     ports:
-      - "9125:9125"
+      - "127.0.0.1:9125:9125"
+      - "127.0.0.1:9225:9225"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9125/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
     depends_on:
       nats: { condition: service_healthy }
       postgres: { condition: service_healthy }
       seaweedfs: { condition: service_healthy }
 
   nginx:
-    image: nginx:alpine
+    image: nginx:1.30.6-alpine
     ports:
       - "9000:9000"
     volumes:
@@ -169,13 +238,14 @@ services:
   # Grafana: point a Grafana instance at http://localhost:9090. See
   # docs/how-to-guides/observability.mdx for example queries.
   prometheus:
-    image: prom/prometheus:v3.2.1
+    image: prom/prometheus:v3.15.1
     profiles:
       - monitoring
     ports:
-      - "9090:9090"
+      - "127.0.0.1:9090:9090"
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../monitoring/rules:/etc/prometheus/rules:ro
     depends_on:
       - ironflow-1
       - ironflow-2
@@ -184,23 +254,23 @@ services:
   # Tracing backend (profile: monitoring). Receives OTLP traces from every
   # ironflow node at :4317. UI at http://localhost:16686. See observability.mdx.
   jaeger:
-    image: jaegertracing/jaeger:2.19.0
+    image: jaegertracing/jaeger:2.22.0
     profiles:
       - monitoring
     ports:
-      - "16686:16686" # Jaeger UI
-      - "4317:4317" # OTLP gRPC ingest
+      - "127.0.0.1:16686:16686" # Jaeger UI
+      - "127.0.0.1:4317:4317" # OTLP gRPC ingest
 
   # Dashboards (profile: monitoring). Auto-provisions the Prometheus datasource
   # and the Ironflow dashboards from ./grafana. UI at http://localhost:3000:
   # anonymous read-only (Viewer); log in as admin to edit. Dev defaults — set
   # GRAFANA_ADMIN_PASSWORD before exposing this stack beyond localhost.
   grafana:
-    image: grafana/grafana:13.0.2
+    image: grafana/grafana:13.3.0
     profiles:
       - monitoring
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
@@ -216,14 +286,20 @@ services:
   # (/varz, /connz) — not Prometheus format — so this translates it to /metrics
   # on :7777, which Prometheus scrapes for the NATS Monitoring dashboard.
   nats-exporter:
-    image: natsio/prometheus-nats-exporter:0.20.1
+    image: natsio/prometheus-nats-exporter:0.20.3
     profiles:
       - monitoring
-    command: ["-varz", "-connz", "-subz", "-routez", "-port=7777", "http://nats:8222"]
+    command: ["-varz", "-connz", "-subz", "-routez", "-jsz=all", "-port=7777", "http://nats:8222"]
     depends_on:
       - nats
 
 configs:
+  # The image appends its rule for TCP logins to pg_hba.conf at first start and does
+  # not flush it. A host reset then loses the rule while PG_VERSION survives, so init
+  # never runs again and every TCP login fails while the health check passes (#3715).
+  postgres_flush_hba:
+    content: |
+      sync
   # fsync every JetStream write before the ack (ADR 0134). nats-server has no
   # flag for it, and its default acks first and fsyncs every 2 minutes. No
   # store_dir here: -sd sets it, and nats-server rejects the pair as a duplicate.
@@ -233,6 +309,14 @@ configs:
         sync_interval: always
         limits { default_max_consumers: -1 }
       }
+  seaweedfs_s3:
+    content: |
+      {"identities": [{"name": "ironflow",
+        "credentials": [{"accessKey": "${S3_ACCESS_KEY:?set it in .env (new install - run ./init-env.sh)}",
+                         "secretKey": "${S3_SECRET_KEY:?set it in .env (new install - run ./init-env.sh)}"}],
+        "actions": ["Admin", "Read", "Write", "List", "Tagging"]}]}
 
 volumes:
   postgres_data:
+  nats_data:
+  seaweedfs_data:

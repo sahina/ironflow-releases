@@ -1,6 +1,6 @@
-# Compliance Audit Trail Demo
+# Entity Audit Trail Demo
 
-Demonstrates Ironflow's compliance audit trail capabilities using an order lifecycle scenario. Every state mutation is an entity stream event, every workflow step is durable and replayable.
+Demonstrates an entity audit trail in Ironflow with an order lifecycle scenario. Each order transition in this demo appends an entity stream event, and each workflow step is durable and replayable.
 
 ## What This Shows
 
@@ -8,7 +8,7 @@ An order goes through a full lifecycle: Created → Confirmed → Packed → Shi
 
 - Appends an event to the entity stream (the audit trail)
 - Key transitions (Created, Shipped) trigger durable workflow functions (execution proof)
-- Is visible in the Compliance Audit Trail dashboard at `/compliance-audit`
+- Is visible on the Entity Audit Trail dashboard page at `/compliance-audit`
 
 ## Running the Demo
 
@@ -46,17 +46,17 @@ An order goes through a full lifecycle: Created → Confirmed → Packed → Shi
 4. Open the dashboard at `http://localhost:9123/compliance-audit`
 
 5. Select the `order-demo-001` entity from the left panel to see:
-   - Full entity timeline with every state change
+   - Full entity timeline with every event on the stream
    - Workflow execution proof (runs + steps) on the two events that trigger a function:
      `OrderCreated` (`process-order-created`: `validate-order`, `reserve-inventory`) and
      `OrderShipped` (`process-order-shipped`: `notify-customer`, `update-tracking`).
      The other three events are recorded in the stream with no run attached.
-   - Export to JSON or CSV for compliance review
+   - Export to JSON or CSV
 
-## Compliance Features Demonstrated
+## Features Demonstrated
 
-- **Entity-level audit trail**: Every state change is an immutable event
+- **Entity-level audit trail**: Each order transition is an event on the entity stream
 - **Execution proof**: An event that triggers a function shows which workflow ran and its step-by-step execution
 - **Timestamp filtering**: Filter the timeline by date range
 - **Export**: Download the full audit trail as JSON or CSV
-- **Print-ready**: Use browser print (Ctrl+P) for audit committee review
+- **Print-ready**: Use browser print (Ctrl+P) for a paper copy of the timeline

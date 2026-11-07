@@ -3,6 +3,7 @@ package order
 import (
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/sahina/ironflow-go/ironflow"
 )
@@ -53,7 +54,7 @@ func projectionEvent(name string, data map[string]any, producer string) ironflow
 		ID:        "evt-" + name,
 		Name:      name,
 		Data:      data,
-		Timestamp: "2026-03-04T05:06:07Z",
+		Timestamp: time.Date(2026, 3, 4, 5, 6, 7, 0, time.UTC),
 	}
 	if producer != "" {
 		event.Metadata = map[string]any{"producer": producer}

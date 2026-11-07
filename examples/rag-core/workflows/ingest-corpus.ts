@@ -6,11 +6,7 @@ import { chunkMarkdown } from "../src/chunk.js";
 import { embed } from "../src/embed.js";
 import { stableId } from "../src/id.js";
 
-// createWorker picks IRONFLOW_API_KEY up from the environment on its own;
-// createClient does not, so pass it explicitly or every emit 401s.
-const client = createClient({
-  apiKey: process.env.IRONFLOW_API_KEY,
-});
+const client = createClient();
 
 const CORPUS_DIR = process.env.CORPUS_DIR ?? "./corpus";
 

@@ -43,15 +43,19 @@ export default function Home() {
         if (!cancelled) setInitializing(false);
       });
 
-    // 2. Subscribe to projection updates — the server pushes the new state
-    //    whenever the projection runner saves. No polling, no re-fetching.
+    // Strict Mode's disposable effect must not start a subscription.
     ironflow
-      .subscribeToProjection<TodoList>("todo-list", {
-        onUpdate: (state) => {
-          if (!cancelled && state?.todos) setTodos(state.todos);
-        },
+      .connect()
+      .then(() => {
+        if (cancelled) return;
+        return ironflow.subscribeToProjection<TodoList>("todo-list", {
+          onUpdate: (state) => {
+            if (!cancelled && state?.todos) setTodos(state.todos);
+          },
+        });
       })
       .then((sub) => {
+        if (!sub) return;
         if (cancelled) {
           sub.unsubscribe();
         } else {

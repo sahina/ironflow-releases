@@ -263,8 +263,8 @@ transaction with the declined electronics transaction side by side.
 
 `verify.sh` calls the `ironflow` CLI, so put the binary on your `PATH` first (from
 this directory it is `../../build`). It checks the registered function and projection,
-at least three completed runs, the entity streams, each seeded decision and the
-`fraud-alerts` count, and exits non-zero if any check fails. It also emits one extra
+at least three completed runs, the entity streams, four of the five seeded decisions
+(not the books purchase) and the `fraud-alerts` count, and exits non-zero if any check fails. It also emits one extra
 transaction on `card_alice_1234` and checks that the card's velocity counter reaches
 at least 2, so run it after `pnpm seed`, not before.
 

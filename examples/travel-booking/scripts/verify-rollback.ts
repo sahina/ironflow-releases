@@ -3,9 +3,11 @@
 //
 // Run via scripts/demo-saga-rollback.sh, which supplies the server and worker.
 
+import { waitForRollback } from "./rollback-state";
 import { ironflow } from "@ironflow/browser";
 import {
   BOOKING_REQUESTED,
+  INVENTORY_EVENTS,
   normalizeAvailability,
   PROJECTIONS,
   seatsLeft,
@@ -25,14 +27,9 @@ const HOTEL_ID = "savoy-london";
 
 ironflow.configure({ serverUrl: SERVER_URL });
 
-function fail(message: string): never {
-  console.error(`❌ ${message}`);
-  process.exit(1);
-}
-
 async function availability(): Promise<Availability> {
-  const result = await ironflow.getProjection<Availability>(PROJECTIONS.Availability).catch(() => null);
-  return normalizeAvailability(result?.state as Availability | undefined);
+  const result = await ironflow.getProjection<Availability>(PROJECTIONS.Availability);
+  return normalizeAvailability(result.state);
 }
 
 /** Seeding races projection catch-up — wait for inventory to show up. */
@@ -43,52 +40,54 @@ async function waitForInventory(): Promise<Availability> {
     if (seatsLeft(state, FLIGHT_ID) > 0 && roomsLeft(state, HOTEL_ID) > 0) return state;
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
-  fail(`inventory for ${FLIGHT_ID}/${HOTEL_ID} never appeared in the availability projection`);
+  throw new Error(`inventory for ${FLIGHT_ID}/${HOTEL_ID} never appeared in the availability projection`);
 }
 
 async function main(): Promise<void> {
   const before = await waitForInventory();
-  const seatsBefore = seatsLeft(before, FLIGHT_ID);
-  const roomsBefore = roomsLeft(before, HOTEL_ID);
+  console.log(JSON.stringify({ before }));
 
   await fetch(`${CHAOS_URL}/payment-mode?mode=fail`, { method: "POST" });
 
   const bookingId = crypto.randomUUID();
-  await ironflow.emit(BOOKING_REQUESTED, {
-    bookingId,
-    traveler: "rollback-test",
-    flightId: FLIGHT_ID,
-    hotelId: HOTEL_ID,
-  });
+  try {
+    await ironflow.emit(BOOKING_REQUESTED, {
+      bookingId,
+      traveler: "rollback-test",
+      flightId: FLIGHT_ID,
+      hotelId: HOTEL_ID,
+    });
 
-  const deadline = Date.now() + TIMEOUT_MS;
-  while (Date.now() < deadline) {
-    const result = await ironflow.getProjection<BookingsState>(PROJECTIONS.Bookings).catch(() => null);
-    const booking = result?.state?.bookings?.find((b) => b.id === bookingId);
-
-    if (booking?.status === "failed") {
-      const flightStep = booking.steps.find((s) => s.label === "Reserve flight");
-      const hotelStep = booking.steps.find((s) => s.label === "Reserve hotel");
-
-      if (!flightStep?.undone) fail("flight seat was never released — compensation did not run");
-      if (!hotelStep?.undone) fail("hotel room was never released — compensation did not run");
-
-      const after = await availability();
-      const seatsAfter = seatsLeft(after, FLIGHT_ID);
-      const roomsAfter = roomsLeft(after, HOTEL_ID);
-      if (seatsAfter !== seatsBefore) fail(`seats leaked: ${seatsBefore} before, ${seatsAfter} after`);
-      if (roomsAfter !== roomsBefore) fail(`rooms leaked: ${roomsBefore} before, ${roomsAfter} after`);
-
-      console.log("✅ payment failed, both reservations rolled back, inventory restored");
-      await fetch(`${CHAOS_URL}/payment-mode?mode=normal`, { method: "POST" });
-      process.exit(0);
-    }
-
-    if (booking?.status === "confirmed") fail("booking confirmed despite a declined card");
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    await waitForRollback({
+      bookingId,
+      flightId: FLIGHT_ID,
+      hotelId: HOTEL_ID,
+      before,
+      timeoutMs: TIMEOUT_MS,
+      read: async () => {
+        const result = await ironflow.getProjection<BookingsState>(PROJECTIONS.Bookings);
+        const inventory = await ironflow.getProjection<Availability>(PROJECTIONS.Availability);
+        // Hotel compensation precedes flight compensation. In this isolated demo,
+        // the flight release is the final availability event until contention starts.
+        const { events } = await ironflow.streams.read(`flight-${FLIGHT_ID}`);
+        const release = events.find((event) =>
+          event.name === INVENTORY_EVENTS.FlightSeatReleased && event.data.bookingId === bookingId,
+        );
+        return {
+          availabilityLastEventId: inventory.lastEventId,
+          flightReleaseEventId: release?.id,
+          booking: result.state?.bookings?.find((b) => b.id === bookingId),
+          availability: normalizeAvailability(inventory.state),
+        };
+      },
+    });
+    console.log("✅ payment failed, both reservations rolled back, inventory restored");
+  } finally {
+    await fetch(`${CHAOS_URL}/payment-mode?mode=normal`, { method: "POST" });
   }
-
-  fail(`booking ${bookingId} never reached a terminal state within ${TIMEOUT_MS}ms`);
 }
 
-main().catch((err) => fail(err instanceof Error ? err.message : String(err)));
+main().catch((err) => {
+  console.error(err instanceof Error ? err.message : String(err));
+  process.exitCode = 1;
+});

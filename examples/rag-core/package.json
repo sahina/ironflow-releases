@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.117.1",
+    "@anthropic-ai/sdk": "^1.3.0",
     "@ironflow/node": "link:../../sdk/js/node",
     "better-sqlite3": "^13.0.3",
     "sqlite-vec": "^0.1.9"

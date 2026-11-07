@@ -1,0 +1,79 @@
+groups:
+- name: postgresql.critical
+  rules:
+  - alert: PostgreSQLInstanceDown
+    expr: pg_up{job="postgres"} == 0
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: PostgreSQL instance is down
+      description: The PostgreSQL exporter cannot query the database for more than 5 minutes.
+      runbook_url: https://docs.ironflow.run/how-to-guides/deployment/docker-compose/
+  - alert: PostgreSQLReplicationLagHigh
+    expr: appliance_pg_replication_lag_bytes{job="postgres"} > 100000000
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: High PostgreSQL replication lag
+      description: Replication replay lag exceeds 100MB for more than 5 minutes. Replica may be falling
+        behind.
+  - alert: PostgreSQLDiskSpaceCritical
+    expr: (node_filesystem_avail_bytes{job="node", mountpoint="/var/lib/ironflow"} / node_filesystem_size_bytes{job="node",
+      mountpoint="/var/lib/ironflow"}) < 0.10
+    for: 2m
+    labels:
+      severity: critical
+    annotations:
+      summary: PostgreSQL disk space critically low
+      description: The appliance data filesystem is running out of free space.
+      runbook_url: https://docs.ironflow.run/how-to-guides/deployment/docker-compose/
+- name: postgresql.warning
+  rules:
+  - alert: PostgreSQLConnectionSaturation
+    expr: appliance_pg_connections_used{job="postgres"} / appliance_pg_connections_max{job="postgres"}
+      > 0.80
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: PostgreSQL connection usage above 80%
+      description: Consider enabling the PgBouncer pooler or increasing max_connections.
+  - alert: PostgreSQLDiskSpaceWarning
+    expr: (node_filesystem_avail_bytes{job="node", mountpoint="/var/lib/ironflow"} / node_filesystem_size_bytes{job="node",
+      mountpoint="/var/lib/ironflow"}) < 0.20
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: PostgreSQL disk space low
+      description: The appliance data filesystem is running out of free space.
+      runbook_url: https://docs.ironflow.run/how-to-guides/deployment/docker-compose/
+  - alert: PostgreSQLBackupStale
+    expr: appliance_backup_last_success_timestamp_seconds{job="node"} < (time() - 172800) or absent(appliance_backup_last_success_timestamp_seconds{job="node"})
+    for: 1h
+    labels:
+      severity: warning
+    annotations:
+      summary: Complete appliance backup is stale
+      description: The last successful complete backup was more than 48 hours ago. Check the backup timer
+        and archive validation.
+  - alert: PostgreSQLHighRollbackRate
+    expr: rate(appliance_pg_transactions_rollback_total{job="postgres"}[5m]) / (rate(appliance_pg_transactions_commit_total{job="postgres"}[5m])
+      + rate(appliance_pg_transactions_rollback_total{job="postgres"}[5m]) > 0) > 0.05
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: High transaction rollback rate
+      description: More than 5% of transactions are rolling back. Check for lock contention or application
+        errors.
+  - alert: PostgreSQLLongRunningTransaction
+    expr: appliance_pg_transactions_max_duration_seconds{job="postgres"} > 300
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: Long-running transaction detected
+      description: A transaction has been running for more than 5 minutes. This may block autovacuum.

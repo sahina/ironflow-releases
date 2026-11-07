@@ -1,0 +1,123 @@
+rule_files:
+- rules/*.yml
+evaluation_interval: 1m
+tests:
+- name: JetStream ratio joins per server despite account labels
+  interval: 1m
+  input_series:
+  - series: jetstream_account_storage_used{job="nats",instance="exporter:7777",server_id="a",account="A"}
+    values: 90x20
+  - series: jetstream_server_max_storage{job="nats",instance="exporter:7777",server_id="a",cluster="one"}
+    values: 100x20
+  promql_expr_test:
+  - expr: max(sum by (instance, server_id) (jetstream_account_storage_used{job="nats"}) / on (instance,
+      server_id) max by (instance, server_id) (jetstream_server_max_storage{job="nats"} > 0)) > 0.85
+    eval_time: 6m
+    exp_samples:
+    - labels: '{}'
+      value: 0.9
+  - expr: ALERTS{alertname="NATSJetStreamStorageCritical",alertstate="firing"}
+    eval_time: 6m
+    exp_samples:
+    - labels: ALERTS{alertname="NATSJetStreamStorageCritical",alertstate="firing",severity="critical"}
+      value: 1
+- name: Unlimited JetStream storage does not page
+  interval: 1m
+  input_series:
+  - series: jetstream_account_storage_used{job="nats",instance="exporter:7777",server_id="a",account="A"}
+    values: 90x20
+  - series: jetstream_server_max_storage{job="nats",instance="exporter:7777",server_id="a"}
+    values: '0x20'
+  promql_expr_test:
+  - expr: max(sum by (instance, server_id) (jetstream_account_storage_used{job="nats"}) / on (instance,
+      server_id) max by (instance, server_id) (jetstream_server_max_storage{job="nats"} > 0)) > 0.85
+    eval_time: 6m
+    exp_samples: []
+- name: PostgreSQL connection query detects saturation
+  interval: 1m
+  input_series:
+  - series: appliance_pg_connections_used{job="postgres",instance="postgres:9187"}
+    values: 90x20
+  - series: appliance_pg_connections_max{job="postgres",instance="postgres:9187"}
+    values: 100x20
+  promql_expr_test:
+  - expr: appliance_pg_connections_used{job="postgres"} / appliance_pg_connections_max{job="postgres"}
+      > 0.80
+    eval_time: 6m
+    exp_samples:
+    - labels: '{job="postgres",instance="postgres:9187"}'
+      value: 0.9
+  - expr: ALERTS{alertname="PostgreSQLConnectionSaturation",alertstate="firing"}
+    eval_time: 6m
+    exp_samples:
+    - labels: ALERTS{alertname="PostgreSQLConnectionSaturation",alertstate="firing",severity="warning",job="postgres",instance="postgres:9187"}
+      value: 1
+- name: PostgreSQL exporter reports database down
+  interval: 1m
+  input_series:
+  - series: pg_up{job="postgres",instance="postgres:9187"}
+    values: '0x20'
+  promql_expr_test:
+  - expr: pg_up{job="postgres"} == 0
+    eval_time: 6m
+    exp_samples:
+    - labels: pg_up{job="postgres",instance="postgres:9187"}
+      value: 0
+  - expr: ALERTS{alertname="PostgreSQLInstanceDown",alertstate="firing"}
+    eval_time: 6m
+    exp_samples:
+    - labels: ALERTS{alertname="PostgreSQLInstanceDown",alertstate="firing",severity="critical",job="postgres",instance="postgres:9187"}
+      value: 1
+- name: NATSDown fires for missing probe
+  interval: 1m
+  input_series: []
+  promql_expr_test:
+  - expr: probe_success{job="blackbox", target="nats"} == 0 or absent(probe_success{job="blackbox", target="nats"})
+    eval_time: 6m
+    exp_samples:
+    - labels: '{job="blackbox",target="nats"}'
+      value: 1
+- name: PostgreSQLDown fires for missing probe
+  interval: 1m
+  input_series: []
+  promql_expr_test:
+  - expr: probe_success{job="blackbox", target="postgresql"} == 0 or absent(probe_success{job="blackbox",
+      target="postgresql"})
+    eval_time: 6m
+    exp_samples:
+    - labels: '{job="blackbox",target="postgresql"}'
+      value: 1
+- name: Missing backup status is unhealthy
+  interval: 1m
+  input_series: []
+  promql_expr_test:
+  - expr: appliance_backup_last_success_timestamp_seconds{job="node"} < (time() - 172800) or absent(appliance_backup_last_success_timestamp_seconds{job="node"})
+    eval_time: 6m
+    exp_samples:
+    - labels: '{job="node"}'
+      value: 1
+  - expr: ALERTS{alertname="PostgreSQLBackupStale",alertstate="firing"}
+    eval_time: 61m
+    exp_samples:
+    - labels: ALERTS{alertname="PostgreSQLBackupStale",alertstate="firing",severity="warning",job="node"}
+      value: 1
+- name: Stale backup is unhealthy
+  interval: 1m
+  input_series:
+  - series: appliance_backup_last_success_timestamp_seconds{job="node",instance="node:9100"}
+    values: 1x3000
+  promql_expr_test:
+  - expr: appliance_backup_last_success_timestamp_seconds{job="node"} < (time() - 172800) or absent(appliance_backup_last_success_timestamp_seconds{job="node"})
+    eval_time: 49h
+    exp_samples:
+    - labels: appliance_backup_last_success_timestamp_seconds{job="node",instance="node:9100"}
+      value: 1
+- name: Recent backup is healthy
+  interval: 1m
+  input_series:
+  - series: appliance_backup_last_success_timestamp_seconds{job="node",instance="node:9100"}
+    values: 170000x3000
+  promql_expr_test:
+  - expr: appliance_backup_last_success_timestamp_seconds{job="node"} < (time() - 172800) or absent(appliance_backup_last_success_timestamp_seconds{job="node"})
+    eval_time: 49h
+    exp_samples: []

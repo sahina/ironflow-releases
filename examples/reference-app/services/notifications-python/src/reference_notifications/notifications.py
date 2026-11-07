@@ -90,8 +90,7 @@ def handle_message(deps: Deps, message: Message) -> bool:
 
     # A Delivery is exactly a Message plus the moment it was delivered, so the
     # fields travel as one rather than being copied across seven lines.
-    # asdict() yields exactly Message's fields; pyrefly types it as an open TypedDict.
-    delivery = Delivery(**asdict(message), delivered_at=deps.now())  # pyrefly: ignore[open-unpacking]
+    delivery = Delivery(**asdict(message), delivered_at=deps.now())
     if not deps.store.record(delivery):
         # Already delivered under this message ID. The cursor moved anyway, so a
         # reconnect does not hand it back forever.

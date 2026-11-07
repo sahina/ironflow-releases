@@ -29,7 +29,7 @@ function setup(t: TestContext) {
     claims.set(id, { ...entry });
   });
   t.mock.method(KVClient.prototype, "createBucket", async () => ({
-    name: "order-commands", values: 0, bytes: 0, history: 1, created_at: "2026-10-11T12:00:00Z",
+    name: "order-commands", values: 0, bytes: 0, history: 1, created_at: new Date("2026-10-11T12:00:00Z"),
   }));
   t.mock.method(KVBucketHandle.prototype, "delete", async (id: string) => { claims.delete(id); });
   t.mock.method(ironflow.streams, "read", async () => ({ events: [...events], totalCount: events.length }));
@@ -43,7 +43,7 @@ function setup(t: TestContext) {
       data: input.data ?? {},
       entityVersion: version + 1,
       version: 1,
-      timestamp: "2026-10-11T12:00:00Z",
+      timestamp: new Date("2026-10-11T12:00:00Z"),
       metadata: options.metadata,
     };
     events.push(event);
@@ -67,7 +67,7 @@ test("recovers a pending claim with no committed event", async (t) => {
 function receipt(causationId = "cmd-2767"): StreamEvent {
   return {
     id: "event-1", name: "order.placed", entityVersion: 1, version: 1,
-    timestamp: "2026-10-11T12:00:00Z",
+    timestamp: new Date("2026-10-11T12:00:00Z"),
     data: { orderId: "ord-2767", items: [], customer: { id: "cust-001" }, totalAmount: 12.5 },
     metadata: { causationId },
   };
@@ -247,7 +247,7 @@ function environmentWideKeys(t: TestContext) {
       const stream = others.get(entityId) ?? [];
       const event: StreamEvent = {
         id: `${entityId}-event-${stream.length + 1}`, name: input.name, data: input.data ?? {},
-        entityVersion: stream.length + 1, version: 1, timestamp: "2026-10-11T12:00:00Z", metadata: options?.metadata,
+        entityVersion: stream.length + 1, version: 1, timestamp: new Date("2026-10-11T12:00:00Z"), metadata: options?.metadata,
       };
       others.set(entityId, [...stream, event]);
       result = { entityVersion: event.entityVersion, eventId: event.id };

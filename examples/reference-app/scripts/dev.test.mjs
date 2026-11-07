@@ -185,9 +185,15 @@ test("engineEnv passes REFERENCE_APP_DATABASE_URL to the engine as IRONFLOW_DATA
     PATH: "/bin",
     IRONFLOW_DATABASE_URL: "postgres://prod/db",
     REFERENCE_APP_DATABASE_URL: "postgres://localhost:5433/ironflow_live_ref_x",
+ IRONFLOW_BLOB_URL: "s3://isolated?endpoint=http://localhost:8333",
+ IRONFLOW_JWT_SECRET: "test-jwt",
+ AWS_ACCESS_KEY_ID: "test-access",
   });
   assert.equal(env.IRONFLOW_DATABASE_URL, "postgres://localhost:5433/ironflow_live_ref_x");
   assert.equal(env.REFERENCE_APP_DATABASE_URL, undefined);
+ assert.equal(env.IRONFLOW_BLOB_URL, "s3://isolated?endpoint=http://localhost:8333");
+ assert.equal(env.IRONFLOW_JWT_SECRET, "test-jwt");
+ assert.equal(env.AWS_ACCESS_KEY_ID, "test-access");
 });
 
 test("the API key never reaches a NEXT_PUBLIC_ variable", () => {

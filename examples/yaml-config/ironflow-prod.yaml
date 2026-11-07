@@ -1,4 +1,7 @@
 # Ironflow YAML Configuration — Production Single-Node
+# Set IRONFLOW_JWT_SECRET to a hex key (openssl rand -hex 32) and
+# IRONFLOW_BOOTSTRAP_KEY_FILE to an explicit private output path.
+# Set IRONFLOW_BLOB_URL to your s3:// bucket URL.
 # Boot with: IRONFLOW_DATABASE_URL="postgres://..." IRONFLOW_MASTER_KEY="$(openssl rand -hex 32)" \
 #   ./build/ironflow serve -f examples/yaml-config/ironflow-prod.yaml
 apiVersion: ironflow/v1
@@ -17,6 +20,8 @@ spec:
     storeDir: /tmp/ironflow-nats
 
   auth:
+    jwtSecret: ${IRONFLOW_JWT_SECRET}
+    bootstrapKeyFile: ${IRONFLOW_BOOTSTRAP_KEY_FILE}
     masterKey: ${IRONFLOW_MASTER_KEY}
 
   observability:

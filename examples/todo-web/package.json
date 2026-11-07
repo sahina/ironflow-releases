@@ -11,9 +11,9 @@
     "@ironflow/browser": "link:../../sdk/js/browser",
     "@ironflow/core": "link:../../sdk/js/core",
     "@ironflow/node": "link:../../sdk/js/node",
-    "next": "16.1.6",
-    "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "next": "16.4.3",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.1",

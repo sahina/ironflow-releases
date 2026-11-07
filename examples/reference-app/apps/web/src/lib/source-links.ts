@@ -4,8 +4,10 @@
 // GitHub, not a local path: a presenter's audience is watching a screen, not
 // sitting at the checkout.
 
-const REPO = "https://github.com/sahina/ironflow/tree/main";
-const EXAMPLE = `${REPO}/examples/reference-app`;
+// The engine source is private. The public mirror carries this example, and its
+// root is the engine's public home.
+const REPO = "https://github.com/sahina/ironflow-releases";
+const EXAMPLE = `${REPO}/tree/main/examples/reference-app`;
 
 /**
  * A path inside `examples/reference-app`, or the repository root for the engine

@@ -187,7 +187,7 @@ long as it takes.
 [`examples/financial-rag`](../financial-rag/) also uses pull mode, because parsing a
 filing takes minutes. It once had a second reason: a step-key collision in the push
 executor's multi-turn agent loop
-([#1647](https://github.com/sahina/ironflow/issues/1647)), fixed in v0.29.0.
+(#1647), fixed in v0.29.0.
 rag-core has no agent loop and never hit that. The whole series stays on pull mode
 regardless.
 

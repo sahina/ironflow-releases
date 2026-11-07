@@ -86,7 +86,8 @@ sdk/python/.venv/bin/python -m pytest sdk/python/tests -k 'redact or upcast' -q
 
 ## Evidence limits
 
-The default EVENTS and PUBSUB `MaxAge` is seven days. The app checks that the
+PUBSUB defaults to seven-day `MaxAge`. EVENTS has no age expiry and requires
+terminal reclamation; this broker-policy unit cannot ship alone. The app checks that the
 published copy survives immediately; it does not wait seven days. The pruner
 tests advance a controlled clock instead of waiting weeks.
 

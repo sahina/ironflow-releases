@@ -30,7 +30,7 @@ Every Ironflow application follows four pillars:
 | [flask-single-container/](./flask-single-container/) | App + engine as one deployable unit | Shipping a small app | Flask, a pull-mode worker and the engine in one container with one volume |
 | [deletion-redaction/](./deletion-redaction/)     | Customer data removal checks | Compliance-minded teams | A Python push app driven by an integration test: redact, delete and purge, and what each leaves behind |
 | [fraud-detection/](./fraud-detection/)           | Real-time risk pipeline   | Building real systems | `step.parallel()`, KV counters, pub/sub alerts |
-| [compliance-audit/](./compliance-audit/)         | Audit trail + execution proof | Regulated workloads | Entity-stream lineage in the Compliance dashboard |
+| [compliance-audit/](./compliance-audit/)         | Audit trail + execution proof | Teams that review entity history | Entity-stream lineage on the Entity Audit dashboard page |
 | [ai-agent/](./ai-agent/)                         | Durable AI research agent | AI engineers          | `agent()`, `tool()`, `llm()`, event-sourced memory |
 | [agents/doc-processor-agent/](./agents/doc-processor-agent/) | Crash-resume proof | AI engineers      | `kill -9` mid-pipeline and resume; browser demo in [`web/`](./agents/doc-processor-agent/web/) |
 | [agents/code-review-agent/](./agents/code-review-agent/) | Human-in-the-loop gate | AI engineers    | `approve()` pausing a run for up to 24h     |
@@ -40,6 +40,12 @@ Every Ironflow application follows four pillars:
 | [financial-rag/](./financial-rag/)               | RAG with an eval gate     | AI engineers          | Shadow index, golden-set eval, promote-or-rollback saga |
 | [rag-core/](./rag-core/)                         | RAG part 1: event-sourced index | AI engineers    | Zero-Docker RAG: durable ingest, embeddings in events, sqlite-vec projection |
 | [yaml-config/](./yaml-config/)                   | Config file examples      | Operators             | Server, cluster, and platform `ironflow.yaml` |
+
+[Trace a pull worker with compose Jaeger](./observability/) provides a Python
+polling fixture and a reusable checker for HTTP, sleep, and retry span topology.
+
+[Publish an external trigger with acknowledgement](./nats-ingestion/) shows a Go
+JetStream publish that waits for its PubAck before it reports broker acceptance.
 
 ## Prerequisites
 
@@ -107,7 +113,7 @@ make reference-app
 cd examples/fraud-detection && pnpm install && pnpm start
 # In another terminal: pnpm seed
 
-# Run the compliance audit demo (worker first — seeding first yields no execution proof)
+# Run the entity audit demo (worker first — seeding first yields no execution proof)
 cd examples/compliance-audit && pnpm install && pnpm tsx worker.ts
 # In another terminal: pnpm tsx setup.ts
 
@@ -156,9 +162,9 @@ cd examples/file-upload && pip install -r requirements.txt && python worker.py
 # Prove the single-container Flask example against its pinned engine release (needs Docker)
 cd examples/flask-single-container && ./test.sh
 
-# Check customer data removal end to end (Go and Python 3; starts its own server)
+# Check customer data removal end to end (from the repo root; Go and Python 3; starts its own server)
 go test ./tests/integration -run '^TestDeletionBlogCustomerApp$' -count=1 -v
 
-# Validate the YAML configuration examples (no install needed)
+# Validate the YAML configuration examples (from the repo root; no install needed)
 ./build/ironflow validate -f examples/yaml-config/ironflow.yaml
 ```

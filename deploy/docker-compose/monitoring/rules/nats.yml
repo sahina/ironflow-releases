@@ -1,0 +1,43 @@
+groups:
+- name: nats.critical
+  rules:
+  - alert: NATSJetStreamStorageCritical
+    expr: max(sum by (instance, server_id) (jetstream_account_storage_used{job="nats"}) / on (instance,
+      server_id) max by (instance, server_id) (jetstream_server_max_storage{job="nats"} > 0)) > 0.85
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: JetStream storage usage above 85%
+      description: JetStream storage is at {{ $value | humanizePercentage }} of maximum capacity. Streams
+        may reject new messages if storage is exhausted.
+      runbook_url: https://docs.ironflow.run/how-to-guides/deployment/docker-compose/
+- name: nats.warning
+  rules:
+  - alert: NATSSlowConsumers
+    expr: gnatsd_varz_slow_consumers{job="nats"} > 0
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: NATS slow consumers detected
+      description: '{{ $value }} slow consumer(s) detected on NATS server {{ $labels.server_id }}. Slow
+        consumers may be disconnected and miss messages.'
+  - alert: NATSHighPendingMessages
+    expr: max by (stream_name, consumer_name) (jetstream_consumer_num_pending{job="nats"}) > 5000
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: High pending message count on JetStream consumer
+      description: Consumer {{ $labels.consumer_name }} on stream {{ $labels.stream_name }} has {{ $value
+        }} pending messages for more than 10 minutes.
+  - alert: NATSServerHighMemory
+    expr: max(sum by (instance, server_id) (jetstream_account_memory_used{job="nats"}) / on (instance,
+      server_id) max by (instance, server_id) (jetstream_server_max_memory{job="nats"} > 0)) > 0.80
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: JetStream memory usage above 80%
+      description: JetStream account memory is above 80% of the configured JetStream server maximum.

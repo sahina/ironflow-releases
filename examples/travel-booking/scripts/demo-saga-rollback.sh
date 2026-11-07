@@ -117,14 +117,32 @@ if ! worker_ready; then
   exit 2
 fi
 
-log "rollback check (declined card), then contention check (more bookings than seats)"
-if (cd "${EXAMPLE_DIR}" && pnpm exec tsx scripts/verify-rollback.ts && pnpm exec tsx scripts/verify-contention.ts); then
-  exit 0
+log "rollback check (declined card)"
+rollback_status=0
+(cd "${EXAMPLE_DIR}" && pnpm exec tsx scripts/verify-rollback.ts) 2>&1 | tee "${LOG_DIR}/rollback.log" || rollback_status=$?
+
+capture_status=0
+for projection in bookings availability; do
+  curl --max-time 5 -fsS -H 'Content-Type: application/json' \
+    -d "{\"name\":\"$projection\"}" \
+    "${IRONFLOW_SERVER_URL}/ironflow.v1.ProjectionService/GetProjection" \
+    >"${LOG_DIR}/${projection}.json" || { err "could not capture ${projection}"; capture_status=1; }
+done
+curl --max-time 5 -fsS "${IRONFLOW_SERVER_URL}/api/v1/events?limit=100" \
+  >"${LOG_DIR}/events.json" || { err "could not capture events"; capture_status=1; }
+
+log "contention check (more bookings than seats)"
+contention_status=0
+if curl --max-time 5 -fsS -X POST "http://localhost:${CHAOS_PORT}/payment-mode?mode=normal" >/dev/null; then
+  (cd "${EXAMPLE_DIR}" && pnpm exec tsx scripts/verify-contention.ts) 2>&1 | tee "${LOG_DIR}/contention.log" || contention_status=$?
 else
-  err "rollback or contention assertion failed"
-  echo "── server log ──" >&2
-  tail -50 "${SERVER_LOG}" >&2 || true
-  echo "── worker log ──" >&2
-  tail -50 "${WORKER_LOG}" >&2 || true
-  exit 1
+  err "could not restore normal payments for contention"
+  contention_status=1
 fi
+if (( rollback_status == 0 && contention_status == 0 && capture_status == 0 )); then
+  exit 0
+fi
+err "rollback exit ${rollback_status}; contention exit ${contention_status}; capture exit ${capture_status}"
+tail -50 "${SERVER_LOG}" >&2 || true
+tail -50 "${WORKER_LOG}" >&2 || true
+exit 1

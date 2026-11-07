@@ -191,8 +191,15 @@ process and one screen.
 
 Starts a throwaway server and worker, declines a card, and asserts both
 reservations were compensated and inventory came back to where it started.
-Exits non-zero if the saga leaks a seat or a room.
-It then races 6 bookings for the 4 seats on DL 318 (`scripts/verify-contention.ts`)
+Waits up to 30 seconds for both undo markers and exact inventory restoration.
+The failed booking event precedes compensation, and each projection catches up
+independently. Set `VERIFY_TIMEOUT_MS` to change the deadline. Missing undo
+markers or mismatched inventory at the deadline fail the check.
+The runner preserves observation logs, final booking and availability snapshots,
+and events in the printed log directory before contention changes inventory.
+Even if rollback fails, it then races 6 bookings for the 4 seats on DL 318 (`scripts/verify-contention.ts`)
 and exits non-zero unless exactly 4 confirm, 2 are refused as sold out, and 4 holds land.
+
+Focused verifier tests: `pnpm exec tsx --test scripts/rollback-state.test.ts`.
 
 Typecheck only: `pnpm typecheck`.

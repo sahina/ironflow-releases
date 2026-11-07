@@ -38,6 +38,11 @@ make embed build
 # Dev config (no env vars needed)
 ./build/ironflow validate -f examples/yaml-config/ironflow.yaml
 
+# All PostgreSQL examples below also need these variables:
+export IRONFLOW_JWT_SECRET="$(openssl rand -hex 32)"
+export IRONFLOW_BOOTSTRAP_KEY_FILE="/tmp/ironflow-bootstrap.json"
+export IRONFLOW_BLOB_URL="s3://bucket?endpoint=https://s3.example.com"
+
 # Prod config (needs env vars)
 IRONFLOW_DATABASE_URL="postgres://localhost/test" \
 IRONFLOW_MASTER_KEY="abc123" \
@@ -58,13 +63,12 @@ IRONFLOW_MASTER_KEY="abc123" \
 ./build/ironflow validate -f examples/yaml-config/ironflow-platform.yaml
 ```
 
-`validate` checks syntax, schema, `${VAR}` references and kind-specific rules (for example, `Cluster` needs PostgreSQL, external NATS and a `nodeId`). It does not check the values themselves. The values above are placeholders: `abc123` is not a usable master key.
+`validate` checks syntax, schema, `${VAR}` references and kind-specific rules (for example, `Cluster` needs PostgreSQL, external NATS and a `nodeId`). It also checks the PostgreSQL blob URL, JWT secret format, and explicit bootstrap output. The values above are placeholders: `abc123` is not a usable master key.
 
 ## Booting the cluster and platform configs
 
-`serve` with `ironflow-cluster.yaml` or `ironflow-platform.yaml` needs more than `validate` does:
+PostgreSQL YAML examples require `IRONFLOW_JWT_SECRET` (hex), `IRONFLOW_BOOTSTRAP_KEY_FILE` (private output path), and `IRONFLOW_BLOB_URL` (`s3://bucket?endpoint=https://host`). Both `validate` and `serve` check these settings. To start the server, supply:
 
 - PostgreSQL and an external NATS server with JetStream (`nats -js`).
 - A 64-character hex master key, for example `openssl rand -hex 32`.
-- An `s3://` blob store, set with `IRONFLOW_BLOB_URL="s3://bucket?endpoint=https://s3.example.com&region=us-east-1"` or `spec.blobs.url`. Without it, `serve` exits with `multi-node deployment requires an s3:// blobs.url`, and `validate` does not catch this.
-
+- An `s3://` blob store, set with `IRONFLOW_BLOB_URL="s3://bucket?endpoint=https://s3.example.com&region=us-east-1"` or `spec.blobs.url`. Both `serve` and `validate` refuse a missing blob URL.

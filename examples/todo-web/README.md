@@ -51,3 +51,5 @@ Open <http://localhost:3000>.
 | `app/page.tsx`       | Client component — emits events via browser SDK, subscribes to projection updates |
 | `lib/ironflow.ts`    | Browser SDK configuration                                                         |
 | `app/layout.tsx`     | Root layout with header                                                           |
+| `.env.local`         | Server URL for the browser (`NEXT_PUBLIC_IRONFLOW_SERVER_URL`) and the embedded worker (`IRONFLOW_SERVER_URL`) |
+| `next.config.ts`     | Transpiles the linked `@ironflow/*` packages and sets the Turbopack root to the repo root |

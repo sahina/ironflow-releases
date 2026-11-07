@@ -10,7 +10,7 @@ services:
       # ironflow-test-postgres, which `make test-pg` (and therefore `make ci`)
       # starts. Sharing the port means anyone who has run the test suite gets
       # "port is already allocated" here.
-      - "5434:5432"
+      - "127.0.0.1:5434:5432"
     volumes:
       # Creates the second database and enables pgvector on it, and only on it.
       # Runs once, on an empty data directory.

@@ -92,7 +92,12 @@ export function engineEnv(env = process.env) {
   for (const name of ["PATH", "HOME", "TMPDIR", "USER", "LANG", "TERM"]) {
     if (env[name]) out[name] = env[name];
   }
-  if (env.REFERENCE_APP_DATABASE_URL) out.IRONFLOW_DATABASE_URL = env.REFERENCE_APP_DATABASE_URL;
+  if (env.REFERENCE_APP_DATABASE_URL) {
+    out.IRONFLOW_DATABASE_URL = env.REFERENCE_APP_DATABASE_URL;
+    for (const name of ["IRONFLOW_BLOB_URL", "IRONFLOW_JWT_SECRET", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]) {
+      if (env[name]) out[name] = env[name];
+    }
+  }
   return out;
 }
 
@@ -122,8 +127,7 @@ function engineRow() {
       "--dev",
       "--bootstrap-key-file", BOOTSTRAP_KEY_FILE,
     ],
-    // On PostgreSQL the engine writes its JWT secret to the working directory,
-    // not next to --db, so keep it in the data dir.
+    // Keep PostgreSQL test state in the isolated data directory.
     cwd: process.env.REFERENCE_APP_DATABASE_URL ? DATA_DIR : APP_DIR,
     env: engineEnv(),
     ready: async () => {

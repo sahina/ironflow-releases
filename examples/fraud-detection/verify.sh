@@ -17,7 +17,7 @@ else
   FAIL=$((FAIL + 1))
 fi
 
-# Check completed runs (expect 5 — one declined may fail on insufficient signals)
+# Check completed runs (seeding emits 5 and all complete; runs may still be in flight)
 COMPLETED=$(ironflow run list --function "fraud/evaluate" --status completed 2>/dev/null | grep -c "completed" || true)
 if [ "$COMPLETED" -ge 3 ]; then
   echo "PASS: At least 3 completed fraud evaluations (got $COMPLETED)"

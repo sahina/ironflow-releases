@@ -1,5 +1,5 @@
 /**
- * Compliance Audit Trail Demo Setup
+ * Entity Audit Trail Demo Setup
  *
  * Creates an order entity stream with lifecycle events that demonstrate
  * end-to-end audit lineage in the Ironflow dashboard.
@@ -75,7 +75,7 @@ const orderLifecycle = [
 ];
 
 async function main() {
-  console.log("Setting up Compliance Audit Trail demo...\n");
+  console.log("Setting up Entity Audit Trail demo...\n");
 
   let failed = 0;
 

@@ -30,9 +30,10 @@ function dropLiveDb(name) {
     process.exitCode = 1;
   }
   try {
-    livedb("drop", name);
+    livedb("drop-state", name);
   } catch (err) {
-    process.stderr.write(`livedb drop ${name} failed: ${err.stderr || err}\n`);
+    process.stderr.write(`livedb drop-state ${name} failed: ${err.stderr || err}\n`);
+    process.exitCode = 1;
   }
 }
 
@@ -100,14 +101,19 @@ export async function startSupervisor({ dataDir, readyTimeoutMs = 180_000, env =
   let liveDb;
   if (process.env.LIVE_DB === "postgres") {
     const [name, url] = livedb("create", `ref_${basename(dataDir)}`).split(" ");
-    liveDb = { name, url };
+    try {
+      liveDb = { name, url, state: JSON.parse(livedb("state-json", name)) };
+    } catch (error) {
+      livedb("drop-state", name);
+      throw error;
+    }
     process.stderr.write(`livedb ${name}\n`);
   }
   const childEnv = {
     ...process.env,
     REFERENCE_APP_DATA_DIR: dataDir,
     NO_COLOR: "1",
-    ...(liveDb ? { REFERENCE_APP_DATABASE_URL: liveDb.url } : {}),
+    ...(liveDb ? { ...liveDb.state, REFERENCE_APP_DATABASE_URL: liveDb.url } : {}),
     ...env,
   };
   const dev = spawn(process.execPath, [DEV], {

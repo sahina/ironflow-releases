@@ -5,7 +5,7 @@ import { jsonStore } from '../src/store.js';
 
 test('raw SDK string puts round-trip exact cursors and projection failure identity as JSON strings',async()=>{
   const raw=new Map<string,string>();
-  const store=jsonStore({getJSON:async key=>{if(!raw.has(key))throw new IronflowError('missing',{status:404});return {value:JSON.parse(raw.get(key)!),key,revision:1,created_at:'',operation:'put'};},put:async(key,value)=>{raw.set(key,typeof value==='string'?value:JSON.stringify(value));return {revision:1};}});
+  const store=jsonStore({getJSON:async key=>{if(!raw.has(key))throw new IronflowError('missing',{status:404});return {value:JSON.parse(raw.get(key)!),key,revision:1,created_at:new Date(0),operation:'put'};},put:async(key,value)=>{raw.set(key,typeof value==='string'?value:JSON.stringify(value));return {revision:1};}});
   for(const value of ['9007199254740993','["broken",4]',true,{runs:false,projections:true}]) {
     await store.put('key',value);assert.deepEqual(await store.get('key'),value);
   }

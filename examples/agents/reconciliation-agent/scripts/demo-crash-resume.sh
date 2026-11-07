@@ -95,10 +95,8 @@ fi
 # randomizing --port alone is not isolation. --nats-store-dir derives from
 # --db, which is already unique per run.
 log "starting server (port ${SERVER_PORT}, db ${SERVER_DB})"
-# Run from LOG_DIR: on PostgreSQL (IRONFLOW_DATABASE_URL set, e.g. by
-# `LIVE_DB=postgres make demo-reconciliation-crash`) the engine writes its JWT
-# secret to the working directory rather than next to --db.
-(cd "${LOG_DIR}" && exec "${IRONFLOW_BIN}" serve --dev --port "${SERVER_PORT}" --nats-port -1 --db "${SERVER_DB}") >"${SERVER_LOG}" 2>&1 &
+# Keep engine state in this run directory.
+(cd "${LOG_DIR}" && exec "${IRONFLOW_BIN}" serve --dev --port "${SERVER_PORT}" --nats-port -1 --db "${SERVER_DB}" --bootstrap-key-file "${LOG_DIR}/bootstrap-key.json") >"${SERVER_LOG}" 2>&1 &
 SERVER_PID=$!
 for _ in $(seq 1 60); do curl -fs "${IRONFLOW_SERVER_URL}/health" >/dev/null 2>&1 && break; sleep 0.5; done
 if ! curl -fs "${IRONFLOW_SERVER_URL}/health" >/dev/null 2>&1; then
