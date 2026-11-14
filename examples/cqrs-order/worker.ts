@@ -44,7 +44,7 @@ const placeOrder = createFunction(
 // ─── OrderDetailView — per-order managed projection ─────────────
 
 // Pure-reducer style — return a new state object for every event. Matches
-// the immutable update pattern shown in docs/explanation/ddd/cqrs.md.
+// the immutable update pattern shown in docs/explanation/ddd/why-ddd.md.
 const orderDetail = createProjection<OrderDetailViewState>({
   name: "order-detail-view",
   events: [STREAM_EVENTS.OrderPlaced, STREAM_EVENTS.OrderShipped, STREAM_EVENTS.OrderCancelled],

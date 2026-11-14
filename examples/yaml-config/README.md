@@ -69,6 +69,6 @@ IRONFLOW_MASTER_KEY="abc123" \
 
 PostgreSQL YAML examples require `IRONFLOW_JWT_SECRET` (hex), `IRONFLOW_BOOTSTRAP_KEY_FILE` (private output path), and `IRONFLOW_BLOB_URL` (`s3://bucket?endpoint=https://host`). Both `validate` and `serve` check these settings. To start the server, supply:
 
-- PostgreSQL and an external NATS server with JetStream (`nats -js`).
+- PostgreSQL and an external NATS server with JetStream and a store directory (`nats-server -js -sd ./nats-data`). The streams are on disk. Without `-sd`, NATS keeps them in the system temporary directory, which a reboot can delete and other processes on the machine share.
 - A 64-character hex master key, for example `openssl rand -hex 32`.
 - An `s3://` blob store, set with `IRONFLOW_BLOB_URL="s3://bucket?endpoint=https://s3.example.com&region=us-east-1"` or `spec.blobs.url`. Both `serve` and `validate` refuse a missing blob URL.

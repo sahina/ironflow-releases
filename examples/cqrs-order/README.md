@@ -178,5 +178,5 @@ isolated engine, checks resumed and new-run retries, and tears down its processe
 ## Related
 
 - Tutorial: [CQRS + Event Sourcing walkthrough](../../docs/tutorials/cqrs-walkthrough.mdx)
-- Concept: [CQRS with Projections](../../docs/explanation/ddd/cqrs.md)
+- Concept: [Domain modeling](../../docs/explanation/ddd/why-ddd.md#cqrs-with-projections)
 - Fuller DDD/saga example: [`examples/ddd-order-management`](../ddd-order-management)

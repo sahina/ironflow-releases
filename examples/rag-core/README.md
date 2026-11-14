@@ -1,9 +1,9 @@
-# rag-core — RAG series part 1
+# rag-core
 
 Ask questions of your own markdown docs. One Ironflow binary, one SQLite file,
 no Docker.
 
-This is part 1 of the [RAG guide series](../../docs/tutorials/rag-series.mdx).
+This is the example for the [RAG tutorial](../../docs/tutorials/rag-core.mdx).
 It teaches the smallest complete pipeline: ingest → chunk → embed → store →
 retrieve → answer, with the vector index built as a **projection of immutable
 chunk events**.

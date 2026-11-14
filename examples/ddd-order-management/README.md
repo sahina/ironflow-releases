@@ -107,9 +107,4 @@ ironflow emit create.order --data '{"orderId":"ord-1","customerId":"cust-1","ite
 
 ## Learn More
 
-- [Why DDD with Ironflow](../../docs/explanation/ddd/why-ddd.md)
-- [Aggregates & Entity Streams](../../docs/explanation/ddd/aggregates.md)
-- [Commands, Events & Reactions](../../docs/explanation/ddd/commands-and-events.md)
-- [CQRS with Projections](../../docs/explanation/ddd/cqrs.md)
-- [Sagas & Process Managers](../../docs/explanation/ddd/sagas.md)
-- [Putting It All Together](../../docs/explanation/ddd/putting-it-together.md)
+- [Domain modeling with Ironflow](../../docs/explanation/ddd/why-ddd.md)

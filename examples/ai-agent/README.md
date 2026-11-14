@@ -187,4 +187,4 @@ ironflow emit agent.research --data '{"topic":"GraphQL","depth":"deep"}'
 
 - [doc-processor-agent](../agents/doc-processor-agent) — minimal `agent()` + `memory()` example used by the [Survive a Crash tutorial](../../docs/tutorials/agent-survives-crash.md).
 - [code-review-agent](../agents/code-review-agent) — adds `llm()` + `approve()` for human-in-the-loop gates.
-- [Agent stack comparison](../../docs/explanation/comparison-agents.md) — where Ironflow sits vs. LangGraph, Claude Agent SDK, Temporal.
+- [Agent stack comparison](../../docs/explanation/agentic-fit.md) — where Ironflow sits vs. LangGraph, Claude Agent SDK, Temporal.

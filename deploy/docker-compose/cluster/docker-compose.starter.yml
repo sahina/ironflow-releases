@@ -6,7 +6,7 @@ name: ironflow-starter
 services:
   nats:
     restart: unless-stopped
-    image: nats:2.15.2-alpine
+    image: nats:2.15.3-alpine
     configs:
       - source: nats_conf
         target: /etc/nats/nats.conf
@@ -99,7 +99,7 @@ services:
     restart: unless-stopped
     # Covers the worst-case shutdown drain. Docker's default 10s kills it mid-drain.
     stop_grace_period: 100s
-    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.55.0}
+    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.56.0}
     command: >
       serve
       --bootstrap-key-file=/data/bootstrap-key.json
