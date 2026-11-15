@@ -383,7 +383,7 @@ services:
     restart: unless-stopped
     # Covers the worst-case shutdown drain. Docker's default 10s kills it mid-drain.
     stop_grace_period: 100s
-    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.56.0}
+    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.56.1}
     command: >
       serve
       --bootstrap-key-file=/data/bootstrap-key.json
@@ -439,7 +439,7 @@ services:
     restart: unless-stopped
     # Covers the worst-case shutdown drain. Docker's default 10s kills it mid-drain.
     stop_grace_period: 100s
-    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.56.0}
+    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.56.1}
     command: >
       serve
       --bootstrap-key-file=/data/bootstrap-key.json
@@ -496,7 +496,7 @@ services:
     restart: unless-stopped
     # Covers the worst-case shutdown drain. Docker's default 10s kills it mid-drain.
     stop_grace_period: 100s
-    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.56.0}
+    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.56.1}
     command: >
       serve
       --bootstrap-key-file=/data/bootstrap-key.json
