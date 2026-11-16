@@ -8,7 +8,7 @@ services:
   ironflow:
     # Covers the worst-case shutdown drain. Docker's default 10s kills it mid-drain.
     stop_grace_period: 100s
-    image: ghcr.io/sahina/ironflow-releases:${VERSION:-0.56.2}
+    image: ghcr.io/sahina/ironflow-releases:${VERSION:-0.57.0}
     ports:
       - "${IRONFLOW_PORT:-9123}:9123"
       - "127.0.0.1:${IRONFLOW_METRICS_HOST_PORT:-9223}:9223"
