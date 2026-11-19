@@ -59,6 +59,15 @@ func Projection() ironflow.Projection {
 	})
 }
 
+// notificationRank orders an order's notifications by how far the order got; an
+// unknown status ranks 0, the same as the first one.
+var notificationRank = map[any]int{
+	string(StatusPendingApproval):   0,
+	string(StatusProcessingPayment): 1,
+	string(StatusPaid):              2,
+	string(StatusPaymentFailed):     2,
+}
+
 // applyFact writes the facts the UI shows. Only the five `order.*` facts move
 // the status: an authorization is a hold, and a notification is a record of
 // delivery, so neither is a customer-facing state.
@@ -99,6 +108,11 @@ func applyFact(order map[string]any, event ironflow.ProjectionEvent) {
 	case EventPaymentDeclined:
 		order["declineReason"] = data["reason"]
 	case EventNotificationSent:
+		// Plain emits can reach the stream out of order (docs/explanation/outbox.md),
+		// so an earlier status arriving late must not replace a later one.
+		if prev, ok := order["notification"].(map[string]any); ok && notificationRank[prev["status"]] > notificationRank[data["status"]] {
+			return
+		}
 		order["notification"] = map[string]any{
 			"messageId": data["messageId"],
 			"status":    data["status"],

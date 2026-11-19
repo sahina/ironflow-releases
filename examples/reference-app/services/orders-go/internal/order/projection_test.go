@@ -224,3 +224,33 @@ func TestRedeliveredReleaseDoesNotUndoTheOutcome(t *testing.T) {
 		})
 	}
 }
+
+// Plain emits can reach the projection in a different order than they were
+// written (docs/explanation/outbox.md), so the notifications of one order can
+// arrive in any order and the read model must still end on the furthest one.
+func TestNotificationDoesNotMoveBackward(t *testing.T) {
+	sent := func(status Status) ironflow.ProjectionEvent {
+		return projectionEvent(EventNotificationSent, map[string]any{
+			"messageId": testOrderID + ":" + string(status), "status": string(status), "channel": "local-log",
+		}, "notifications-python")
+	}
+	for name, events := range map[string][]ironflow.ProjectionEvent{
+		"in order":       {sent(StatusPendingApproval), sent(StatusProcessingPayment), sent(StatusPaid)},
+		"paid first":     {sent(StatusPaid), sent(StatusPendingApproval), sent(StatusProcessingPayment)},
+		"last two swap":  {sent(StatusPendingApproval), sent(StatusPaid), sent(StatusProcessingPayment)},
+		"failed then pp": {sent(StatusPaymentFailed), sent(StatusProcessingPayment)},
+	} {
+		t.Run(name, func(t *testing.T) {
+			want := events[0].Data["status"]
+			for _, e := range events {
+				if e.Data["status"] == string(StatusPaid) || e.Data["status"] == string(StatusPaymentFailed) {
+					want = e.Data["status"]
+				}
+			}
+			got := projected(t, reduce(t, append([]ironflow.ProjectionEvent{placedEvent()}, events...)...), testOrderID)["notification"].(map[string]any)
+			if got["status"] != want {
+				t.Fatalf("notification status = %v, want %v", got["status"], want)
+			}
+		})
+	}
+}

@@ -236,8 +236,8 @@ async function main() {
     // one: a client-only ConnectRPC subscriber, no worker runtime, resuming
     // from a cursor it persists itself.
     await check("the Python subscriber records one delivery and announces it", async () => {
-      // The read model keeps only the latest notification, and the earlier
-      // statuses land first, so wait for the last one rather than any one.
+      // The read model keeps only the furthest notification, whatever order the
+      // emits reach it in, so wait for the last one rather than any one.
       const order = await waitFor(
         "the paid notification.sent to reach the read model",
         async () => {
