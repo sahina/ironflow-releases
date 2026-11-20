@@ -1,0 +1,16 @@
+{
+  "name": "ironflow",
+  "owner": { "name": "Ironflow" },
+  "metadata": { "description": "Ironflow AI skills for Claude Code." },
+  "plugins": [
+    {
+      "name": "ironflow",
+      "description": "Build, debug and operate Ironflow apps.",
+      "version": "0.60.0",
+      "homepage": "https://docs.ironflow.run",
+      "source": "./",
+      "strict": false,
+      "skills": ["./.agents/skills/"]
+    }
+  ]
+}

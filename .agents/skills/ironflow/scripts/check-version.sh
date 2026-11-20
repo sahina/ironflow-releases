@@ -4,7 +4,8 @@
 # Behavior:
 #   - Reads the installed version from `ironflow version --json` (source of truth).
 #     Falls back to the local SKILL.md frontmatter `version:` only if the binary
-#     is not on PATH.
+#     is not on PATH. A Claude Code or Codex plugin install reads the frontmatter
+#     instead: the plugin ships its own version, which the binary does not update.
 #   - Caches check result for 24h via .last_checked stamp file
 #   - Fetches the latest release tag (v*) from the public ironflow-releases repo
 #   - Prints "CURRENT" or "OUTDATED:<latest_version>" to stdout
@@ -18,23 +19,21 @@
 
 set -uo pipefail
 
-SKILL_DIR="$HOME/.agents/skills/ironflow"
+# This script runs from inside the skill folder it belongs to, so that folder is the
+# install to check, wherever it lives: ~/.agents, a project, an agent's own skills
+# folder, or a plugin cache. A different copy elsewhere says nothing about this one.
+here="$(dirname "$0")"
+SKILL_DIR="$here/.."
 LOCAL_SKILL="$SKILL_DIR/SKILL.md"
 STAMP_FILE="$SKILL_DIR/.last_checked"
 CACHE_SECONDS=86400   # 24h
 
-# If running from a project-local install, fall back to local path for the stamp.
-# If neither a global nor a local install exists, there is nothing to check:
-# skip silently (avoids a network fetch on every run and a bogus OUTDATED for
-# skills that were never installed; the stamp's parent dir wouldn't exist anyway).
-if [ ! -f "$LOCAL_SKILL" ]; then
-  if [ -f ".agents/skills/ironflow/SKILL.md" ]; then
-    SKILL_DIR=".agents/skills/ironflow"
-    LOCAL_SKILL="$SKILL_DIR/SKILL.md"
-    STAMP_FILE="$SKILL_DIR/.last_checked"
-  else
-    exit 0   # no skills installed — nothing to check
-  fi
+# Plugin installs ship their own version, which the binary does not update.
+# Markers and the top-level-name test match update-skills.sh.
+names_ironflow() { grep -oE '"name" *: *"[^"]*"' "$1" 2>/dev/null | head -1 | grep -q '"ironflow"$'; }
+if names_ironflow "$here/../../../../.claude-plugin/marketplace.json" \
+  || names_ironflow "$here/../../../.codex-plugin/plugin.json"; then
+  PLUGIN_INSTALL=1
 fi
 
 # Cache check (stamp lives in the skill dir if one exists; else skip caching).
@@ -49,7 +48,7 @@ fi
 
 # Installed version: prefer the binary (source of truth), fall back to frontmatter.
 LOCAL_VERSION=""
-if command -v ironflow >/dev/null 2>&1; then
+if [ -z "${PLUGIN_INSTALL:-}" ] && command -v ironflow >/dev/null 2>&1; then
   LOCAL_VERSION=$(ironflow version --json 2>/dev/null \
     | grep -oE '"version":"[^"]*"' | head -1 | sed 's/.*:"\(.*\)"/\1/')
 fi

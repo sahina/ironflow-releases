@@ -11,6 +11,27 @@ npx skills add sahina/ironflow-releases -s ironflow-code -a claude-code -g
 
 Works with Claude Code, Codex, Cursor, OpenCode and ~75 other agents.
 
+In Claude Code or Codex you can install them as a plugin instead. Claude Code:
+
+```
+/plugin marketplace add sahina/ironflow-releases
+/plugin install ironflow@ironflow
+```
+
+To update, refresh the marketplace first: `/plugin marketplace update ironflow`, then
+`/plugin update ironflow@ironflow`. Plugin skills are named `ironflow:<skill>`; the bare
+name (`/ironflow-code`) also works.
+
+Codex:
+
+```
+codex plugin marketplace add sahina/ironflow-releases
+codex plugin add ironflow@ironflow
+```
+
+To update, run `codex plugin marketplace upgrade ironflow`, then
+`codex plugin add ironflow@ironflow` again.
+
 | Skill | Use it for |
 | --- | --- |
 | `ironflow` | Router — dispatches an ambiguous request to one of the below |

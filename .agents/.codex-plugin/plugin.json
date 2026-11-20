@@ -1,0 +1,18 @@
+{
+  "name": "ironflow",
+  "version": "0.60.0",
+  "description": "Build, debug and operate Ironflow apps.",
+  "author": { "name": "Ironflow", "url": "https://ironflow.run" },
+  "homepage": "https://docs.ironflow.run",
+  "repository": "https://github.com/sahina/ironflow-releases",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Ironflow",
+    "shortDescription": "Ironflow AI skills",
+    "longDescription": "Write, test, debug and operate Ironflow apps: setup, functions, projections, workers, runbooks and SDK reference.",
+    "developerName": "Ironflow",
+    "category": "Coding",
+    "capabilities": [],
+    "websiteURL": "https://docs.ironflow.run"
+  }
+}

@@ -1,6 +1,6 @@
 ---
 name: ironflow
-version: 0.59.0
+version: 0.60.0
 description: |
   Universal entry point for Ironflow AI assistance. Classifies user intent and dispatches
   to the right specialized skill. Use when the user mentions "ironflow", "help with ironflow",
@@ -27,7 +27,8 @@ or when the request is ambiguous.
 > are real files on disk: this router is deliberately NOT bundled into the desktop agent (see
 > `bundledSkills.ts`), so it never runs as a packaged resource. The directory is not fixed,
 > though — `ironflow skills sync` writes to `./.agents/skills/` unless given `--global`, and `npx skills add`
-> installs under the agent's own skills directory. If a path here does not resolve, find the
+> installs under the agent's own skills directory. A Claude Code plugin install keeps them in the
+> plugin cache, where no `~/.agents` path exists. If a path here does not resolve, find the
 > sibling skill under this file's own directory, or activate it by name; never guess a prefix.
 >
 > The five bundled skills use a different convention — relative paths for their own files — because
@@ -51,10 +52,20 @@ If `OUTDATED:<version>`, surface this to the user once, then continue with class
 > (`brew upgrade ironflow`, or pull the latest Docker image), then run
 > `ironflow skills sync` (add `--global` for a global install) to update your skills."
 
-Skills ship inside the `ironflow` binary, so `ironflow skills sync` always installs the
-version matching your binary. If `ironflow` is not on PATH the skills came from
-`npx skills add sahina/ironflow-releases` instead — tell the user to re-run that to update,
-and do not tell them to upgrade a binary they do not have.
+Check how the skills were installed, in this order, and give only the matching update advice:
+
+1. If the folder holding this skill's `.agents/` directory also holds `.claude-plugin/marketplace.json`
+   whose top-level name is `ironflow`, the skills came from the Claude Code plugin: tell the user to run
+   `/plugin marketplace update ironflow`, then `/plugin update ironflow@ironflow` instead.
+   `ironflow skills sync` does not touch the plugin.
+2. Else, if the folder holding this skill's `skills/` directory also holds `.codex-plugin/plugin.json`
+   whose name is `ironflow`, the skills came from the Codex plugin: tell the user to run
+   `codex plugin marketplace upgrade ironflow`, then `codex plugin add ironflow@ironflow` instead.
+   `ironflow skills sync` does not touch the plugin.
+3. Else, if `ironflow` is not on PATH, the skills came from `npx skills add sahina/ironflow-releases`:
+   tell the user to re-run that to update, and do not tell them to upgrade a binary they do not have.
+4. Otherwise the skills ship inside the `ironflow` binary, and `ironflow skills sync` installs the
+   version matching it; use the notice above.
 
 If the user invokes `/ironflow update`, run:
 ```bash
@@ -97,9 +108,10 @@ Common LOW examples (always show menu):
 
 1. Print a single line announcing the dispatch:
 
-   > "Read and follow `~/.agents/skills/ironflow-<name>/SKILL.md` for this request."
+   > "Read and follow `ironflow-<name>/SKILL.md` (a sibling of this skill's directory) for this request."
 
-2. **Immediately** `Read` the target `SKILL.md` file and execute its workflow in this
+2. **Immediately** `Read` the target `SKILL.md` file from the sibling directory (or activate
+   the skill by name if your harness offers that) and execute its workflow in this
    same turn. Do not stop after printing. Do not wait for the user to invoke another
    skill. Classify + dispatch + execute happen together.
 

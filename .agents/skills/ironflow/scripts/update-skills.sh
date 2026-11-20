@@ -10,6 +10,29 @@
 
 set -uo pipefail
 
+# Plugin installs: `ironflow skills sync` writes elsewhere and would leave them stale.
+# A Claude Code plugin cache is a copy of the whole mirror, so .claude-plugin/ sits
+# above .agents/ (with the Codex manifest inside .agents/ too). A Codex plugin cache is
+# a copy of .agents/ alone, so its manifest sits beside skills/ with nothing above it.
+here="$(dirname "$0")"
+codex_marker="$here/../../../.codex-plugin/plugin.json"
+claude_marker="$here/../../../../.claude-plugin/marketplace.json"
+# A project's own marketplace file can sit at the same path, so the file's top-level
+# name (its first "name" key) must be ironflow.
+names_ironflow() { grep -oE '"name" *: *"[^"]*"' "$1" 2>/dev/null | head -1 | grep -q '"ironflow"$'; }
+if names_ironflow "$claude_marker"; then
+  echo "These skills come from the Ironflow Claude Code plugin. Update them in Claude Code:"
+  echo "  /plugin marketplace update ironflow"
+  echo "  /plugin update ironflow@ironflow"
+  exit 0
+fi
+if names_ironflow "$codex_marker"; then
+  echo "These skills come from the Ironflow Codex plugin. Update them with:"
+  echo "  codex plugin marketplace upgrade ironflow"
+  echo "  codex plugin add ironflow@ironflow"
+  exit 0
+fi
+
 if ! command -v ironflow >/dev/null 2>&1; then
   echo "The 'ironflow' binary is not on your PATH."
   echo "Install it (https://docs.ironflow.run/tutorials/installation/), then run:"
