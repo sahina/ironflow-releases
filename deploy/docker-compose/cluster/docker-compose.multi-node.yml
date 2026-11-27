@@ -89,7 +89,7 @@ services:
   ironflow-1:
     # Covers the worst-case shutdown drain. Docker's default 10s kills it mid-drain.
     stop_grace_period: 100s
-    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.60.0}
+    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.61.0}
     command: serve --nats-url=nats://nats:4222 --port=9123 --metrics-port=9223 --node-id=node-1 --bootstrap-key-file=/data/bootstrap-key.json
     environment:
       IRONFLOW_JWT_SECRET: ${IRONFLOW_JWT_SECRET:?set it in .env (new install - run ./init-env.sh)}
@@ -134,7 +134,7 @@ services:
   ironflow-2:
     # Covers the worst-case shutdown drain. Docker's default 10s kills it mid-drain.
     stop_grace_period: 100s
-    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.60.0}
+    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.61.0}
     command: serve --nats-url=nats://nats:4222 --port=9124 --metrics-port=9224 --node-id=node-2 --bootstrap-key-file=/data/bootstrap-key.json
     environment:
       IRONFLOW_JWT_SECRET: ${IRONFLOW_JWT_SECRET:?set it in .env (new install - run ./init-env.sh)}
@@ -179,7 +179,7 @@ services:
   ironflow-3:
     # Covers the worst-case shutdown drain. Docker's default 10s kills it mid-drain.
     stop_grace_period: 100s
-    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.60.0}
+    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.61.0}
     command: serve --nats-url=nats://nats:4222 --port=9125 --metrics-port=9225 --node-id=node-3 --bootstrap-key-file=/data/bootstrap-key.json
     environment:
       IRONFLOW_JWT_SECRET: ${IRONFLOW_JWT_SECRET:?set it in .env (new install - run ./init-env.sh)}

@@ -383,7 +383,7 @@ services:
     restart: unless-stopped
     # Covers the worst-case shutdown drain. Docker's default 10s kills it mid-drain.
     stop_grace_period: 100s
-    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.60.0}
+    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.61.0}
     command: >
       serve
       --bootstrap-key-file=/data/bootstrap-key.json
@@ -394,7 +394,7 @@ services:
     environment:
       # Every Postgres node is listed; pgx connects to whichever accepts writes,
       # so a failover needs no proxy and no config change.
-      IRONFLOW_DATABASE_URL: postgres://ironflow:${POSTGRES_PASSWORD:?set it in .env (new install - run ./init-env.sh)}@pg-1:5432,pg-2:5432,pg-3:5432/ironflow?sslmode=require&target_session_attrs=read-write
+      IRONFLOW_DATABASE_URL: postgres://ironflow:${POSTGRES_PASSWORD:?set it in .env (new install - run ./init-env.sh)}@pg-1:5432,pg-2:5432,pg-3:5432/ironflow?sslmode=require&target_session_attrs=read-write&connect_timeout=5
       IRONFLOW_MASTER_KEY: ${IRONFLOW_MASTER_KEY:?set it in .env (new install - run ./init-env.sh)}
       # Shared by every node, so a dashboard login made on one node works on all.
       IRONFLOW_JWT_SECRET: ${IRONFLOW_JWT_SECRET:?set it in .env (new install - run ./init-env.sh)}
@@ -439,7 +439,7 @@ services:
     restart: unless-stopped
     # Covers the worst-case shutdown drain. Docker's default 10s kills it mid-drain.
     stop_grace_period: 100s
-    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.60.0}
+    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.61.0}
     command: >
       serve
       --bootstrap-key-file=/data/bootstrap-key.json
@@ -450,7 +450,7 @@ services:
     environment:
       # Every Postgres node is listed; pgx connects to whichever accepts writes,
       # so a failover needs no proxy and no config change.
-      IRONFLOW_DATABASE_URL: postgres://ironflow:${POSTGRES_PASSWORD:?set it in .env (new install - run ./init-env.sh)}@pg-1:5432,pg-2:5432,pg-3:5432/ironflow?sslmode=require&target_session_attrs=read-write
+      IRONFLOW_DATABASE_URL: postgres://ironflow:${POSTGRES_PASSWORD:?set it in .env (new install - run ./init-env.sh)}@pg-1:5432,pg-2:5432,pg-3:5432/ironflow?sslmode=require&target_session_attrs=read-write&connect_timeout=5
       IRONFLOW_MASTER_KEY: ${IRONFLOW_MASTER_KEY:?set it in .env (new install - run ./init-env.sh)}
       # Shared by every node, so a dashboard login made on one node works on all.
       IRONFLOW_JWT_SECRET: ${IRONFLOW_JWT_SECRET:?set it in .env (new install - run ./init-env.sh)}
@@ -496,7 +496,7 @@ services:
     restart: unless-stopped
     # Covers the worst-case shutdown drain. Docker's default 10s kills it mid-drain.
     stop_grace_period: 100s
-    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.60.0}
+    image: ${IRONFLOW_IMAGE:-ghcr.io/sahina/ironflow-releases:0.61.0}
     command: >
       serve
       --bootstrap-key-file=/data/bootstrap-key.json
@@ -507,7 +507,7 @@ services:
     environment:
       # Every Postgres node is listed; pgx connects to whichever accepts writes,
       # so a failover needs no proxy and no config change.
-      IRONFLOW_DATABASE_URL: postgres://ironflow:${POSTGRES_PASSWORD:?set it in .env (new install - run ./init-env.sh)}@pg-1:5432,pg-2:5432,pg-3:5432/ironflow?sslmode=require&target_session_attrs=read-write
+      IRONFLOW_DATABASE_URL: postgres://ironflow:${POSTGRES_PASSWORD:?set it in .env (new install - run ./init-env.sh)}@pg-1:5432,pg-2:5432,pg-3:5432/ironflow?sslmode=require&target_session_attrs=read-write&connect_timeout=5
       IRONFLOW_MASTER_KEY: ${IRONFLOW_MASTER_KEY:?set it in .env (new install - run ./init-env.sh)}
       # Shared by every node, so a dashboard login made on one node works on all.
       IRONFLOW_JWT_SECRET: ${IRONFLOW_JWT_SECRET:?set it in .env (new install - run ./init-env.sh)}

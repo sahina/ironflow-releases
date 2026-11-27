@@ -50,7 +50,8 @@ Notifications need the same transformation.
 stable idempotency key already make every write idempotent: a second
 `place.order` loses the version-0 check, and a redelivered fact reuses its key
 and gets the original event back. Keys are `place:`, `approve:`, `release:` and
-`outcome:`, each derived from the order ID alone.
+`outcome:`, each derived from the order ID. `outcome:` also carries the event
+name, because a key names one event.
 
 **The read model is one unpartitioned projection.** `@ironflow/browser` can read
 and subscribe to a projection, including one partition of it, but it cannot list
@@ -74,8 +75,8 @@ package directory under `go test`. Nothing is copied out of `contracts/`.
 | `internal/order/contracts.go` | Catalog and schema loading. |
 | `cmd/orders/main.go` | Schema registration, then the pull-mode worker. |
 
-**`order.ErrConflict` wraps `ironflow.ErrConflict`.** A version conflict reaches
-the SDK as Connect `aborted`, surfaced as HTTP 409 and `ironflow.ErrConflict`.
+**`order.ErrConflict` wraps `ironflow.ErrContended`.** A version conflict reaches
+the SDK as Connect `aborted`, surfaced as HTTP 409 and `ironflow.ErrContended`.
 `streams.go` re-wraps it as `order.ErrConflict` so the domain never imports the
 SDK's error set, and `IsConflict` is the only test. Payments should spell it the
 same way rather than inventing a third name.

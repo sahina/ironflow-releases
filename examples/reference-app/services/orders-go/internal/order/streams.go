@@ -94,8 +94,8 @@ func (s clientStreams) Append(ctx context.Context, orderID string, fact AppendFa
 	}, opts...)
 	if err != nil {
 		// A version conflict arrives as Connect ABORTED, which the SDK surfaces
-		// as HTTP 409 / ironflow.ErrConflict.
-		if errors.Is(err, ironflow.ErrConflict) {
+		// as HTTP 409 / ironflow.ErrContended.
+		if errors.Is(err, ironflow.ErrContended) {
 			return 0, fmt.Errorf("%w: %s at expected version %d: %w",
 				ErrConflict, fact.Name, fact.ExpectedVersion, err)
 		}

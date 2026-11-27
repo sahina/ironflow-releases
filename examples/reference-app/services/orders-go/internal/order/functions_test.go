@@ -170,6 +170,22 @@ func TestApproveOrderMarksAVersionConflictRetryable(t *testing.T) {
 	}
 }
 
+func TestPaymentOutcomeMarksAVersionConflictRetryable(t *testing.T) {
+	conflict := ironflow.WrapError(ErrConflict, "stale entity version", "CONFLICT", false)
+	streams := &fakeStreams{appendErr: conflict, facts: []Fact{
+		placed(1), fact(EventOrderApproved, 2, nil), fact(EventOrderReleased, 3, nil),
+	}}
+	client := testClient(t, testDeps(t, streams))
+
+	run := client.Emit(t, EventPaymentCaptured, map[string]any{"orderId": testOrderID, "captureId": "cap_1"})
+	if run.Status != "failed" {
+		t.Fatalf("status = %q, want failed", run.Status)
+	}
+	if !ironflow.IsRetryable(run.Error) {
+		t.Fatalf("outcome conflict is not retryable: %v", run.Error)
+	}
+}
+
 func TestApproveStepRefusesANonPendingOrder(t *testing.T) {
 	streams := &fakeStreams{facts: []Fact{
 		placed(1), fact(EventOrderApproved, 2, nil), fact(EventOrderReleased, 3, nil), fact(EventOrderPaid, 4, nil),
@@ -233,7 +249,7 @@ func TestOutcomeStep(t *testing.T) {
 		if written.Name != EventOrderPaid || written.ExpectedVersion != 3 {
 			t.Fatalf("append = %+v", written)
 		}
-		if written.IdempotencyKey != "outcome:"+testOrderID {
+		if written.IdempotencyKey != "outcome:"+testOrderID+":"+EventOrderPaid {
 			t.Fatalf("idempotency key = %q", written.IdempotencyKey)
 		}
 	})

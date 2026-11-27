@@ -184,8 +184,9 @@ func (d Deps) OutcomeStep(ctx context.Context, eventName, orderID, causationID s
 		Name:            name,
 		Data:            data,
 		ExpectedVersion: state.Version,
-		// One payment attempt per order, so one key for either outcome.
-		IdempotencyKey: "outcome:" + orderID,
+		// A key names one event, so each outcome has its own. The expected version
+		// keeps the order to one outcome.
+		IdempotencyKey: "outcome:" + orderID + ":" + name,
 		Metadata:       FactMetadata(orderID, causationID, state.DemoSessionID),
 	})
 	if err != nil {
@@ -343,6 +344,10 @@ func paymentOutcome(deps Deps) ironflow.Function {
 			result, err := ironflow.Run(ctx, StepAppendOutcome, func() (StepResult, error) {
 				return deps.OutcomeStep(ctx.RunContext(), ctx.Event.Name, orderID, ctx.Event.ID, payment)
 			})
+			if IsConflict(err) {
+				// A retry re-reads the stream, and the other outcome makes it a no-op.
+				return nil, ironflow.WrapError(err, "payment outcome stream changed", "ORDER_VERSION_CONFLICT", true)
+			}
 			if err != nil {
 				return nil, err
 			}
