@@ -2,7 +2,7 @@ module github.com/sahina/ironflow/examples/go-quickstart
 
 go 1.26.0
 
-require github.com/sahina/ironflow-go v0.61.0
+require github.com/sahina/ironflow-go v1.0.0
 
 require (
 	connectrpc.com/connect v1.21.0 // indirect
